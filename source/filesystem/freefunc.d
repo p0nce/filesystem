@@ -116,14 +116,6 @@ bool exists(Path p) // symlinks are followed here
 // TODO rename
 // TODO resize_file
 // TODO space
-
-
-
-
-
-
-
-
 // TODO temp_directory_path
 
 
@@ -150,6 +142,7 @@ FileStatus status(Path path)
         return posix_statusFromPath(path, true);
     }
 }
+
 
 /**
     Determines the type and attributes of the filesystem object 
@@ -227,7 +220,7 @@ bool isCharacterFile(Path p) // symlinks are followed here
 
 /**
     Checks if the given file status or path corresponds to a 
-    directory.     
+    directory.
 */
 bool isDirectory(FileStatus s) pure
     => s.type == FileType.directory;
@@ -236,12 +229,69 @@ bool isDirectory(Path p) // symlinks are followed here
     => isDirectory(status(p));
 
 
-// TODO is_empty  // checks whether the given path refers to an empty file or directory
-// TODO is_fifo
-// TODO is_other
-// TODO is_regular_file
-// TODO is_socket
-// TODO is_symlink
+// TODO is_empty checks whether the given path refers to an empty file or directory
+
+
+/**
+    Checks if the given file status or path corresponds to a FIFO or 
+    pipe file as if determined by POSIX `S_ISFIFO`. 
+*/
+bool isFIFO(FileStatus s) pure
+    => s.type == FileType.fifo;
+///ditto
+bool isFIFO(Path p) // symlinks are followed here
+    => isFIFO(status(p));
+
+
+/**
+    Checks if the given file status or path corresponds to a file of 
+    type "other" type. That is, the file exists, but is:
+    - neither regular file, 
+    - nor directory 
+    - nor a symlink.
+*/
+bool isOther(FileStatus s) pure
+    => exists(s) && !isRegularFile(s) && !isDirectory(s) && !isSymlink(s);
+///ditto
+bool isOther(Path p) // symlinks are followed here
+    => isOther(status(p));
+
+
+/**
+    Checks if the given file status or path corresponds to a regular 
+    file.
+*/
+bool isRegularFile(FileStatus s) pure
+    => s.type == FileType.regular;
+///ditto
+bool isRegularFile(Path p) // symlinks are followed here
+    => isRegularFile(status(p));
+
+
+/**
+    Checks if the given file status or path corresponds to a named IPC 
+    socket, as if determined by the POSIX `S_IFSOCK`.
+*/
+bool isSocket(FileStatus s) pure
+    => s.type == FileType.socket;
+///ditto
+bool isSocket(Path p) // symlinks are followed here
+    => isSocket(status(p));
+
+
+/**
+    Checks if the given file status or path corresponds to a symbolic 
+    link, as if determined by the POSIX `S_IFLNK`.
+
+    This function is the only of its kind that doesn't follow 
+    symlinks, for obvious reasons.
+*/
+bool isSymlink(FileStatus s) pure
+    => s.type == FileType.socket;
+///ditto
+bool isSymlink(Path p) // symlinks are NOT followed here
+    => isSymlink(symlink_status(p));
+
 
 /**
     Checks if the given file status is known.
@@ -253,8 +303,8 @@ bool statusKnown(FileStatus s) pure nothrow
     => s.type != FileType.none;
 
 
-
 private:
+
 
 version(Windows)
 {
