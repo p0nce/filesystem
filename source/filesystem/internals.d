@@ -13,10 +13,11 @@ import filesystem.types;
 
 @nogc:
 
-static immutable string kStrFileNotFound   = "File not found";
-static immutable string kStrInvalidPath    = "Invalid path";
-static immutable string kStrFileAttributes = "Can't get file attributes";
+static immutable string kStrFileNotFound    = "File not found";
+static immutable string kStrInvalidPath     = "Invalid path";
+static immutable string kStrFileAttributes  = "Can't get file attributes";
 static immutable string kStrInvalidFileSize = "Invalid file size";
+static immutable string kStrDeepFuture      = "You've reached the deep future";
 
 
 // Future: decide if we keep this file

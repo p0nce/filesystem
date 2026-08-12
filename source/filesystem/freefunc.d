@@ -123,6 +123,22 @@ long fileSize(Path path)
 }
 
 // TODO hard_link_count
+
+
+/**
+    Returns the time of the last modification of p, determined as 
+    if by accessing the member st_mtime of the POSIX `stat`
+    (symlinks are followed).
+
+    For directories, this returns the time when the directory's 
+    contents were last modified?specifically when files were created, 
+    renamed, or deleted inside that folder.
+*/
+FileTime lastWriteTime(Path p)
+{
+    return status(p).lastWriteTime;
+}
+
 // TODO last_write_time
 // TODO permissions
 // TODO read_symlink
@@ -190,11 +206,21 @@ FileStatus symlinkStatus(Path path)
         }
         else
         {
+            // Extract time of last write.
+            ulong timeWin = cast(long)(info.ftLastWriteTime.dwHighDateTime) << 32;
+            timeWin |= info.ftLastWriteTime.dwLowDateTime;
+
+            // Excessive size, should fit in a long.
+            if (timeWin > long.max)
+                throwException(kStrDeepFuture);
+
+            r.lastWriteTime = windowsTickToUnixSeconds(timeWin);
+
             // FUTURE: support NTFS symbolic links
             if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
                 r.type = FileType.directory;
-                r.sizeBytes = 0;
+                r.sizeBytes = 0;                
             }
             else
             {
@@ -352,7 +378,8 @@ bool isSymlink(Path p)
 //   may not exist, or have a type we don't recognize.
 //   Specifically the "unknown" file type still yield
 //   true for statusKnown in std::filesystem.
-//   So perhaps best to leave this function out.
+//   So perhaps best to leave this function out, it's too
+//   easy to misunderstand it.
 
 
 
@@ -371,6 +398,26 @@ version(Windows)
         }
         else
             return false;
+    }
+
+
+    // A Windows FILETIME contains a 64-bit value representing the 
+    // number of 100-nanosecond intervals since January 1, 1601 (UTC).
+    // Note: it's safe to represent as signed, long lead us to 30848 
+    // A.D for an issue with 64-bit overflow.
+    //
+    // The Unix epoch (also called Unix time, POSIX time, or a Unix 
+    // timestamp) is the number of seconds since January 1, 1970, 
+    // 00:00:00 UTC, not counting leap seconds (ISO 8601: 
+    // 1970-01-01T00:00:00Z). Again, no issue with 64-bit overflow.
+    //
+    // Reference: https://stackoverflow.com/questions/6161776/convert-windows-filetime-to-second-in-unix-linux
+    long windowsTickToUnixSeconds(long winTicks)
+    {
+        // 1e7, because there 1e9 nanoseconds in second
+        enum long WINDOWS_TICK      = 10000000; 
+        enum long SEC_TO_UNIX_EPOCH = 11644473600L;
+        return winTicks / WINDOWS_TICK - SEC_TO_UNIX_EPOCH;
     }
 }
 
@@ -422,6 +469,7 @@ version(Posix)
             throwIO(kStrInvalidFileSize);
 
         r.sizeBytes = buf.st_size;
+        r.lastWriteTime = buf.st_mtime;
     }
 }
 

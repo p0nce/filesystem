@@ -6,6 +6,11 @@ module filesystem.types;
 public import numem.core.exception;
 import numem.lifetime;
 
+/**
+    Time used for modification dates. 
+    Number of seconds since UNIX epoch.
+*/
+alias FileTime = long;
 
 /**
     Type of file.
@@ -80,6 +85,8 @@ struct FileStatus
     FilePerms perms;
 
     long sizeBytes; /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
+
+    FileTime lastWriteTime;
 }
 
 /**

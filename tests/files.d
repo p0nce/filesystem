@@ -29,6 +29,7 @@ unittest
     assert(exists(Path("/")));
     assert(exists(Path(".")));
     assert(exists(Path("dub.sdl")));
+    assert( ! exists(Path("i/do/not/exist")));
 }
 
 @("fileSize()")
@@ -36,4 +37,11 @@ unittest
 {
     assert(fileSize(Path("./tests/FileWithZeroSize")) == 0);
     assert(fileSize(Path("./tests/FileWithSizeTwo")) == 2);
+}
+
+@("lastWriteTime()")
+unittest
+{
+    long time0 = lastWriteTime(Path("./tests/FileWithZeroSize"));
+    long timeHere = lastWriteTime(Path("."));
 }
