@@ -16,6 +16,7 @@ import filesystem.types;
 static immutable string kStrFileNotFound   = "File not found";
 static immutable string kStrInvalidPath    = "Invalid path";
 static immutable string kStrFileAttributes = "Can't get file attributes";
+static immutable string kStrInvalidFileSize = "Invalid file size";
 
 
 // Future: decide if we keep this file

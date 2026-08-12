@@ -115,10 +115,13 @@ bool exists(Path p) // symlinks are followed here
 }
 
 
-
 // TODO equivalent
 
-// TODO fileSize
+long fileSize(Path path)
+{
+    return status(path).sizeBytes;
+}
+
 // TODO hard_link_count
 // TODO last_write_time
 // TODO permissions
@@ -189,9 +192,23 @@ FileStatus symlinkStatus(Path path)
         {
             // FUTURE: support NTFS symbolic links
             if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
                 r.type = FileType.directory;
+                r.sizeBytes = 0;
+            }
             else
+            {
                 r.type = FileType.regular;
+
+                ulong size = cast(long)(info.nFileSizeHigh) << 32;
+                size |= info.nFileSizeLow;
+
+                // Excessive size, should fit in a long.
+                if (size > MAXIMUM_FILE_SIZE)
+                    throwException(kStrInvalidFileSize);
+
+                r.sizeBytes = cast(long)size;
+            }
         }
         return r;
     }
@@ -385,7 +402,7 @@ version(Posix)
         return r;
     }
 
-    FileStatus statusFromPosixStat(ref stat buf) nothrow
+    FileStatus statusFromPosixStat(ref stat buf)
     {
         r.perms = cast(FilePerms) (buf.st_mode & FilePerms.mask);
         switch(buf.st_mode & S_IFMT)
@@ -400,6 +417,11 @@ version(Posix)
             default:
                 r.type = FileType.unknown;
         }
+
+        if (buf.st_size < 0)
+            throwIO(kStrInvalidFileSize);
+
+        r.sizeBytes = buf.st_size;
     }
 }
 

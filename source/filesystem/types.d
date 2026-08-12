@@ -64,6 +64,11 @@ enum FilePerms : int
     mask       = 0xFFF  /// All valid permission bits. 
 }
 
+/**
+    Above that size, we consider the file can't possibly
+    by that big. That's nearly 8191 petabytes.
+*/
+enum ulong MAXIMUM_FILE_SIZE = long.max;
 
 /**
     Stores information about the type and permissions of a file.
@@ -71,7 +76,10 @@ enum FilePerms : int
 struct FileStatus
 {
     FileType type;
+
     FilePerms perms;
+
+    long sizeBytes; /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
 }
 
 /**
