@@ -1,0 +1,20 @@
+name "nupath"
+description "Port of cwalk, with nulib wrapper."
+copyright "Copyright 2026, Guillaume Piolat"
+copyright "Copyright 2024, Leonard Iklé"
+authors "Leonard Iklé"
+license "MIT"
+targetPath "out/"
+
+dependency "nulib" version="~>0.0"
+
+configuration "library" {
+    targetType "library"
+}
+
+configuration "unittest" {
+    targetType "autodetect"
+    dependency "nusilly" version="~>1.0"
+    sourcePaths "source/" "tests/"
+    importPaths "source/" "tests/"
+}
