@@ -66,7 +66,7 @@ Path absolute(const(char)[] p)
 /**
     Returns the absolute path of the current working directory.
 
-    May throw `FilesystemException` if an error occurs.
+    May throw `FileSystemIOException` if an error occurs.
 */
 Path currentPath() /* pure */
 {
@@ -97,12 +97,24 @@ Path currentPath() /* pure */
 /**
     Checks if the given file status or path corresponds to an existing 
     file or directory. 
+
+    May throw: `InvalidPathException` and `FileSystemIOException`.
 */
-bool exists(FileStatus s)
-    => statusKnown(s) && s.type != FileType.notFound;
-///ditto
 bool exists(Path p) // symlinks are followed here
-    => exists(status(p));
+{
+    try
+    {
+        status(p);
+        return true;
+    }
+    catch(FileNotFoundException e)
+    {
+        e.free();
+        return false;
+    }
+}
+
+
 
 // TODO equivalent
 
@@ -124,10 +136,10 @@ bool exists(Path p) // symlinks are followed here
     identified by `path` as if by POSIX `lstat` (symlinks are 
     NOT followed to their targets).
 
-    If not found or I/O error, returns `FileType.notFound` 
-    and `FileType.none` respectively.
-
-    However it will also throw if the path is invalid.
+    Can throw:
+    - `FileNotFoundException`  => equivalent to C++'s file_type::not_found
+    - `InvalidPathException`   => equivalent to C++'s file_type::none
+    - `FileSystemIOException`  => equivalent to C++'s file_type::none
 */
 FileStatus status(Path path)
 {
@@ -149,10 +161,10 @@ FileStatus status(Path path)
     identified by `path` as if by POSIX `lstat` (symlinks are 
     NOT followed to their targets).
 
-    If not found or I/O error, returns `FileType.notFound` 
-    and `FileType.none` respectively.
-
-    However it will also throw if the path is invalid.
+    Can throw:
+    - `FileNotFoundException`  => equivalent to C++'s file_type::not_found
+    - `InvalidPathException`   => equivalent to C++'s file_type::none
+    - `FileSystemIOException`  => equivalent to C++'s file_type::none
 */
 FileStatus symlinkStatus(Path path)
 {
@@ -169,9 +181,9 @@ FileStatus symlinkStatus(Path path)
             if (err == ERROR_FILE_NOT_FOUND
                 || err == ERROR_PATH_NOT_FOUND
                 || err == ERROR_INVALID_DRIVE)
-                r.type = FileType.notFound;
+                throwFileNotFound(path);
             else
-                r.type = FileType.none;
+                throwIO(kStrFileAttributes);
         }
         else
         {
@@ -196,9 +208,11 @@ FileStatus symlinkStatus(Path path)
     Checks if the given file status or path corresponds to a block 
     special file, as if determined by the POSIX `S_ISBLK`. Examples of 
     block special files are block devices such as `/dev/sda` or 
-    `/dev/loop0` on Linux. 
+    `/dev/loop0` on Linux.
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
-bool isBlockFile(FileStatus s) pure
+bool isBlockFile(FileStatus s) pure nothrow
     => s.type == FileType.block;
 ///ditto
 bool isBlockFile(Path p) // symlinks are followed here
@@ -209,9 +223,11 @@ bool isBlockFile(Path p) // symlinks are followed here
     Checks if the given file status or path corresponds to a character
     special file, as if determined by POSIX `S_ISCHR`. Examples of 
     character special files are character devices such as `/dev/null`, 
-    `/dev/tty`, `/dev/audio`, or `/dev/nvram` on Linux. 
+    `/dev/tty`, `/dev/audio`, or `/dev/nvram` on Linux.
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
-bool isCharacterFile(FileStatus s) pure
+bool isCharacterFile(FileStatus s) pure nothrow
     => s.type == FileType.character;
 ///ditto
 bool isCharacterFile(Path p) // symlinks are followed here
@@ -221,8 +237,10 @@ bool isCharacterFile(Path p) // symlinks are followed here
 /**
     Checks if the given file status or path corresponds to a 
     directory.
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
-bool isDirectory(FileStatus s) pure
+bool isDirectory(FileStatus s) pure nothrow
     => s.type == FileType.directory;
 ///ditto
 bool isDirectory(Path p) // symlinks are followed here
@@ -235,8 +253,10 @@ bool isDirectory(Path p) // symlinks are followed here
 /**
     Checks if the given file status or path corresponds to a FIFO or 
     pipe file as if determined by POSIX `S_ISFIFO`. 
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
-bool isFIFO(FileStatus s) pure
+bool isFIFO(FileStatus s) pure nothrow
     => s.type == FileType.fifo;
 ///ditto
 bool isFIFO(Path p) // symlinks are followed here
@@ -249,9 +269,11 @@ bool isFIFO(Path p) // symlinks are followed here
     - neither regular file, 
     - nor directory 
     - nor a symlink.
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isOther(FileStatus s) pure
-    => exists(s) && !isRegularFile(s) && !isDirectory(s) && !isSymlink(s);
+    => !isRegularFile(s) && !isDirectory(s) && !isSymlink(s);
 ///ditto
 bool isOther(Path p) // symlinks are followed here
     => isOther(status(p));
@@ -260,8 +282,10 @@ bool isOther(Path p) // symlinks are followed here
 /**
     Checks if the given file status or path corresponds to a regular 
     file.
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
-bool isRegularFile(FileStatus s) pure
+bool isRegularFile(FileStatus s) pure nothrow
     => s.type == FileType.regular;
 ///ditto
 bool isRegularFile(Path p) // symlinks are followed here
@@ -271,8 +295,10 @@ bool isRegularFile(Path p) // symlinks are followed here
 /**
     Checks if the given file status or path corresponds to a named IPC 
     socket, as if determined by the POSIX `S_IFSOCK`.
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
-bool isSocket(FileStatus s) pure
+bool isSocket(FileStatus s) pure nothrow
     => s.type == FileType.socket;
 ///ditto
 bool isSocket(Path p) // symlinks are followed here
@@ -285,22 +311,32 @@ bool isSocket(Path p) // symlinks are followed here
 
     This function is the only of its kind that doesn't follow 
     symlinks, for obvious reasons.
+
+    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
-bool isSymlink(FileStatus s) pure
+bool isSymlink(FileStatus s) pure nothrow
     => s.type == FileType.socket;
 ///ditto
-bool isSymlink(Path p) // symlinks are NOT followed here
-    => isSymlink(symlink_status(p));
+bool isSymlink(Path p)
+{
+    // symlinks are NOT followed here
+    // unlik the other isXXX functions.
+    return isSymlink(symlinkStatus(p));
+}
 
 
-/**
-    Checks if the given file status is known.
+// Not implemented:
+//
+// - bool statusKnown(FileStatus s) pure nothrow;
+//
+//   The problem with this API is it's not intuitive at
+//   all, it returns true if the file status was queried
+//   and the OS called didn't fail, which means the file
+//   may not exist, or have a type we don't recognize.
+//   Specifically the "unknown" file type still yield
+//   true for statusKnown in std::filesystem.
+//   So perhaps best to leave this function out.
 
-    To get a `FileStatus`, use either `status` or
-    `symlinkStatus`.
-*/
-bool statusKnown(FileStatus s) pure nothrow
-    => s.type != FileType.none;
 
 
 private:
@@ -323,7 +359,7 @@ version(Windows)
 
 version(Posix)
 {
-    FileStatus posix_statusFromPath(Path p, bool followIfSymlink) nothrow
+    FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
     {
         FileStatus r;
         stat buf;
@@ -339,9 +375,9 @@ version(Posix)
             r.perms = 0;
             int err = errno;
             if (errno == ENOENT)
-                r.type = FileType.notFound;
+                throwFileNotFound(p);
             else
-                r.type = FileType.none;
+                throwIO(kStrFileAttributes);
         }
         else
             r = statusFromPosixStat(buf);

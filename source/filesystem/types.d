@@ -10,12 +10,17 @@ import numem.lifetime;
 /**
     Type of file.
 
+    See_also: `status`, `FileStatus`.
+
     eg: A directory is a file of type `FileType.directory`.
 */
 enum FileType
 {
-    none,      /// File status has not been evaluated yet, or an error occurred.
-    notFound,  /// File was not found (this is not considered an error).
+    // Those two states are not representable in this library.
+    // Before getting that state you would have gotten an exception.
+    // none,      /// File status has not been evaluated yet, or an error occurred.
+    // notFound,  /// File was not found (this is not considered an error).
+
     regular,   /// A regular file.
     directory, /// A directory.
     symlink,   /// A symbolic link.
@@ -80,9 +85,49 @@ class FileSystemException : NuException
     {
         super(msg, nextInChain, file, line);
     }
+}
 
-    static FileSystemException create(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) {
-        return nogc_new!FileSystemException(msg, nextInChain, file, line);
+
+/**
+    Specific exception type when a file isn't found.
+    Needed because fileNotFound is not representable 
+    in `FileType` in our version.
+*/
+class FileNotFoundException : FileSystemException 
+{
+@nogc:
+
+    this(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) 
+    {
+        super(msg, nextInChain, file, line);
     }
 }
 
+
+/**
+    Specific exception type when a, I/O error is encountered.
+*/
+class FileSystemIOException : FileSystemException 
+{
+@nogc:
+
+    this(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) 
+    {
+        super(msg, nextInChain, file, line);
+    }
+}
+
+/**
+    Specific exception type in case of invalid path.
+    FUTURE: may merge with FileSystemIOException? It has
+    roughly the same effect.
+*/
+class InvalidPathException : FileSystemException 
+{
+@nogc:
+
+    this(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) 
+    {
+        super(msg, nextInChain, file, line);
+    }
+}

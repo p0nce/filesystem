@@ -13,11 +13,33 @@ import filesystem.types;
 
 @nogc:
 
+static immutable string kStrFileNotFound   = "File not found";
+static immutable string kStrInvalidPath    = "Invalid path";
+static immutable string kStrFileAttributes = "Can't get file attributes";
+
+
 // Future: decide if we keep this file
 
 void throwException(const(char)[] msg)
 {
-    throw FileSystemException.create(msg);
+    throw nogc_new!FileSystemException(msg);
+}
+
+void throwFileNotFound(const(char)[] path)
+{
+    // FUTURE: build proper exc message
+    throw nogc_new!FileNotFoundException(kStrFileNotFound);
+}
+
+void throwInvalidPath(const(char)[] path)
+{
+    // FUTURE: build proper exc message
+    throw nogc_new!InvalidPathException(kStrInvalidPath);
+}
+
+void throwIO(const(char)[] msg)
+{
+    throw nogc_new!FileSystemIOException(msg);
 }
 
 // Note: technically getenv and setenv do not belong

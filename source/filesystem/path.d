@@ -24,13 +24,14 @@ import nulib.collections.vector;
     A path is mostly like a string, that could be valid or not, 
     in a native-compatible format or not.
 
-    std::filesystem speaks of a genetic format (subset of both
+    `std::filesystem` speaks of a generic format (subset of both
     POSIX and Windows valid path), which is to be preferred when 
     unsure.
 
     In our case we choose to detect a preferred directory separator
     from input and use that in further operations. A native-compatible
-    path can be obtained with `.native()` which can be used in fopen
+    path can be obtained with `.native()` which can be NOT still 
+    be used in `fopen` since `fopen` doesn't accept UTF-8 on Windows.
 
     On POSIX systems, the generic format is the native format and 
     there is no need to distinguish or convert between them. 
@@ -207,12 +208,11 @@ public:
 
     /**
         Returns the internal pathname in native UTF-8 pathname format.
-
-        FUTURE: also validate if a native path, throw if invalid.
     */
     nstring native() pure
     {
         // TODO: in Windows paths, disallow to finish by a '.'
+        // validate if a native path, use throwInvalidPath if invalid.
 
         version(Windows)
             return replaceCharStr(str, '/', '\\');
