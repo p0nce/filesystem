@@ -21,7 +21,8 @@ static immutable string
     kStrDeepFuture         = "You've reached the deep future",
     kStrErrCreateDirectory = "Can't create directory",    
     kStrErrCreateDirFile   = "Can't create directory because a file with the same name exists",
-    kStrErrRemoveFileDir   = "Can't remove file or directory";
+    kStrErrRemoveFileDir   = "Can't remove file or directory",
+    kStrErrRenameFileDir   = "Can't rename file or directory";
 
 
 // Future: decide if we keep this file

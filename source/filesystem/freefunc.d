@@ -42,6 +42,9 @@ else version(Posix)
     Returns a path referencing the same file system location as p, 
     for which `Path.isAbsolute()` is true.
 
+    Warning: this isn't thread-safe, as any other thread
+    could modify this process' current directory.
+
     May throw `FilesystemException` if an error occurs.
 */
 Path absolute(Path p)
@@ -160,6 +163,9 @@ bool createDirectories(Path p)
 /**
     Returns the absolute path of the current working directory.
 
+    Warning: this isn't thread-safe, as any other thread
+    could modify this process' current directory.
+
     May throw `FileSystemIOException` if an error occurs.
 */
 Path currentPath() /* pure */
@@ -263,7 +269,7 @@ bool remove(Path p)
                 throwIO(kStrErrRemoveFileDir);
         }
 
-        // Like in Stephen's implementation (and unlike Phobos), 
+        // Like in Steffen's implementation (and unlike Phobos), 
         // we try to remove a read-only attribute if there. 
         // There is actually a deep issue lore about this:
         // https://github.com/gulrak/filesystem/issues/121/
@@ -306,9 +312,59 @@ bool remove(Path p)
     }    
 }
 
-// TODO remove
-// TODO remove_all
-// TODO rename
+// TODO remove_all => need directory search
+
+
+
+/**
+    Rename file or directory from `oldPath` to `newPath`, as if
+    by POSIX `rename()`.
+
+    - It is possible to rename a non-empty directory.
+    - It is not possible to rename a file across different mount 
+      points or drives.
+
+    If `newpath` already exists, it will be atomically replaced, so 
+    that there is no point at which another **process** attempting to 
+    access newpath will find it missing.  However, there will probably 
+    be a window in which both oldpath and newpath refer to the file 
+    being renamed.
+
+    Symbolic links are NOT followed, this will rename/delete symlinks
+    themselves.
+
+    Returns: true on success.
+
+    Throws:
+        FileSystemIOException on I/O error or if `oldPath` doesn't exist.
+        InvalidPathException on invalid path.    
+*/
+bool rename(Path oldPath, Path newPath)
+{
+    // Note: in https://github.com/gulrak/filesystem/,
+    // path are compared and if identical nothing happens.
+    // But I believe this is wrong if not compared normalized.
+
+    version(Windows)
+    {
+        // BUG: MoveFileExW is not actually atomic
+        // https://github.com/untitaker/rust-atomicwrites/issues/27
+        nwstring wold = oldPath.native.toUTF16();
+        nwstring wnew = newPath.native.toUTF16();
+        DWORD flags = MOVEFILE_REPLACE_EXISTING;
+        if (0 == MoveFileExW(wold.ptr, wnew.ptr, flags))
+            throwIO(kStrErrRenameFileDir);
+        return true;
+    }
+    else version(Posix)
+    {
+        if (rename(from.native.ptr, to.native.ptr) != 0)
+            throwIO(kStrErrRenameFileDir);
+        return true;
+    }
+}
+
+
 // TODO resize_file
 // TODO space
 // TODO temp_directory_path
