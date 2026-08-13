@@ -19,8 +19,9 @@ static immutable string
     kStrFileAttributes     = "Can't get file attributes",
     kStrInvalidFileSize    = "Invalid file size",
     kStrDeepFuture         = "You've reached the deep future",
-    kStrErrCreateDirectory = "Can't create directory",
-    kStrErrCreateDirFile   = "Can't create directory because a file with the same name exists";
+    kStrErrCreateDirectory = "Can't create directory",    
+    kStrErrCreateDirFile   = "Can't create directory because a file with the same name exists",
+    kStrErrRemoveFileDir   = "Can't remove file or directory";
 
 
 // Future: decide if we keep this file

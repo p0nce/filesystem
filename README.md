@@ -10,3 +10,10 @@ The `filesystem` package is a @nogc D library for use in context where you can't
 
 Its design is largely related to the `std::filesystem`, who did a lot of semantic work, only most of the API was D-ified and will for example expose ranges instead of iterators.
 
+
+## Dependencies:
+
+- libc (bindings in druntime)
+- POSIX (bindings in druntime)
+- Win32 (bindings in druntime)
+- numem and nulib

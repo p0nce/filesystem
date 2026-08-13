@@ -180,6 +180,7 @@ Path currentPath() /* pure */
     }
     else
     {
+        // TODO: looks too small
         char[256] name;
         if (getcwd(name.ptr, 256) == null) 
             throwException(errmsg);
@@ -235,6 +236,76 @@ FileTime lastWriteTime(Path p)
 
 // TODO permissions
 // TODO read_symlink
+
+
+/**
+    The file or **empty** directory identified by the path p is deleted as
+    if by the POSIX `remove`. Symlinks are not followed (symlink is 
+    removed, not its target).
+
+    Returns: true if remove, false if doesn't exist.
+
+    Throws:
+        FileSystemIOException on I/O error.
+        InvalidPathException on invalid path.
+*/
+bool remove(Path p)
+{
+    version(Windows)
+    {
+        nwstring path = p.native.toUTF16();
+        DWORD attr = GetFileAttributesW(path.ptr);
+        if (attr == INVALID_FILE_ATTRIBUTES)
+        {
+            if (windowsErrIsFileNotFound(GetLastError()))
+                return false;
+            else
+                throwIO(kStrErrRemoveFileDir);
+        }
+
+        // Like in Stephen's implementation (and unlike Phobos), 
+        // we try to remove a read-only attribute if there. 
+        // There is actually a deep issue lore about this:
+        // https://github.com/gulrak/filesystem/issues/121/
+        if (attr & FILE_ATTRIBUTE_READONLY)
+        {
+            // RACE: if another process removes the dir, it 
+            // could well be "not found" instead of I/O err
+            DWORD newAttr = attr & ~FILE_ATTRIBUTE_READONLY;
+            if (! SetFileAttributesW(path.ptr, newAttr))
+                throwIO(kStrErrRemoveFileDir);
+        }
+
+        if (attr & FILE_ATTRIBUTE_DIRECTORY) 
+        {
+            // RACE: if another process removes the dir, it 
+            // could well be "not found" instead of I/O err
+            if (!RemoveDirectoryW(path.ptr))
+                throwIO(kStrErrRemoveFileDir);
+        }
+        else 
+        {
+            // RACE: if another process removes the dir, it 
+            // could well be "not found" instead of I/O err
+            if (!DeleteFileW(path.ptr))
+                throwIO(kStrErrRemoveFileDir);
+        }
+        return true;
+    }
+    else version(Posix)
+    {
+        // Note: using libc here
+        if (remove(p.native().ptr) != 0)
+        {
+            int error = errno;
+            if (error == ENOENT)
+                return false;
+            else
+                throwIO(kStrErrRemoveFileDir);
+        }
+    }    
+}
+
 // TODO remove
 // TODO remove_all
 // TODO rename
@@ -290,9 +361,7 @@ FileStatus symlinkStatus(Path path)
         {
             DWORD err = GetLastError();
             r.perms = FilePerms.none;
-            if (err == ERROR_FILE_NOT_FOUND
-                || err == ERROR_PATH_NOT_FOUND
-                || err == ERROR_INVALID_DRIVE)
+            if (windowsErrIsFileNotFound(err))
                 throwFileNotFound(path);
             else
                 throwIO(kStrFileAttributes);
@@ -481,7 +550,14 @@ private:
 
 version(Windows)
 {
-    bool isWindowsSymlink(ref WIN32_FILE_ATTRIBUTE_DATA info) nothrow
+    bool windowsErrIsFileNotFound(DWORD err) pure nothrow
+    {
+        return (err == ERROR_FILE_NOT_FOUND
+             || err == ERROR_PATH_NOT_FOUND
+             || err == ERROR_INVALID_DRIVE);
+    }
+
+    bool isWindowsSymlink(ref WIN32_FILE_ATTRIBUTE_DATA info) pure nothrow
     {
         if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
         {

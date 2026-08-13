@@ -1,5 +1,8 @@
 /**
     All the non-structured types that are part of the API.
+
+    Copyright: Guillaume Piolat 2026.
+    License: MIT (https://mit-license.org/)
 */
 module filesystem.types;
 
@@ -33,7 +36,7 @@ enum FileType
     character, /// A character special file.
     fifo,      /// A FIFO (also knwon as pipe) file.
     socket,    /// A socket file.
-    unknown,   /// The file exists but its type could not be determined.
+    unknown,   /// The file exists, but its type could not be determined.
 }
 
 /**
