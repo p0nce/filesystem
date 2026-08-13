@@ -71,6 +71,7 @@ unittest
     assert(Path("C:/foo").rootPath() == "C:/");
     assert(Path("C:\\foo").rootPath() == "C:/");
     assert(Path("C:foo").rootPath() == "C:");
+    assert(Path("tests/my/deeply/nested/hierarchy").rootPath() == "");
 }
 
 @(".relativePath()")
@@ -301,6 +302,7 @@ unittest
         assert(Path("foo") / "" == "foo/");
         assert(Path("foo") / "/bar" == "/bar");
     }
+    assert(Path("") / "rel" == "rel");
 }
 
 @(".lexicallyNormal")

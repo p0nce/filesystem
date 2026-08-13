@@ -516,13 +516,20 @@ public:
         // Do not change relative path into absolute path
         // This would happen for: "c:" => "c:\"
         bool needSep = true;
+
         if (hasRootName() && !hasRootDirectory() && !hasFilename())
+            needSep = false;
+
+        // Would change "" to an absolute path
+        if (str == "")
             needSep = false;
 
         // Would a separator be redundant? This would happen
         // for: "c:\" or "/"
         if (hasRootDirectory() && !hasFilename())
             needSep = false;
+
+
         // "c:foo" / "c:bar" doit ajout /
         if (needSep)
             str ~= prefferedSep;

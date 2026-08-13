@@ -20,7 +20,7 @@ static immutable string
     kStrInvalidFileSize    = "Invalid file size",
     kStrDeepFuture         = "You've reached the deep future",
     kStrErrCreateDirectory = "Can't create directory",
-    kStrCreateDirectoryExistingNonDir = "Can't create directory because a file with the same name exists";
+    kStrErrCreateDirFile   = "Can't create directory because a file with the same name exists";
 
 
 // Future: decide if we keep this file

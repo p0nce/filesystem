@@ -49,7 +49,12 @@ unittest
 @("createDirectories()")
 unittest
 {
-//TODO
-    createDirectories(Path("./tests/my/deeply/nested/hierarchy"));
+    createDirectories(Path("tests/my/deeply/nested/hierarchy"));
+    createDirectories(Path("tests/my/deeply/../../our/hierarchy"));
+
+    // Exist, we created it before
     assert(false == createDirectories(Path("./tests/my/deeply/")));
+
+    // .. exist, but didn't need to create it
+    assert(false == createDirectories(Path("..")));
 }

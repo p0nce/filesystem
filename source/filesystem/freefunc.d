@@ -121,15 +121,22 @@ bool createDirectories(Path p)
     Path native = p.native();
     bool created = false;
     Path current = native.rootPath();
+
     foreach(part; native.iterateWithoutRootPath())
     {
         if (part == "") continue; // terminal separator
+        if (part == ".") continue;
         current /= part;
 
         FileStatus fs;
         try
         {
              fs = status(current);
+
+            // A file exists with the same name, and is not
+            // a directory? Error.
+            if (!isDirectory(fs))
+                throwIO(kStrErrCreateDirFile);
         }
         catch(FileNotFoundException e)
         {
@@ -140,12 +147,6 @@ bool createDirectories(Path p)
                 created = true;
             else
                 throwIO(kStrErrCreateDirectory);
-        }
-
-        // file exists and not a directory?
-        if (!isDirectory(fs))
-        {
-            throwIO(kStrCreateDirectoryExistingNonDir);
         }
     }
     return created;
