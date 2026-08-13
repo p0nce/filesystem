@@ -72,6 +72,38 @@ enum FilePerms : int
     mask       = 0xFFF  /// All valid permission bits. 
 }
 
+/// All the options the copying functions support.
+enum CopyOptions : int 
+{
+    none = 0,                /// Default behaviour
+
+    // Options controlling `copy_file()` when the 
+    // file already exists 
+    // Bits 0-1
+    reportAnError     = 0,   /// Default behaviour.
+    skipExisting      = 1,   /// Keep the existing file, without reporting an error. 
+    overwriteExisting = 2,   /// Replace the existing file. 
+    updateExisting    = 3,   /// Replace the existing file only if it is older than the file being copied.
+
+    // Options controlling the effects of `copy()`
+    // on subdirectories
+    // Bit 2
+    skipSubDirectories = 0,  /// Skip sub-directories (default behaviour).
+    recursive          = 4,  /// Recursively copy subdirectories and their content. 
+
+    // Options controlling the effects of `copy()` on symbolic links.
+    // Bit 3-4
+    followSymlinks     = 0,  /// Follow symlinks (default behaviour)
+    copySymlinks       = 8,  /// Copy symlinks as symlinks, not as the files they point to. 
+    ignoreSymlinks     = 16, /// Ignore symlinks. 
+
+    // Options controlling the kind of copying copy() does .
+    copyFileContent    = 0,  /// Copy file content (default behavior). 
+    directoriesOnly    = 32, /// UNSUPPORTED Copy the directory structure, but do not copy any non-directory files. 
+    createSymlinks     = 64, /// UNSUPPORTED Instead of creating copies of files, create symlinks pointing to the originals. Note: the source path must be an absolute path unless the destination path is in the current directory. 
+    createHardLinks    = 96  /// UNSUPPORTED Instead of creating copies of files, create hardlinks that resolve to the same files as the originals. 
+}
+
 /**
     Above that size, we consider the file can't possibly
     by that big. That's nearly 8191 petabytes.

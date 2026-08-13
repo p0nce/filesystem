@@ -1,4 +1,4 @@
-module testpath;
+module path;
 
 import filesystem;
 import nulib;
