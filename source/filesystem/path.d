@@ -209,9 +209,10 @@ public:
     /**
         Returns the internal pathname in native UTF-8 pathname format.
     */
-    nstring native() pure
+    nstring native() pure const
     {
         // TODO: in Windows paths, disallow to finish by a '.'
+        // TODO: check for MAX_PATH, or add \\?\ and check for longer length
         // validate if a native path, use throwInvalidPath if invalid.
 
         version(Windows)
@@ -223,7 +224,7 @@ public:
     /**
         Returns the internal pathname in generic pathname format.
     */
-    nstring generic() pure
+    nstring generic() pure const
     {
         version(Windows)
             return replaceCharStr(str, '\\', '/');
@@ -235,11 +236,36 @@ public:
     // ITERATION
     //
 
+    /**
+        Break down path in parts.
+
+        c:\Users\toto    => ["c:", "\", "Users", "toto"]
+        a/relative/path/ => ["a", "relative", "path", ""]
+
+        Returns: an `InputRange` of `const(char)[]`.
+    */
     PathRange iterate() pure const
     {
         PathRange r;
         r.initialize(str);
         return r;
+    }
+
+    /**
+        Break down path in parts, but skip the root path.
+
+        c:\Users\toto    => ["Users", "toto"]
+        a/relative/path/ => ["a", "relative", "path", ""]
+
+        Returns: an `InputRange` of `const(char)[]`.
+    */
+    PathRange iterateWithoutRootPath()
+    {
+        PathRange range = iterate();
+        int skipSlash = 1;
+        if (range.hasRootName) range.popFront();
+        if (range.hasRootDir) range.popFront();
+        return range;
     }
 
     //
@@ -512,6 +538,12 @@ public:
         return this;
     }
     ///ditto
+    ref Path opOpAssign(string op : "/")(const(char)[] p) /* pure */
+    {
+        append(p);
+        return this;
+    }
+    ///ditto
     Path opBinary(string op : "/")(Path p) /* pure */ const if (op == "/") 
     {
         Path r = str;
@@ -561,7 +593,6 @@ private:
     }
 
     // Return same string with one char replaced
-    // TODO: adding the pure makes a test fail!!! wtf
     static nstring replaceChar(const(char)[] s, char needle, char replacement) pure
     {
         if (s is null)
@@ -667,7 +698,7 @@ private:
 
                 if ((parts[i] != "..") && (parts[i + 1] == ".."))
                 {
-                    parts.removeAt(i); // Note: parts.removeAt(i, 2) leads to infinite loop TODO report
+                    parts.removeAt(i);
                     parts.removeAt(i);
 
                     bool hasFilenameBefore = i > 0;
@@ -1099,8 +1130,6 @@ private:
             {
                 return Token(Token.Type.rootDir, input[before..before+len]);
             }
-
-            // TODO: not sure if // or \\\ is valid root-dir on Windows
         }
 
         assert(state == State.restOfPath);
@@ -1113,7 +1142,7 @@ private:
             return Token(Token.Type.eof);
 
         bool isSep = charCanBeASeparator(ch);
-        // TODO major ambiguity to resolve is that \ can be in a POSIX filename.
+
         if (isSep)
         {
             int len = parseSeparator();

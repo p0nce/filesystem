@@ -5,7 +5,9 @@
     free functions in std::filesystem, see the reference:
     https://en.cppreference.com/cpp/filesystem
 
-    Copyright: Guillaume Piolat 2026.
+    Copyright: Copyright (c) 2026, Guillaume Piolat <contact@auburnsounds.com>
+    Copyright: Copyright (c) 2018, Steffen Schümann <s.schuemann@pobox.com>
+
     License: MIT (https://mit-license.org/)
 */
 module filesystem.freefunc;
@@ -31,6 +33,10 @@ else version(Posix)
     import core.sys.posix.sys.stat;
 }
 
+// TODO: do we want isDirectory to throw when the path is invalid,
+// an I/O error returned, or the directory isn't found? Or just return
+// false.
+
 
 /**
     Returns a path referencing the same file system location as p, 
@@ -53,11 +59,98 @@ Path absolute(const(char)[] p)
 // TODO weakly_canonical
 // TODO relative
 // TODO proximate
+
 // TODO copy
+
 // TODO copy_file
+
 // TODO copy_symlink
-// TODO create_directory
-// TODO create_directories
+
+
+/**
+    Create a directory as if by POSIX `mkdir()`.
+    The parent directory must already exist.
+
+    Returns: `true` if created, `false` if already existing.
+    
+    Throws: `FileSystemIOException` or `InvalidPathException`.
+
+    TODO: attributes, copy them from another file.
+*/
+bool createDirectory(Path p)
+{
+    // Already exists?
+    try
+    {
+        FileStatus fs = status(p);
+        if (isDirectory(fs))
+            return false;
+    }
+    catch(FileNotFoundException e)
+    {
+        e.free();
+    }
+
+    // Doesn't yet exist, proceed to creation
+    version(Windows)
+    {
+        nwstring ws = p.native.toUTF16();
+        if (! CreateDirectoryW(ws.ptr, null))
+            throwIO(kStrErrCreateDirectory);
+    }
+    else version(Posix)
+    {
+        mode_t attribs = cast(mode_t)FilePerms.all;
+        if (mkdir(p.native.ptr, attribs) != 0)
+            throwIO(kStrErrCreateDirectory);
+    }
+    return true;
+}
+
+/**
+    Create a chain of directories.
+
+    Returns: `true` if created, `false` if already existing.
+
+    Throws: `FileSystemIOException` or `InvalidPathException`.
+
+    TODO: attributes, copy them from another file.
+*/
+bool createDirectories(Path p)
+{
+    Path native = p.native();
+    bool created = false;
+    Path current = native.rootPath();
+    foreach(part; native.iterateWithoutRootPath())
+    {
+        if (part == "") continue; // terminal separator
+        current /= part;
+
+        FileStatus fs;
+        try
+        {
+             fs = status(current);
+        }
+        catch(FileNotFoundException e)
+        {
+            e.free();
+
+            // Create the directory
+            if (createDirectory(current))
+                created = true;
+            else
+                throwIO(kStrErrCreateDirectory);
+        }
+
+        // file exists and not a directory?
+        if (!isDirectory(fs))
+        {
+            throwIO(kStrCreateDirectoryExistingNonDir);
+        }
+    }
+    return created;
+}
+
 // TODO create_hard_link
 // TODO create_symlink
 // TODO create_directory_symlink
@@ -139,7 +232,6 @@ FileTime lastWriteTime(Path p)
     return status(p).lastWriteTime;
 }
 
-// TODO last_write_time
 // TODO permissions
 // TODO read_symlink
 // TODO remove
@@ -368,7 +460,7 @@ bool isSymlink(Path p)
 }
 
 
-// Not implemented:
+// Not public:
 //
 // - bool statusKnown(FileStatus s) pure nothrow;
 //
@@ -472,5 +564,4 @@ version(Posix)
         r.lastWriteTime = buf.st_mtime;
     }
 }
-
 

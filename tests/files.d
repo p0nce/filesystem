@@ -45,3 +45,11 @@ unittest
     long time0 = lastWriteTime(Path("./tests/FileWithZeroSize"));
     long timeHere = lastWriteTime(Path("."));
 }
+
+@("createDirectories()")
+unittest
+{
+//TODO
+    createDirectories(Path("./tests/my/deeply/nested/hierarchy"));
+    assert(false == createDirectories(Path("./tests/my/deeply/")));
+}
