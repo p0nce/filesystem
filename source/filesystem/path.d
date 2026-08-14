@@ -1289,3 +1289,27 @@ char prefToChar(SepPreference pref) pure
             assert(0);
     }
 }
+
+/*
+
+Appendix: The scary world of pathnames.
+
+It's a nice mental model that all path on your system are UTF-8 or 
+UTF-16, but this isn't strictly true.
+
+- Windows: when using fopen or open (POSIX), the pathnames are expected 
+  to be in the active codepage. Hence, no libc or POSIX call should be 
+  used when on Windows in this library.
+  Similarly to Linux, the UTF-16 can be invalid, have unpaired surrogates,
+  etc. Which is rather bad, because the unpaired surrogate have no UTF-8
+  equivalent. https://github.com/rust-lang/rust/issues/12056
+
+- Linux: the first Linux using UTF-8 as the default encoding was RedHat 
+  in 2002. Nothing actually forces path to be UTF-8, they could be
+  malformed UTF-8.
+  As long as you're using '/' and '\0' the path can contain anything.
+
+- macOS: a bit of the same as Linux.
+
+
+*/

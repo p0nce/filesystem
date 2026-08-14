@@ -14,6 +14,7 @@ module filesystem.freefunc;
 
 import nulib;
 import nulib.text.unicode;
+import nulib.collections.vector;
 import numem;
 
 import filesystem.types;
@@ -28,9 +29,14 @@ version(Windows)
 }
 else version(Posix)
 {
-    import core.stdc.unistd: getcwd;
-    import core.stdc.string: strlen;
+    import core.stdc.errno;
+    import core.sys.posix.unistd;
+    import core.sys.posix.fcntl;
     import core.sys.posix.sys.stat;
+
+    import core.sys.posix.stdlib;
+    import cstdlib = core.stdc.stdlib;
+    import cstdio = core.stdc.stdio: remove, rename;
 }
 
 // TODO: do we want isDirectory to throw when the path is invalid,
@@ -65,7 +71,145 @@ Path absolute(const(char)[] p)
 
 // TODO copy
 
-// TODO copy_file
+bool copyFile(Path from, Path to, 
+              CopyOptions options = CopyOptions.none)
+{
+    if (! isRegularFile(from))
+        throwException(kStrErrCopyFileNonReg);
+
+    bool fromExists = false;
+    bool toExists = false;
+    FileStatus statusFrom = statusExists(from, fromExists);
+    FileStatus statusTo   = statusExists(to, toExists);
+
+    bool overwrite = false;
+    if (toExists)
+    {
+        // destination exists
+
+        // TODO
+        //if (equivalent(to, from))
+          //  error();
+
+        if (! isRegularFile(statusTo))
+            throwException(kStrErrCopyDestNonReg);
+
+        // What to do?
+        int behaviour = options & 3;
+        if (behaviour == CopyOptions.reportAnError)
+        {
+            throwIO(kStrErrCopyDestExists);
+            return false;
+        }
+        else if (behaviour == CopyOptions.skipExisting) 
+        {
+            return false;
+        }
+        else if (behaviour == CopyOptions.overwriteExisting) 
+        {
+            overwrite = true;
+        }
+        else 
+        {
+            assert(behaviour == CopyOptions.updateExisting);
+            if (lastWriteTime(from) > lastWriteTime(to))
+                overwrite = true;
+            else
+                return false;
+        }
+    }
+
+    // PERF Linux use instead copy_file_range
+
+    version(Windows)
+    {
+        nwstring wfrom = from.native.toUTF16();
+        nwstring wto = from.native.toUTF16();
+        BOOL bFailIfExists = ! overwrite;
+        if (! CopyFileW(wfrom.ptr, wto.ptr, bFailIfExists)) 
+            throwIO(kStrErrFileCopyFailed);        
+        return true;
+    }
+    else version(Posix)
+    {
+        int inHandle  = -1, 
+            outHandle = -1;
+
+        if ((inHandle = .open(from.native.ptr, O_RDONLY)) < 0) 
+            throwIO(kStrErrOpenFileFailed); 
+
+        assert(fromExists); // since it was opened, hence statusFrom is valid
+
+        int mode = O_CREAT | O_WRONLY | O_TRUNC;
+        if (!overwrite)
+            mode |= O_EXCL;
+
+        if ((outHandle = .open(to.native.ptr, mode, statusFrom.perms & FilePerms.all)) < 0) 
+        {
+            .close(inHandle);
+            throwIO(kStrErrOpenFileFailed); 
+        }
+
+        if (overwrite)
+        {
+            if (statusTo.perms != statusFrom.perms) 
+            {
+                if (.fchmod(outHandle, cast(mode_t)(statusFrom.perms & FilePerms.all)) != 0) 
+                {
+                    .close(inHandle);
+                    .close(outHandle);
+                    throwIO(kStrErrChmodFailed); 
+                }
+            }
+        }
+
+        enum int BLOCK_SIZE = 16384;
+        vector!byte buf;
+        buf.resize(BLOCK_SIZE);        
+
+        while (true) 
+        {
+            ptrdiff_t bytesRead;
+            ptrdiff_t bytesWritten;
+
+            do 
+            {
+                bytesRead = .read(inHandle, buf.ptr, BLOCK_SIZE);
+            } while (bytesRead == -1 && errno == EINTR);
+
+            if (bytesRead < 0)
+                throwIO(kStrErrFileReadFailed);
+
+            if (bytesRead == 0)
+                break; // input file finished
+
+            ptrdiff_t offset = 0;
+            do 
+            {
+                bytesWritten = .write(outHandle, buf.ptr + offset, bytesRead);
+                if (bytesWritten > 0)
+                {
+                    bytesRead -= bytesWritten;
+                    offset += bytesWritten;
+                }
+                else if (bytesWritten <= 0 && errno != EINTR)
+                {
+                    // Note: 0 byte progressed is an error.
+                    .close(inHandle);
+                    .close(outHandle);
+                    throwIO(kStrErrFileWriteFailed);
+                }
+            } while (bytesRead);
+        }
+        .close(inHandle);
+        .close(outHandle);
+        return true;
+
+    }
+    else
+        assert(0);
+}
+
 
 // TODO copy_symlink
 
@@ -191,7 +335,7 @@ Path currentPath() /* pure */
         char[256] name;
         if (getcwd(name.ptr, 256) == null) 
             throwException(errmsg);
-        return Path(nstring(name[0..strlen(name.ptr)]));
+        return Path(nstring(name[0..fs_strlen(name.ptr)]));
     }
 }
 
@@ -219,9 +363,20 @@ bool exists(Path p) // symlinks are followed here
 
 // TODO equivalent
 
-long fileSize(Path path)
+
+/**
+    For a regular file `p`, returns the size determined as if by 
+    reading the `st_size` member of the structure obtained by POSIX 
+    `stat` (symlinks are followed).
+
+    The result of attempting to determine the size of a directory is 
+    implementation-defined.
+
+    Throws: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
+*/
+long fileSize(Path p)
 {
-    return status(path).sizeBytes;
+    return status(p).sizeBytes;
 }
 
 // TODO hard_link_count
@@ -301,16 +456,21 @@ bool remove(Path p)
     }
     else version(Posix)
     {
-        // Note: using libc here
-        if (remove(p.native().ptr) != 0)
+        // Warning: using libc here
+        if (cstdio.remove(p.native().ptr) != 0)
         {
             int error = errno;
             if (error == ENOENT)
                 return false;
             else
                 throwIO(kStrErrRemoveFileDir);
+            return false;
         }
-    }    
+        else
+            return true;
+    }
+    else
+        assert(0);
 }
 
 // TODO remove_all => need directory search
@@ -359,7 +519,7 @@ bool rename(Path oldPath, Path newPath)
     }
     else version(Posix)
     {
-        if (rename(from.native.ptr, to.native.ptr) != 0)
+        if (cstdio.rename(oldPath.native.ptr, newPath.native.ptr) != 0)
             throwIO(kStrErrRenameFileDir);
         return true;
     }
@@ -605,6 +765,30 @@ bool isSymlink(Path p)
 private:
 
 
+/*
+    Version that return even if the file doesn't exist.
+    Can still throw on I/O and invalid path.
+
+    Returns: FileStatus.init if the file doesn't exists.
+*/
+FileStatus statusExists(Path p, out bool exists)
+{
+    FileStatus st;
+    try
+    {
+        st = status(p);
+        exists = true;
+    }
+    catch(FileNotFoundException e)
+    {
+        e.free();
+        exists = false;
+        st = FileStatus.init;
+    }
+    return st;
+}
+
+
 version(Windows)
 {
     bool windowsErrIsFileNotFound(DWORD err) pure nothrow
@@ -652,8 +836,8 @@ version(Posix)
     FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
     {
         FileStatus r;
-        stat buf;
-        nstring s = path.native();
+        stat_t buf;
+        nstring s = p.native();
         int res;
         if (followIfSymlink)
             res = stat(s.ptr, &buf);
@@ -662,7 +846,7 @@ version(Posix)
 
         if (res != 0)
         {
-            r.perms = 0;
+            r.perms = FilePerms.none;
             int err = errno;
             if (errno == ENOENT)
                 throwFileNotFound(p);
@@ -675,18 +859,19 @@ version(Posix)
         return r;
     }
 
-    FileStatus statusFromPosixStat(ref stat buf)
+    FileStatus statusFromPosixStat(ref stat_t buf)
     {
+        FileStatus r;
         r.perms = cast(FilePerms) (buf.st_mode & FilePerms.mask);
         switch(buf.st_mode & S_IFMT)
         {
-            case S_IFREG:  r.type = FileType.regular;
-            case S_IFDIR:  r.type = FileType.directory;
-            case S_IFLNK:  r.type = FileType.symlink;
-            case S_IFBLK:  r.type = FileType.block;
-            case S_IFCHR:  r.type = FileType.character; 
-            case S_IFIFO:  r.type = FileType.fifo;
-            case S_IFSOCK: r.type = FileType.socket;
+            case S_IFREG:  r.type = FileType.regular; break;
+            case S_IFDIR:  r.type = FileType.directory; break;
+            case S_IFLNK:  r.type = FileType.symlink; break;
+            case S_IFBLK:  r.type = FileType.block; break;
+            case S_IFCHR:  r.type = FileType.character; break;
+            case S_IFIFO:  r.type = FileType.fifo; break;
+            case S_IFSOCK: r.type = FileType.socket; break;
             default:
                 r.type = FileType.unknown;
         }
@@ -696,6 +881,7 @@ version(Posix)
 
         r.sizeBytes = buf.st_size;
         r.lastWriteTime = buf.st_mtime;
+        return r;
     }
 }
 
