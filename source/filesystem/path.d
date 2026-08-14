@@ -442,7 +442,7 @@ public:
             result.append(vthis[i]);
 
         assert(result.str[0] == '/' || result.str[0] == '\\');
-        result.str = result.str[1..$];
+        result = Path(result.str[1..$]); // waiting for the nulib string opAssign fix
         return result;
     }
     //ditto
@@ -551,14 +551,14 @@ public:
         return this;
     }
     ///ditto
-    Path opBinary(string op : "/")(Path p) /* pure */ const if (op == "/") 
+    Path opBinary(string op : "/")(Path p) /* pure */ const
     {
         Path r = str;
         r.append(p);
         return r;
     }
     ///ditto
-    Path opBinary(string op : "/")(const(char)[] p) /* pure */ const if (op == "/") 
+    Path opBinary(string op : "/")(const(char)[] p) /* pure */ const
     {
         Path r = str;
         r.append(p);
