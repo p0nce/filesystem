@@ -17,6 +17,16 @@ unittest
     assert(exists(absolute(Path(".")) / "dub.sdl"));
 }
 
+@("copyFile()")
+unittest
+{
+    assert(copyFile(Path("./tests/FileWithSizeTwo"), Path("delete-me")));
+    assert(exists(Path("delete-me")));
+    assert(fileSize(Path("delete-me")) == 2);
+    assert(remove(Path("delete-me")));
+    assert(!exists(Path("delete-me")));
+}
+
 @("currentPath()")
 unittest
 {

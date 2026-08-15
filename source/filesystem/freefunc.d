@@ -124,7 +124,7 @@ bool copyFile(Path from, Path to,
     version(Windows)
     {
         nwstring wfrom = from.native.toUTF16();
-        nwstring wto = from.native.toUTF16();
+        nwstring wto = to.native.toUTF16();
         BOOL bFailIfExists = ! overwrite;
         if (! CopyFileW(wfrom.ptr, wto.ptr, bFailIfExists)) 
             throwIO(kStrErrFileCopyFailed);        
