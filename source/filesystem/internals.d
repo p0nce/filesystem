@@ -41,7 +41,8 @@ static immutable string
     kStrErrOpenFileFailed  = "Can't open file",
     kStrErrFileReadFailed  = "File read failed",
     kStrErrFileWriteFailed = "File write failed",
-    kStrErrChmodFailed     = "File chmod failed";
+    kStrErrChmodFailed     = "File chmod failed",
+    kStrErrInvalidArg      = "Invalid argument";
 
 
 // Future: decide if we keep this file

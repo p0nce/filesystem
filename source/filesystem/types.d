@@ -72,6 +72,22 @@ enum FilePerms : int
     mask       = 0xFFF  /// All valid permission bits. 
 }
 
+enum PermOptions : int
+{
+    // Bit 0-1 = mode
+    /// Replace by the argument to `permissions()` (default behavior).
+    replace   = 0,
+    /// Bitwise OR with current permissions.
+    add       = 1,
+    /// Bitwise AND of the negated argument and current permissions.
+    remove    = 2,
+
+    // Bit 2  = no follow bit.
+    /// Permissions will be changed on the symlink itself, rather 
+    /// than on the file it resolves to.    
+    nofollow  = 4,
+}
+
 /// All the options the copying functions support.
 enum CopyOptions : int 
 {
@@ -116,12 +132,9 @@ enum ulong MAXIMUM_FILE_SIZE = long.max;
 struct FileStatus
 {
     FileType type;
-
-    FilePerms perms;
-
-    long sizeBytes; /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
-
-    FileTime lastWriteTime;
+    FilePerms permissions;
+    long sizeBytes;         /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
+    FileTime lastWriteTime; /// In UNIX epoch.
 }
 
 /**

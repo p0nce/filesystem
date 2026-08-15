@@ -107,7 +107,7 @@ public:
         while (parser.parseFilename(name, sep))
         {
             r ~= name;
-            if (sep) r ~= "/"; // TODO this is wrong
+            if (sep) r ~= "/"; // TODO this is wrong should be preferred char
         }
         return Path(r);
     }

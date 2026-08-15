@@ -396,7 +396,65 @@ FileTime lastWriteTime(Path p)
     return status(p).lastWriteTime;
 }
 
-// TODO permissions
+
+/**
+    Changes access permissions of the file to which p resolves, as if by POSIX `fchmodat`. 
+
+    Symlinks are followed unless `PermOptions.nofollow` is set in opts.
+*/
+void permissions(Path p, FilePerms prms, PermOptions opts = PermOptions.replace)
+{
+    FileStatus fs = symlinkStatus(p);
+
+    switch (opts & 3)
+    {
+        case PermOptions.replace:
+            break;
+        case PermOptions.add:
+            prms = fs.permissions | prms;
+            break;
+        case PermOptions.remove:
+            prms = fs.permissions & ~prms;
+            break;
+        case 3:
+        default:
+            assert(0);
+
+        version(Windows)
+        {
+            nwstring wpath = p.native.toUTF16();
+            DWORD oldAttr = GetFileAttributesW(wpath.ptr);
+            if (oldAttr == INVALID_FILE_ATTRIBUTES)
+                throwIO(kStrFileAttributes);
+
+            DWORD newAttr;
+            bool readOnly = (prms & FilePerms.ownerWrite) == 0;
+            if (readOnly)
+                newAttr = oldAttr & ~cast(DWORD)FILE_ATTRIBUTE_READONLY;
+            else
+                newAttr = oldAttr | cast(DWORD)FILE_ATTRIBUTE_READONLY;
+
+            if (oldAttr == newAttr)
+                return;
+
+            if (SetFileAttributesW(wpath.ptr, newAttr) == 0)
+                throwIO(kStrErrChmodFailed);
+        }
+        else version(Posix)
+        {
+            bool noFollow = (opts & FilePerms.nofollow) != 0;
+
+            if (! noFollow)
+            {
+                if (.chmod(p.native.ptr, cast(mode_t)prms) != 0) 
+                    throwIO(kStrErrChmodFailed);
+            }
+        }
+        else
+            assert(0);
+    }
+}
+
 // TODO read_symlink
 
 
@@ -577,7 +635,7 @@ FileStatus symlinkStatus(Path path)
         if (res == 0)
         {
             DWORD err = GetLastError();
-            r.perms = FilePerms.none;
+            r.permissions = FilePerms.none;
             if (windowsErrIsFileNotFound(err))
                 throwFileNotFound(path);
             else
