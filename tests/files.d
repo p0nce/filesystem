@@ -42,6 +42,13 @@ unittest
     assert( ! exists(Path("i/do/not/exist")));
 }
 
+@("equivalent()")
+unittest
+{
+    assert(equivalent(Path("."), Path(".")));
+    assert(equivalent(Path("dub.sdl"), Path("dub.sdl")));
+}
+
 @("fileSize()")
 unittest
 {

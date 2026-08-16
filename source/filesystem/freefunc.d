@@ -56,7 +56,7 @@ else version(Posix)
 Path absolute(Path p)
 {
     if (p == "")
-        throwException(`Cannot make absolute path from empty`);
+        throwException(kStrPathIsEmptyNoAbs);
     return currentPath() / p;
 }
 ///ditto

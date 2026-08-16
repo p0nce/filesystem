@@ -54,7 +54,8 @@ static immutable string
     kStrErrInvalidArg      = "Invalid argument",
     kStrErrCurrentPath     = "Can't get current path",
     kStrErrCopySameFile    = "Source and destination are the same",
-    kStrErrMetadataAccess  = "Can't access file metadata";
+    kStrErrMetadataAccess  = "Can't access file metadata",
+    kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty";
 
 
 // Future: decide if we keep this file
