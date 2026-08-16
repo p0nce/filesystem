@@ -12,6 +12,8 @@ public import filesystem.types;
 // Path
 public import filesystem.path;  
 
-// Free functions in 
+// Free functions in the API
 public import filesystem.freefunc; 
 
+// Structures related to directory search
+public import filesystem.direntry; 

@@ -20,6 +20,7 @@ import numem;
 import filesystem.types;
 import filesystem.path;
 import filesystem.internals;
+import filesystem.direntry;
 
 version(Windows)
 {
@@ -207,7 +208,7 @@ bool copyFile(Path from, Path to,
 
     }
     else
-        assert(0);
+        static assert(0);
 }
 
 
@@ -340,15 +341,14 @@ Path currentPath() /* pure */
 
 
 /**
-    Returns: A directory range.
+    Returns: A shallow directory range to iterate over the files in
+    this directory.
 */
-
-/*
-foreach (string name; dirEntries("destroy/me", SpanMode.depth))
+DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOptions.none)
 {
-    remove(name);
+    return DirectoryRange(p, opts);
 }
-*/
+
 
 /**
     Checks if the given file status or path corresponds to an existing 
@@ -526,7 +526,7 @@ void permissions(Path p, FilePerms prms, PermOptions opts = PermOptions.replace)
             }
         }
         else
-            assert(0);
+            static assert(0);
     }
 }
 
@@ -603,7 +603,7 @@ bool remove(Path p)
             return true;
     }
     else
-        assert(0);
+        static assert(0);
 }
 
 // TODO remove_all => need directory search
@@ -755,7 +755,7 @@ FileStatus symlinkStatus(Path path)
         return posix_statusFromPath(path, false);
     }
     else 
-        assert(0);
+        static assert(0);
 }
 
 

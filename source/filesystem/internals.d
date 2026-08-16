@@ -55,7 +55,8 @@ static immutable string
     kStrErrCurrentPath     = "Can't get current path",
     kStrErrCopySameFile    = "Source and destination are the same",
     kStrErrMetadataAccess  = "Can't access file metadata",
-    kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty";
+    kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty",
+    kStrErrFileSearch      = "File search failed";
 
 
 // Future: decide if we keep this file
@@ -149,6 +150,40 @@ size_t fs_strlen(const(char)* str) pure
 
     return len;
 }
+
+int fs_strcmp( const(char)* lhs, const(char)* rhs ) pure @system
+{
+    while(true)
+    {
+        char left = *lhs++;
+        char right = *rhs++;
+        if (left < right)
+            return -1;
+        else if (left > right)
+            return 1;
+        if (left == 0)
+            break;
+    }
+    return 0;
+}
+
+int fs_wcscmp( const(wchar)* lhs, const(wchar)* rhs ) pure @system
+{
+    while(true)
+    {
+        wchar left = *lhs++;
+        wchar right = *rhs++;
+        if (left < right)
+            return -1;
+        else if (left > right)
+            return 1;
+        if (left == 0)
+            break;
+    }
+    return 0;
+}
+
+
 
 // Returns: true if path a == path b.
 // On Windows, compare with case-insensitive casing.

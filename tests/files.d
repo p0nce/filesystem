@@ -7,7 +7,7 @@ import core.stdc.stdio;
 
 void nprintf(nstring s)
 {
-    printf("%.*s", cast(int) s.length, s.ptr);
+    printf("%20.*s", cast(int) s.length, s.ptr);
 }
 
 
@@ -20,6 +20,9 @@ unittest
 @("copyFile()")
 unittest
 {
+    if (exists(Path("delete-me")))
+        remove(Path("delete-me"));
+
     assert(copyFile(Path("./tests/FileWithSizeTwo"), Path("delete-me")));
     assert(exists(Path("delete-me")));
     assert(fileSize(Path("delete-me")) == 2);
@@ -31,6 +34,22 @@ unittest
 unittest
 {
     assert(exists(currentPath() / "dub.sdl"));
+}
+
+@("dirEntries()")
+unittest
+{
+    printf("Current directory contains:\n");
+    foreach(entry; dirEntries(Path(".")))
+    {
+        printf(" - ");
+        nprintf(entry.path.lexicallyNormal);
+        if (isDirectory(entry.path))
+            printf(" <dir>");
+        else 
+            printf(" %10llu bytes", fileSize(entry.path));
+        printf("\n");
+    }
 }
 
 @("exists()")
