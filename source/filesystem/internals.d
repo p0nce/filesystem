@@ -52,7 +52,9 @@ static immutable string
     kStrErrFileWriteFailed = "File write failed",
     kStrErrChmodFailed     = "File chmod failed",
     kStrErrInvalidArg      = "Invalid argument",
-    kStrErrCurrentPath     = "Can't get current path";
+    kStrErrCurrentPath     = "Can't get current path",
+    kStrErrCopySameFile    = "Source and destination are the same",
+    kStrErrMetadataAccess  = "Can't access file metadata";
 
 
 // Future: decide if we keep this file

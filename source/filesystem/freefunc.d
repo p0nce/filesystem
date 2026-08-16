@@ -87,9 +87,9 @@ bool copyFile(Path from, Path to,
     {
         // destination exists
 
-        // TODO
-        //if (equivalent(to, from))
-          //  error();
+        // destination is source?
+        if (equivalent(to, from))
+            throwException(kStrErrCopySameFile);
 
         if (! isRegularFile(statusTo))
             throwException(kStrErrCopyDestNonReg);
@@ -331,9 +331,8 @@ Path currentPath() /* pure */
     }
     else
     {
-        // TODO: looks too small
-        char[256] name;
-        if (getcwd(name.ptr, 256) == null) 
+        char[PATH_MAX] name;
+        if (getcwd(name.ptr, name.length) == null) 
             throwIO(kStrErrCurrentPath);
         return Path(nstring(name[0..fs_strlen(name.ptr)]));
     }
@@ -372,7 +371,72 @@ bool exists(Path p) // symlinks are followed here
 }
 
 
-// TODO equivalent
+/**
+    Checks whether the paths `p1` and `p2` resolve to the same file 
+    system entity.
+    If either `p1` or `p2` does not exist, an error is reported.
+
+    Two paths are considered to resolve to the same file system entity 
+    if the two candidate entities the paths resolve to are located on 
+    the same device at the same location. For POSIX, this means that 
+    the `st_dev` and `st_ino` members of their POSIX `stat` structure, 
+    obtained as if by POSIX `stat()`, are equal.
+
+    In particular, all hard links for the same file or directory are 
+    equivalent, and a symlink and its target on the same file system 
+    are equivalent.
+
+    Returns: `true` if both path exists and are the same thing.
+
+    Throws: InvalidPathException, 
+            FileNotFoundException, 
+            FileSystemIOException.
+*/
+bool equivalent(Path p1, Path p2)
+{
+    version(Windows)
+    {
+        nwstring wp1 = p1.native.toUTF16();
+        nwstring wp2 = p2.native.toUTF16();
+
+        DWORD dwDesiredAccess = 0; // just meta-data
+        DWORD dwShareMode     = FILE_SHARE_READ 
+                              | FILE_SHARE_WRITE 
+                              | FILE_SHARE_DELETE;
+
+        HANDLE h1 = CreateFileW(wp1.ptr, dwDesiredAccess, dwShareMode, 
+            null, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, null);
+
+        if (h1 == INVALID_HANDLE_VALUE)
+            throwIO(kStrErrMetadataAccess);
+
+        HANDLE h2 = CreateFileW(wp2.ptr, dwDesiredAccess, dwShareMode, 
+            null, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, null);
+
+        if (h2 == INVALID_HANDLE_VALUE)
+            throwIO(kStrErrMetadataAccess);
+
+        BY_HANDLE_FILE_INFORMATION inf1, inf2;
+        if (! GetFileInformationByHandle(h1, &inf1))
+            throwIO(kStrErrMetadataAccess);
+
+        if (! GetFileInformationByHandle(h2, &inf2))
+            throwIO(kStrErrMetadataAccess);
+
+        return inf1.nFileIndexHigh       == inf2.nFileIndexHigh 
+            && inf1.nFileIndexLow        == inf2.nFileIndexLow 
+            && inf1.dwVolumeSerialNumber == inf2.dwVolumeSerialNumber;
+    }
+    else
+    {
+        stat_t buf1, buf2;
+        bool followSymlinks = true;
+        posix_stat(p1, &buf1, followSymlinks);
+        posix_stat(p2, &buf2, followSymlinks);
+        return s1.st_dev == s2.st_dev && s1.st_ino == s2.st_ino;
+    }
+}
+
 
 
 /**
@@ -902,16 +966,17 @@ version(Windows)
 
 version(Posix)
 {
-    FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
+    //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException
+    void posix_stat(Path p, stat_t* buf, bool followIfSymlink)
     {
         FileStatus r;
-        stat_t buf;
         nstring s = p.native();
+
         int res;
         if (followIfSymlink)
-            res = stat(s.ptr, &buf);
+            res = stat(s.ptr, buf);
         else
-            res = lstat(s.ptr, &buf);
+            res = lstat(s.ptr, buf);
 
         if (res != 0)
         {
@@ -922,12 +987,17 @@ version(Posix)
             else
                 throwIO(kStrFileAttributes);
         }
-        else
-            r = statusFromPosixStat(buf);
-
-        return r;
     }
 
+    //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException.
+    FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
+    {
+        stat_t buf;
+        posix_stat(p, &buf, followIfSymlink);
+        return statusFromPosixStat(buf);
+    }
+
+    // Throws: FileSystemIOException.
     FileStatus statusFromPosixStat(ref stat_t buf)
     {
         FileStatus r;
