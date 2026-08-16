@@ -5,6 +5,8 @@ import nulib;
 
 import core.stdc.stdio;
 
+import filesystem.internals;
+
 void nprintf(nstring s)
 {
     printf("%.*s", cast(int) s.length, s.ptr);
@@ -336,6 +338,20 @@ unittest
     }
 }
 
+@("equalsWithOSCaseSensitivity")
+unittest
+{
+    version(Windows)
+    {
+        assert(equalsWithOSCaseSensitivity(nstring("/a/"), nstring("/A/")));
+        assert(equalsWithOSCaseSensitivity(nstring("é"), nstring("É")));
+    }
+
+    assert(equalsWithOSCaseSensitivity(nstring("/a/"), nstring("/a/")));
+    assert(!equalsWithOSCaseSensitivity(nstring("ab"), nstring("b")));
+    assert(!equalsWithOSCaseSensitivity(nstring("a"), nstring("b")));
+}
+
 @(".lexicallyRelative")
 unittest
 {
@@ -343,6 +359,8 @@ unittest
     assert(Path("/a/b/c").lexicallyRelative("/a/d") == "../b/c");
     assert(Path("a/b/c").lexicallyRelative("a") == "b/c");
     assert(Path("a/b/c").lexicallyRelative("a/b/c/x/y") == "../..");
+    version(Windows)
+        assert(Path("A/é/C").lexicallyRelative("a/É/c/x/y") == "../..");
     assert(Path("a/b/c").lexicallyRelative("a/b/c") == ".");
     assert(Path("a/b").lexicallyRelative("c/d") == "../../a/b");
     assert(Path("a/b").lexicallyRelative("/a/b") == "");

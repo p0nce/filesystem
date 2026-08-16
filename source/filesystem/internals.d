@@ -15,6 +15,8 @@ version(Windows)
 {
     import core.sys.windows.windef;
     import core.sys.windows.winbase;
+    import core.sys.windows.winuser;
+    pragma(lib, "user32");
 }
 else version(Posix)
 {
@@ -24,6 +26,13 @@ else version(Posix)
 
 @nogc:
 
+/**
+    Above that size, we consider the file can't possibly
+    by that big. That's nearly 8191 petabytes.
+*/
+enum ulong MAXIMUM_FILE_SIZE = long.max;
+
+// Pool of error messages, to save a bit of codegen.
 static immutable string 
     kStrFileNotFound       = "File not found",
     kStrInvalidPath        = "Invalid path",
@@ -42,7 +51,8 @@ static immutable string
     kStrErrFileReadFailed  = "File read failed",
     kStrErrFileWriteFailed = "File write failed",
     kStrErrChmodFailed     = "File chmod failed",
-    kStrErrInvalidArg      = "Invalid argument";
+    kStrErrInvalidArg      = "Invalid argument",
+    kStrErrCurrentPath     = "Can't get current path";
 
 
 // Future: decide if we keep this file
@@ -136,3 +146,53 @@ size_t fs_strlen(const(char)* str) pure
 
     return len;
 }
+
+// Returns: true if path a == path b.
+// On Windows, compare with case-insensitive casing.
+// Reference: https://web.archive.org/web/20130528052217/http://blogs.msdn.com:80/b/michkap/archive/2005/10/17/481600.aspx
+bool equalsWithOSCaseSensitivity(nstring a, nstring b)
+{
+    version(Windows)
+    {
+        // PERF: that's 4 allocations...
+
+        nwstring wa = a.toUTF16();
+        nwstring wb = b.toUTF16();
+
+        uint la = cast(uint) wa.length;
+        uint lb = cast(uint) wb.length;
+
+        wchar[] bufA, bufB;
+        bufA.nu_resize(la);
+        bufB.nu_resize(lb);
+        
+        for (size_t n = 0; n < la; ++n)
+            bufA[n] = wa[n];
+
+        for (size_t n = 0; n < lb; ++n)
+            bufB[n] = wb[n];
+
+        // Convert to upper case
+        // "The function examines the number of characters indicated 
+        //  by cchLength, even if one or more characters are null 
+        // characters."
+        // Though to be fair, we wouldn't be here on invalid Unicode.
+        DWORD resA = CharUpperBuffW(bufA.ptr, la);
+        assert(resA == la);
+
+        DWORD resB = CharUpperBuffW(bufB.ptr, lb);
+        assert(resB == lb);        
+
+        bool equal = bufA[] == bufB[];
+
+        bufA.nu_resize(0);
+        bufB.nu_resize(0);
+
+        return equal;
+    }
+    else version(Posix)
+    {
+        return a == b;
+    }
+}
+ 

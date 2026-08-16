@@ -120,14 +120,14 @@ enum CopyOptions : int
     createHardLinks    = 96  /// UNSUPPORTED Instead of creating copies of files, create hardlinks that resolve to the same files as the originals. 
 }
 
-/**
-    Above that size, we consider the file can't possibly
-    by that big. That's nearly 8191 petabytes.
-*/
-enum ulong MAXIMUM_FILE_SIZE = long.max;
+
+
+
 
 /**
     Stores information about the type and permissions of a file.
+
+    See_also: `status`, `symlinkStatus`.
 */
 struct FileStatus
 {
@@ -136,6 +136,28 @@ struct FileStatus
     long sizeBytes;         /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
     FileTime lastWriteTime; /// In UNIX epoch.
 }
+
+
+/**
+    This type represents available options that control the behavior 
+    of the `DirectoryRange` and `RecursiveDirectoryRange`.
+
+    These options can combine as a bitmask.
+*/ 
+enum DirectoryOptions
+{
+    /// (default) Skip directory symlinks, "permission denied" is an 
+    /// error.
+    none = 0, 
+
+    /// Follow rather than skip directory symlinks.
+    followDirectorySymlink = 1,
+
+    /// Skip directories that would otherwise result in "permission 
+    /// denied" errors.
+    skipPermissionDenied   = 2
+}
+
 
 /**
     The one type of exception thrown by `filesystem` package.

@@ -315,18 +315,18 @@ bool createDirectories(Path p)
 */
 Path currentPath() /* pure */
 {
-    static immutable errmsg = `Can't get current path`;
+
     version(Windows)
     {
         DWORD len = GetCurrentDirectoryW(0, null);
         if (len == 0) 
-            throwException(errmsg);
+            throwIO(kStrErrCurrentPath);
         wchar[] buf;
         buf.nu_resize(len + 1);
         scope(exit) buf.nu_resize(0);
         len = GetCurrentDirectoryW(len + 1, buf.ptr);
         if (len == 0)
-            throwException(errmsg);
+            throwIO(kStrErrCurrentPath);
         return Path(toUTF8(nwstring(buf[0..len])));
     }
     else
@@ -334,11 +334,22 @@ Path currentPath() /* pure */
         // TODO: looks too small
         char[256] name;
         if (getcwd(name.ptr, 256) == null) 
-            throwException(errmsg);
+            throwIO(kStrErrCurrentPath);
         return Path(nstring(name[0..fs_strlen(name.ptr)]));
     }
 }
 
+
+/**
+    Returns: A directory range.
+*/
+
+/*
+foreach (string name; dirEntries("destroy/me", SpanMode.depth))
+{
+    remove(name);
+}
+*/
 
 /**
     Checks if the given file status or path corresponds to an existing 

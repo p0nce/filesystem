@@ -10,6 +10,8 @@ import numem;
 import nulib;
 import nulib.collections.vector;
 
+import filesystem.internals;
+
 @nogc:
 
 /**
@@ -405,8 +407,8 @@ public:
         size_t n = 0;
         while (n < vthis.length && n < vbase.length)
         {
-            // TODO unicode lowercase compare here for Windows
-            if (vthis[n] != vbase[n])
+            // On Windows, need to compare in a case-insensitive way
+            if (! equalsWithOSCaseSensitivity(vthis[n], vbase[n]))
                 break;
             ++n;
         }
