@@ -233,3 +233,143 @@ bool equalsWithOSCaseSensitivity(nstring a, nstring b)
     }
 }
  
+
+version(Windows)
+{
+    bool windowsErrIsFileNotFound(DWORD err) pure nothrow
+    {
+        return (err == ERROR_FILE_NOT_FOUND
+                || err == ERROR_PATH_NOT_FOUND
+                || err == ERROR_INVALID_DRIVE);
+    }
+
+    bool isWindowsSymlink(ref WIN32_FILE_ATTRIBUTE_DATA info) pure nothrow
+    {
+        if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+        {
+            // TODO support for Windows symlink requires much more additional work.
+            // See std::filesystem implementations.
+            return false;
+        }
+        else
+            return false;
+    }
+
+    void setFileSizeAndType(ref FileStatus r, 
+                            DWORD dwFileAttributes,
+                            DWORD nFileSizeHigh,
+                            DWORD nFileSizeLow)
+    {
+
+        if (dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            r.type = FileType.directory;
+            r.sizeBytes = 0;                
+        }
+        else
+        {
+            r.type = FileType.regular;
+
+            ulong size = cast(long)(nFileSizeHigh) << 32;
+            size |= nFileSizeLow;
+
+            // Excessive size, should fit in a long.
+            if (size > MAXIMUM_FILE_SIZE)
+                throwException(kStrInvalidFileSize);
+
+            r.sizeBytes = cast(long)size;
+        }
+    }
+
+    void setTimeFromFILETIME(ref FileStatus r, FILETIME time)
+    {
+        // Extract time of last write.
+        ulong timeWin = cast(long)(time.dwHighDateTime) << 32;
+        timeWin |= time.dwLowDateTime;
+
+        // Excessive size, should fit in a long.
+        if (timeWin > long.max)
+            throwException(kStrDeepFuture);
+        r.lastWriteTime = windowsTickToUnixSeconds(timeWin);
+    }
+
+    // A Windows FILETIME contains a 64-bit value representing the 
+    // number of 100-nanosecond intervals since January 1, 1601 (UTC).
+    // Note: it's safe to represent as signed, long lead us to 30848 
+    // A.D for an issue with 64-bit overflow.
+    //
+    // The Unix epoch (also called Unix time, POSIX time, or a Unix 
+    // timestamp) is the number of seconds since January 1, 1970, 
+    // 00:00:00 UTC, not counting leap seconds (ISO 8601: 
+    // 1970-01-01T00:00:00Z). Again, no issue with 64-bit overflow.
+    //
+    // Reference: https://stackoverflow.com/questions/6161776/convert-windows-filetime-to-second-in-unix-linux
+    long windowsTickToUnixSeconds(long winTicks) pure
+    {
+        // 1e7, because there 1e9 nanoseconds in second
+        enum long WINDOWS_TICK      = 10000000; 
+        enum long SEC_TO_UNIX_EPOCH = 11644473600L;
+        return winTicks / WINDOWS_TICK - SEC_TO_UNIX_EPOCH;
+    }
+}
+
+version(Posix)
+{
+    //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException
+    void posix_stat(Path p, stat_t* buf, bool followIfSymlink)
+    {
+        FileStatus r;
+        nstring s = p.native();
+
+        int res;
+        if (followIfSymlink)
+            res = stat(s.ptr, buf);
+        else
+            res = lstat(s.ptr, buf);
+
+        if (res != 0)
+        {
+            r.perms = FilePerms.none;
+            int err = errno;
+            if (errno == ENOENT)
+                throwFileNotFound(p);
+            else
+                throwIO(kStrFileAttributes);
+        }
+    }
+
+    //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException.
+    FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
+    {
+        stat_t buf;
+        posix_stat(p, &buf, followIfSymlink);
+        return statusFromPosixStat(buf);
+    }
+
+    // Throws: FileSystemIOException.
+    FileStatus statusFromPosixStat(ref stat_t buf)
+    {
+        FileStatus r;
+        r.perms = cast(FilePerms) (buf.st_mode & FilePerms.mask);
+        switch(buf.st_mode & S_IFMT)
+        {
+            case S_IFREG:  r.type = FileType.regular; break;
+            case S_IFDIR:  r.type = FileType.directory; break;
+            case S_IFLNK:  r.type = FileType.symlink; break;
+            case S_IFBLK:  r.type = FileType.block; break;
+            case S_IFCHR:  r.type = FileType.character; break;
+            case S_IFIFO:  r.type = FileType.fifo; break;
+            case S_IFSOCK: r.type = FileType.socket; break;
+            default:
+                r.type = FileType.unknown;
+        }
+
+        if (buf.st_size < 0)
+            throwIO(kStrInvalidFileSize);
+
+        r.sizeBytes = buf.st_size;
+        r.lastWriteTime = buf.st_mtime;
+        return r;
+    }
+}
+
