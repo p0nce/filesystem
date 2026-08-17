@@ -153,11 +153,19 @@ enum DirectoryOptions
     none = 0, 
 
     /// Follow rather than skip directory symlinks.
-    followDirectorySymlink = 1,
+    followDirectorySymlink = 1, // TODO not implemented
 
     /// Skip directories that would otherwise result in "permission 
     /// denied" errors.
-    skipPermissionDenied   = 2
+    skipPermissionDenied   = 2,
+
+    /// Spans the directory in depth-first post-order, i.e. the content 
+    /// of any subdirectory is spanned before that subdirectory itself. 
+    /// Useful e.g. when recursively deleting files.
+    ///
+    /// When not present, the order is instead breadth first pre-order:
+    /// visit the current node, then their children.
+    spanDepthFirst         = 4
 }
 
 

@@ -1048,8 +1048,6 @@ nothrow @nogc:
     }    
 
 private:
-
-    
     SepPreference _sepPreference = SepPreference.preferUnknown;
 
     static int findCharInString(char needle, const(char)[] chars)

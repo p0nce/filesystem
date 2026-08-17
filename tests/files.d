@@ -70,6 +70,23 @@ unittest
     foreach(entry; dirEntries(Path(".")))
     {
     }
+
+    // DirectoryRange default to empty range
+    assert(DirectoryRange.init.empty);
+
+    assert(RecursiveDirectoryRange.init.empty);
+}
+
+@("dirEntriesRecursive()")
+unittest
+{
+    int items = 0;
+    // iterate project dir
+    foreach(entry; dirEntriesRecursive(Path("tests/testRecursive")))
+    {
+        ++items;
+    }
+    assert(items == 3);
 }
 
 @("equivalent()")

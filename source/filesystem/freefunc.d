@@ -22,6 +22,8 @@ import filesystem.path;
 import filesystem.internals;
 import filesystem.direntry;
 
+@nogc:
+
 version(Windows)
 {
     import core.sys.windows.stat;
@@ -347,6 +349,16 @@ Path currentPath() /* pure */
 DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOptions.none)
 {
     return DirectoryRange(p, opts);
+}
+
+
+/**
+    Returns: A recursive directory range to iterate over the files in
+    this directory, and its sub-directories.
+*/
+RecursiveDirectoryRange dirEntriesRecursive(Path p, DirectoryOptions opts = DirectoryOptions.none)
+{
+    return RecursiveDirectoryRange(p, opts);
 }
 
 
