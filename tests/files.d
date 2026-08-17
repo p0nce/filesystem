@@ -20,14 +20,41 @@ unittest
 @("copyFile()")
 unittest
 {
-    if (exists(Path("delete-me")))
-        remove(Path("delete-me"));
+    // Isolate the test so that it doesn't interfere with directory 
+    // listing test
+    createDirectories(Path("tests/copyFile/"));
 
-    assert(copyFile(Path("./tests/FileWithSizeTwo"), Path("delete-me")));
-    assert(exists(Path("delete-me")));
-    assert(fileSize(Path("delete-me")) == 2);
-    assert(remove(Path("delete-me")));
-    assert(!exists(Path("delete-me")));
+    Path tempFile = Path("tests/copyFile/delete-me");
+
+    if (exists(tempFile))
+        remove(tempFile);
+
+    assert(copyFile(Path("./tests/FileWithSizeTwo"), tempFile));
+    assert(exists(tempFile));
+    assert(fileSize(tempFile) == 2);
+    assert(remove(tempFile));
+    assert(!exists(tempFile));
+}
+
+@("createDirectories()")
+unittest
+{
+    createDirectories(Path("tests/createDir/my/deeply/nested/hierarchy"));
+    createDirectories(Path("tests/createDir/my/deeply/../../our/hierarchy"));
+
+    // Exist, we created it before
+    assert(false == createDirectories(Path("tests/createDir/my/deeply/")));
+
+    // .. exist, but didn't need to create it
+    assert(false == createDirectories(Path("..")));
+
+    assert(remove(Path("tests/createDir/my/deeply/nested/hierarchy")));
+    assert(remove(Path("tests/createDir/my/deeply/nested")));
+    assert(remove(Path("tests/createDir/my/deeply")));
+    assert(remove(Path("tests/createDir/my")));
+    assert(remove(Path("tests/createDir/our/hierarchy")));
+    assert(remove(Path("tests/createDir/our")));
+    assert(remove(Path("tests/createDir")));
 }
 
 @("currentPath()")
@@ -39,17 +66,17 @@ unittest
 @("dirEntries()")
 unittest
 {
-    printf("Current directory contains:\n");
+    // iterate project dir
     foreach(entry; dirEntries(Path(".")))
     {
-        printf(" - ");
-        nprintf(entry.path.lexicallyNormal);
-        if (isDirectory(entry.path))
-            printf(" <dir>");
-        else 
-            printf(" %10llu bytes", fileSize(entry.path));
-        printf("\n");
     }
+}
+
+@("equivalent()")
+unittest
+{
+    assert(equivalent(Path("."), Path(".")));
+    assert(equivalent(Path("dub.sdl"), Path("dub.sdl")));
 }
 
 @("exists()")
@@ -61,11 +88,19 @@ unittest
     assert( ! exists(Path("i/do/not/exist")));
 }
 
-@("equivalent()")
+@("FileNotFoundException")
 unittest
 {
-    assert(equivalent(Path("."), Path(".")));
-    assert(equivalent(Path("dub.sdl"), Path("dub.sdl")));
+    try
+    {
+        status(Path("i-do-not-exist"));
+        assert(0);
+    }
+    catch(FileNotFoundException e)
+    {
+        assert(e.msg == "File not found: `i-do-not-exist`");
+        e.free();
+    }
 }
 
 @("fileSize()")
@@ -82,23 +117,5 @@ unittest
     long timeHere = lastWriteTime(Path("."));
 }
 
-@("createDirectories()")
-unittest
-{
-    assert(true == createDirectories(Path("temp/my/deeply/nested/hierarchy")));
-    assert(true == createDirectories(Path("temp/my/deeply/../../our/hierarchy")));
 
-    // Exist, we created it before
-    assert(false == createDirectories(Path("./temp/my/deeply/")));
 
-    // .. exist, but didn't need to create it
-    assert(false == createDirectories(Path("..")));
-
-    assert(remove(Path("./temp/my/deeply/nested/hierarchy")));
-    assert(remove(Path("./temp/my/deeply/nested")));
-    assert(remove(Path("./temp/my/deeply")));
-    assert(remove(Path("./temp/my")));
-    assert(remove(Path("./temp/our/hierarchy")));
-    assert(remove(Path("./temp/our")));
-    assert(remove(Path("./temp")));
-}

@@ -34,7 +34,7 @@ enum ulong MAXIMUM_FILE_SIZE = long.max;
 
 // Pool of error messages, to save a bit of codegen.
 static immutable string 
-    kStrFileNotFound       = "File not found",
+    kStrFileNotFound       = "File not found: `",
     kStrInvalidPath        = "Invalid path",
     kStrFileAttributes     = "Can't get file attributes",
     kStrInvalidFileSize    = "Invalid file size",
@@ -68,8 +68,7 @@ void throwException(const(char)[] msg)
 
 void throwFileNotFound(const(char)[] path)
 {
-    // FUTURE: build proper exc message
-    throw nogc_new!FileNotFoundException(kStrFileNotFound);
+    throw nogc_new!FileNotFoundException(path);
 }
 
 void throwInvalidPath(const(char)[] path)

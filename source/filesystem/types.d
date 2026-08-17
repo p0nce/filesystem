@@ -6,6 +6,8 @@
 */
 module filesystem.types;
 
+import filesystem.internals;
+
 public import numem.core.exception;
 import numem.lifetime;
 
@@ -181,9 +183,16 @@ class FileSystemException : NuException
 class FileNotFoundException : FileSystemException 
 {
 @nogc:
-
-    this(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) 
+    this(const(char)[] path, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__)
     {
+        size_t P = path.length;
+        size_t L = kStrFileNotFound.length;
+        char[] msg;
+        msg.nu_resize(L+P+1);
+        msg[0..L] = kStrFileNotFound[];
+        msg[L..L+P] = path[];
+        msg[L+P] = '`';
+        scope(exit) msg.nu_resize(0);
         super(msg, nextInChain, file, line);
     }
 }
