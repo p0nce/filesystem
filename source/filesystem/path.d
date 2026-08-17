@@ -1185,6 +1185,9 @@ private:
 
             if (isWindowsOnly() && !isWin) goto fail;
             if (isPOSIXOnly()   && !isPosix) goto fail;
+
+            // PERF: remove auto-detect mode from the lexer, it
+            // has no reason to exist anymore
             if (isAutodetect())
             {
                 if (!isPosix) windowsPathDetected();

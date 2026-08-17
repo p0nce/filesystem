@@ -187,6 +187,12 @@ class FileSystemException : NuException
     Specific exception type when a file isn't found.
     Needed because fileNotFound is not representable 
     in `FileType` in our version.
+
+    Catching this is often a way to get out of racey
+    situations, since by the times you've listed a 
+    directory contents, any of its file could have
+    disappeared. And using `exists()` is not a race-free
+    fix.
 */
 class FileNotFoundException : FileSystemException 
 {
