@@ -21,7 +21,7 @@ import filesystem.path;
 import filesystem.internals;
 import filesystem.freefunc;
 
-debug = recursive;
+//debug = recursive;
 
 version(Windows)
 {
@@ -365,7 +365,8 @@ class RecursiveDirectoryRange
         nextFile(); // pick the first file
     }
 
-    bool empty()    => stack.length == 0;
+// Not sure, 2nd confition only in depthFirst?
+    bool empty()    => stack.length == 0 || stack[0].range.empty;
 
     /**
         Proceed to the next file in the hierarchy.
@@ -445,20 +446,22 @@ class RecursiveDirectoryRange
                         // top range is empty
                         if (top.range.empty())
                         {
-                            debug(recursive) printf(" => now the top range is empty\n", state);
+                            debug(recursive) printf(" => now the top range is empty\n");
                             if (depthFirst)
                             {
-                                // no more range in stack
+                                debug(recursive) printf(" returning the directory after its contents\n");
+                              
+                              /*  // no more range in stack
                                 // root directory is not returned as part
                                 // of the search
                                 if (stack.length == 1)
                                 {
                                     stack.popBack;
                                     return;
-                                }
-
+                                }*/
                                 state = State.frontIsParentPostOrder;
                                 found = true;
+                                break;
                             }
                             else
                             {
@@ -527,12 +530,14 @@ class RecursiveDirectoryRange
                     break;
 
                 case State.frontIsParentPostOrder:
-                    debug(recursive) printf("frontIsParentPreOrder\n");
+                    debug(recursive) printf("frontIsParentPostOrder\n");
                     assert(depthFirst);
 
-                    popFinishedRange:
+                    assert(top.range.empty);
+                    //popFinishedRange:
 
                     stack.popBack();
+
                     // was last range?
                     if (stack.empty)
                     {
@@ -542,10 +547,15 @@ class RecursiveDirectoryRange
 
                     top.range.popFront();
                     if (top.range.empty)
-                        goto popFinishedRange;
-                    
-                    state = State.frontIsTopFront;
-                    break;           
+                    {
+                        found = true;
+                    }
+                    else
+                    {
+                        state = State.frontIsTopFront;
+                        found = true;
+                    }
+                    break;
             }
         }
     }
