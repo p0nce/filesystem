@@ -14,6 +14,7 @@ module filesystem.freefunc;
 
 import nulib;
 import nulib.text.unicode;
+import nulib.memory;
 import nulib.collections.vector;
 import numem;
 
@@ -345,22 +346,23 @@ Path currentPath() /* pure */
 /**
     Returns: A shallow directory range to iterate over the files in
     this directory.
-*/
-DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOptions.none)
-{
-    return DirectoryRange(p, opts);
-}
 
+    Warning: this DirectoryRange should be free after iteration with
+    `dirEntriesFree()`.
+*/
+unique_ptr!DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOptions.none)
+{
+    return unique_new!DirectoryRange(p, opts);
+}
 
 /**
     Returns: A recursive directory range to iterate over the files in
     this directory, and its sub-directories.
 */
-/*
-RecursiveDirectoryRange dirEntriesRecursive(Path p, DirectoryOptions opts = DirectoryOptions.none)
+unique_ptr!RecursiveDirectoryRange dirEntriesRecursive(Path p, DirectoryOptions opts = DirectoryOptions.none)
 {
-    return RecursiveDirectoryRange(p, opts);
-}*/
+    return unique_new!RecursiveDirectoryRange(p, opts);
+}
 
 
 /**

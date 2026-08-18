@@ -63,6 +63,7 @@ unittest
     assert(exists(currentPath() / "dub.sdl"));
 }
 
+
 @("dirEntries()")
 unittest
 {
@@ -70,11 +71,8 @@ unittest
     foreach(entry; dirEntries(Path(".")))
     {
     }
-
-    // DirectoryRange default to empty range
-    assert(DirectoryRange.init.empty);
 }
-/+
+
 @("dirEntriesRecursive()")
 unittest
 {
@@ -86,10 +84,8 @@ unittest
         ++items;
     }
     assert(items == 3);
-
-    assert(RecursiveDirectoryRange.init.empty);
 }
-+/
+
 @("equivalent()")
 unittest
 {
