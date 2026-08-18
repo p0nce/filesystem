@@ -6,7 +6,7 @@ import nulib;
 import core.stdc.stdio;
 
 import filesystem.internals;
-
+version(none):
 void nprintf(nstring s)
 {
     printf("%.*s", cast(int) s.length, s.ptr);
