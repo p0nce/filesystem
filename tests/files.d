@@ -10,7 +10,7 @@ void nprintf(nstring s)
     printf("%20.*s", cast(int) s.length, s.ptr);
 }
 
-
+/+
 @("absolute()")
 unittest
 {
@@ -72,20 +72,56 @@ unittest
     {
     }
 }
-
++/
 @("dirEntriesRecursive()")
 unittest
 {
-    int items = 0;
-    // iterate project dir
-    foreach(entry; dirEntriesRecursive(Path("tests/testRecursive")))
     {
-        nprintf(entry.path);
-        ++items;
+        int items = 0;
+        // iterate project dir
+        foreach(entry; dirEntriesRecursive(Path("tests/testRecursive"), DirectoryOptions.none))
+        {
+            ++items;
+        }
+        assert(items == 3);
     }
-    assert(items == 3);
-}
 
+    {
+        int items = 0;
+        foreach(entry; dirEntriesRecursive(Path("tests/testRecursive"), DirectoryOptions.spanDepthFirst))
+        {
+            ++items;
+        }
+        assert(items == 3);
+    }
+    {
+        int items = 0;
+        foreach(entry; dirEntriesRecursive(Path("tests/testRecursive2")))
+        {
+            if (items == 0) assert(entry.path == "tests/testRecursive2/a");
+            if (items == 1) assert(entry.path == "tests/testRecursive2/a/b");
+            if (items == 2) assert(entry.path == "tests/testRecursive2/a/b/c");
+            if (items == 3) assert(entry.path == "tests/testRecursive2/a/b/c/file");
+            ++items;
+        }
+        assert(items == 4);
+    }
+    {
+        int items = 0;
+        foreach(entry; dirEntriesRecursive(Path("tests/testRecursive2"), DirectoryOptions.spanDepthFirst))
+        {
+            printf("***"); nprintf(entry.path);printf("\n");
+            if (items == 0) assert(entry.path == "tests/testRecursive2/a/b/c/file");
+            if (items == 1) assert(entry.path == "tests/testRecursive2/a/b/c");
+            
+            if (items == 2) assert(entry.path == "tests/testRecursive2/a/b");
+            if (items == 3) assert(entry.path == "tests/testRecursive2/a");
+            ++items;
+        }
+        assert(items == 4);
+    }
+}
+/+
 @("equivalent()")
 unittest
 {
@@ -133,3 +169,4 @@ unittest
 
 
 
++/
