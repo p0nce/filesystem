@@ -356,10 +356,11 @@ DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOptions.none)
     Returns: A recursive directory range to iterate over the files in
     this directory, and its sub-directories.
 */
+/*
 RecursiveDirectoryRange dirEntriesRecursive(Path p, DirectoryOptions opts = DirectoryOptions.none)
 {
     return RecursiveDirectoryRange(p, opts);
-}
+}*/
 
 
 /**

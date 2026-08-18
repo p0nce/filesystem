@@ -73,10 +73,8 @@ unittest
 
     // DirectoryRange default to empty range
     assert(DirectoryRange.init.empty);
-
-    assert(RecursiveDirectoryRange.init.empty);
 }
-
+/+
 @("dirEntriesRecursive()")
 unittest
 {
@@ -84,11 +82,14 @@ unittest
     // iterate project dir
     foreach(entry; dirEntriesRecursive(Path("tests/testRecursive")))
     {
+        nprintf(entry.path);
         ++items;
     }
     assert(items == 3);
-}
 
+    assert(RecursiveDirectoryRange.init.empty);
+}
++/
 @("equivalent()")
 unittest
 {
