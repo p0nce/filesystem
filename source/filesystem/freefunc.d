@@ -68,13 +68,41 @@ Path absolute(const(char)[] p)
     => absolute(Path(p));
 
 
-// TODO canonical
+/**
+    Converts path `p` to a canonical absolute path, i.e. an absolute 
+    path that has no dot, dot-dot elements or symbolic links in its 
+    generic format representation. If `p` is not an absolute path, the 
+    function behaves as if it is first made absolute by `absolute(p)`. 
+    The path `p` must exist.
+*/
+// TODO
+//Path canonical(Path p)
+//{
+//    /// need to implement: \\?\ pathes, \\.\ pathes, UNC pathes, read_symlink...
+//}
 // TODO weakly_canonical
+
+/**
+    Returns p made relative to base. Resolves symlinks and normalizes both p and base before other processing. 
+*/
+// TODO: need weakly_canonical
+/*
+Path relative(Path p, Path base = currentPath())
+{
+    return weakly_canonical(p).lexicallyRelative(weaklyCanonical(base));
+}
+*/
+
 // TODO relative
 // TODO proximate
 
 // TODO copy
+//  * it needs working symlinkStatus
 
+/**
+    Copies a single file from from to to, using the copy options 
+    indicated by options.
+*/
 bool copyFile(Path from, Path to, 
               CopyOptions options = CopyOptions.none)
 {
@@ -623,9 +651,15 @@ bool remove(Path p)
 
 
 /**
+    Deletes the contents of p (if it is a directory) and the contents
+    of all its subdirectories, recursively, then deletes `p` itself as 
+    if by repeatedly applying the POSIX `remove()`. Symlinks are not 
+    followed (symlink is removed, not its target).
 
     Returns: the number of files and directories that were deleted 
     (which may be zero if p did not exist to begin with).
+
+    BUG: symlinks not implemented.
 */
 int removeAll(Path p)
 {
@@ -645,8 +679,8 @@ int removeAll(Path p)
 
 
 /**
-    Rename file or directory from `oldPath` to `newPath`, as if
-    by POSIX `rename()`.
+    Rename file or directory from `oldPath` to `newPath`, as if by 
+    POSIX `rename()`.
 
     - It is possible to rename a non-empty directory.
     - It is not possible to rename a file across different mount 

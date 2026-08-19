@@ -358,7 +358,6 @@ class RecursiveDirectoryRange
         this.opts = opts;
         stack ~= nogc_new!RangePlusParent( nogc_new!DirectoryRange(p, opts), DirectoryEntry.init);
         state = State.initial;
-
         finished = ! nextFile(stored); // pick the first file
     }
 

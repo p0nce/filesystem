@@ -17,6 +17,36 @@ unittest
     assert(exists(absolute(Path(".")) / "dub.sdl"));
 }
 
+@("canonical()")
+static if (0)
+unittest
+{
+    try
+    {
+        canonical(Path(""));
+        assert(0);
+    }
+    catch(FileSystemException e)
+    {
+        e.free;
+    }
+
+    assert(canonical(currentPath()) == currentPath());
+    assert(canonical(Path(".")) == currentPath());
+    assert(canonical(Path(".")) == currentPath().parentPath);
+    assert(canonical(Path("/")) == currentPath().rootPath);
+
+    try
+    {
+        canonical(Path("foo"));
+        assert(0);
+    }
+    catch(FileSystemException e)
+    {
+        e.free;
+    }
+}
+
 @("copyFile()")
 unittest
 {
