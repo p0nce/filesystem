@@ -167,7 +167,7 @@ unittest
         remove(Path("tests/empty-dir3"));
     }
 }
-/+
+
 @("equivalent()")
 unittest
 {
@@ -214,5 +214,10 @@ unittest
 }
 
 
-
-+/
+@("removeAll()")
+unittest
+{
+    createDirectories(Path("tests/remove-all-test/a/b/c/d/e/f"));
+    assert(7 == removeAll(Path("tests/remove-all-test")));
+    assert(! exists(Path("tests/remove-all-test")));
+}

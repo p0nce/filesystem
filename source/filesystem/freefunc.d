@@ -635,7 +635,7 @@ int removeAll(Path p)
 
     DirectoryOptions opts = DirectoryOptions.spanDepthFirst;
     foreach(dirEntry; dirEntriesRecursive(p, opts))
-        if (remote(dirEntry.path))
+        if (remove(dirEntry.path))
             r += 1;
 
     if (remove(p))

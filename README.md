@@ -1,10 +1,10 @@
 # `filesystem`
 
 The `filesystem` package is a @nogc D library for use in context where you can't use Phobos. It is a `nulib`-based, DUB package that provides a ranges of services related to filesystem:
-- [x] Path manipulation with the `Path` type. **DONE**
-- [x] File type, size, and last write time. **DONE**
-- [ ] File and directories creation and deletion. **TODO**
-- [ ] Directory search. **TODO**
+- Path manipulation with the `Path` type.
+- File type, size, and last write time.
+- File copy, file removal.
+- Recursive directory creation, listing and deletion.
 - [ ] Disc usage **TODO**
 
 
