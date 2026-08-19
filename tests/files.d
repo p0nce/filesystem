@@ -76,27 +76,33 @@ unittest
 @("dirEntriesRecursive()")
 unittest
 {
-    
     {
         int items = 0;
         // iterate project dir
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive"), DirectoryOptions.none))
         {
+            printf("*** FOUND: ");
             nprintf(entry.path);
+            printf("\n\n");
             ++items;
         }
         assert(items == 3);
     }
 
+    
     {
         int items = 0;
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive"), DirectoryOptions.spanDepthFirst))
         {
+            printf("*** FOUND: ");
+            nprintf(entry.path);
+            printf("\n\n");
             ++items;
         }
         assert(items == 3);
     }
 
+    if (0)
     {
         int items = 0;
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive2")))

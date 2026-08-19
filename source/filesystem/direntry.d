@@ -21,7 +21,7 @@ import filesystem.path;
 import filesystem.internals;
 import filesystem.freefunc;
 
-//debug = recursive;
+debug = recursive;
 
 version(Windows)
 {
@@ -118,10 +118,6 @@ class DirectoryRange
 
             bool skip = ! fillResEntry();
 
-            if (skip)
-                debug(recursive) printf(" skip\n");
-            if (isSpecial)
-                debug(recursive) printf(" isSpecial\n");
             if (skip || isSpecial())
                 nextFile();
         }
@@ -366,7 +362,16 @@ class RecursiveDirectoryRange
     }
 
 // Not sure, 2nd confition only in depthFirst?
-    bool empty()    => stack.length == 0 || stack[0].range.empty;
+    bool empty() 
+    {
+        // If there is a non-empty range, then it's not finished
+        for (size_t n = 0; n < stack.length; ++n)
+        {
+            if (! stack[n].range.empty )
+                return false;
+        }
+        return true;
+    }
 
     /**
         Proceed to the next file in the hierarchy.
@@ -409,7 +414,7 @@ class RecursiveDirectoryRange
             {
                 case State.initial:
                 {
-                    debug(recursive) printf(" State.initial\n", state);
+                    debug(recursive) printf("# State.initial\n", state);
                     if ((*top).range.empty)
                     {
                         debug(recursive) printf(" whole recursive range is empty\n", state);
@@ -428,13 +433,13 @@ class RecursiveDirectoryRange
 
                 case State.frontIsTopFront:
                 {
-                    debug(recursive) printf(" State.frontIsTopFront\n", state);
+                    debug(recursive) printf("# State.frontIsTopFront\n", state);
 
                     // top.front must exist
-                    assert(! top.range.empty() );
+                    assert(! top.range.empty());
 
-                    DirectoryEntry current = front();
-                    debug(recursive) printf(" => current .front is %.*s\n", cast(int)current.path.length, current.path.ptr);
+                    //DirectoryEntry current = front();
+                    //debug(recursive) printf(" => current .front is %.*s\n", cast(int)current.path.length, current.path.ptr);
 
                     // Pop from the top range, see what happens
                     if (!doNotPop)
@@ -450,15 +455,7 @@ class RecursiveDirectoryRange
                             if (depthFirst)
                             {
                                 debug(recursive) printf(" returning the directory after its contents\n");
-                              
-                              /*  // no more range in stack
-                                // root directory is not returned as part
-                                // of the search
-                                if (stack.length == 1)
-                                {
-                                    stack.popBack;
-                                    return;
-                                }*/
+
                                 state = State.frontIsParentPostOrder;
                                 found = true;
                                 break;
@@ -484,16 +481,15 @@ class RecursiveDirectoryRange
                     // if we are here, top.front() is our newfind
                     // However it could be a directory.
 
-                    debug(recursive) printf("top.front() is our newfind\n");
-
-
                     DirectoryEntry f = top.range.front();
+                    debug(recursive) printf("top.front() is %.*s\n", cast(int) f.path.length, f.path.ptr);
+
                     if (f.status.type == FileType.directory)
                     {
-                        debug(recursive) printf("=> and it is a directory...\n");
+                        debug(recursive) printf("  => and it is a directory...\n");
                         if (depthFirst)
                         {
-                            debug(recursive) printf("=> push it on stack\n");
+                            debug(recursive) printf("  => push it on stack\n");
                             // Push this directory range in stack, WITH parent info
                             stack ~= nogc_new!RangePlusParent( nogc_new!DirectoryRange(f.path, opts), f);
                             state = State.frontIsTopFront;
@@ -502,60 +498,61 @@ class RecursiveDirectoryRange
                         }
                         else
                         {
-                            debug(recursive) printf("=> make it pre-order\n");
+                            debug(recursive) printf("  => make it return in pre-order\n");
                             state = State.frontIsParentPreOrder;
                             found = true; // return dir before content
                         }
                     }
                     else
                     {
-                        debug(recursive) printf(" => found regular file\n", state);
+                        debug(recursive) printf(" => and it is a regular file, return that\n", state);
                         found = true;
                     }
-
                     break;
                 }                
 
                 case State.frontIsParentPreOrder:
-                    debug(recursive) printf("frontIsParentPreOrder\n");
+                {
+                    debug(recursive) printf("# State.frontIsParentPreOrder\n");
                     // Push this directory range in stack, with no parent info
                     assert( ! depthFirst);                    
                     DirectoryEntry f = front();
                     top.range.popFront(); // consume the directory entry
                     assert(f.path != "");
-                    debug(recursive) printf("  * enqueue %.*s\n", cast(int)f.path.length, f.path.ptr);
+                    debug(recursive) printf("  * start listing %.*s content\n", cast(int)f.path.length, f.path.ptr);
                     stack ~= nogc_new!RangePlusParent( nogc_new!DirectoryRange(f.path, opts), DirectoryEntry.init);
                     state = State.frontIsTopFront;
                     doNotPop = true; // do not pop first item in the directory
                     break;
+                }
 
                 case State.frontIsParentPostOrder:
-                    debug(recursive) printf("frontIsParentPostOrder\n");
+                {
+                    debug(recursive) printf("# frontIsParentPostOrder\n");
                     assert(depthFirst);
 
                     assert(top.range.empty);
-                    //popFinishedRange:
-
                     stack.popBack();
-
                     // was last range?
                     if (stack.empty)
                     {
                         debug(recursive) printf(" => was the last range\n");
                         return;
                     }
-
-                    top.range.popFront();
+                    assert( ! top.range.empty );
+                    top.range.popFront(); // skip over the directory we used to enter
                     if (top.range.empty)
                     {
+                        // Return the next depopped path
                         found = true;
                     }
                     else
                     {
                         state = State.frontIsTopFront;
-                        found = true;
+                        doNotPop = true;
                     }
                     break;
+                }
             }
         }
     }
@@ -612,7 +609,7 @@ private:
         //      B
         // sub2/
         //      C
-        frontIsParentPostOrder        
+        frontIsParentPostOrder,
     }
 
     static class RangePlusParent
