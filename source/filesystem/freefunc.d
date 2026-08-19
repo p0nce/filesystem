@@ -621,8 +621,27 @@ bool remove(Path p)
         static assert(0);
 }
 
-// TODO remove_all => need directory search
 
+/**
+
+    Returns: the number of files and directories that were deleted 
+    (which may be zero if p did not exist to begin with).
+*/
+int removeAll(Path p)
+{
+    // TODO be sure we do not follow symlinks in case you end up deleting 
+    // the whole world.
+    int r = 0;
+
+    DirectoryOptions opts = DirectoryOptions.spanDepthFirst;
+    foreach(dirEntry; dirEntriesRecursive(p, opts))
+        if (remote(dirEntry.path))
+            r += 1;
+
+    if (remove(p))
+        r += 1;
+    return r;
+}
 
 
 /**

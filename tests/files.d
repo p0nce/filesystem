@@ -10,7 +10,7 @@ void nprintf(nstring s)
     printf("%20.*s", cast(int) s.length, s.ptr);
 }
 
-/+
+
 @("absolute()")
 unittest
 {
@@ -63,16 +63,28 @@ unittest
     assert(exists(currentPath() / "dub.sdl"));
 }
 
-
 @("dirEntries()")
 unittest
 {
-    // iterate project dir
-    foreach(entry; dirEntries(Path(".")))
+    // iterate non-empty dir
     {
+        int items = 0;
+        foreach(entry; dirEntries(Path("tests/testRecursive")))
+        {
+            ++items;
+        }
+        assert(items == 2);
+    }
+
+    // iterate empty dir
+    {
+        createDirectories(Path("tests/empty-dir"));
+        auto range = dirEntries(Path("tests/empty-dir"));
+        assert(range.empty);
+        remove(Path("tests/empty-dir"));
     }
 }
-+/
+
 @("dirEntriesRecursive()")
 unittest
 {
@@ -86,7 +98,6 @@ unittest
         assert(items == 3);
     }
 
-    
     {
         int items = 0;
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive"), DirectoryOptions.spanDepthFirst))
@@ -113,7 +124,6 @@ unittest
         int items = 0;
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive2"), DirectoryOptions.spanDepthFirst))
         {
-            printf("***"); nprintf(entry.path);printf("\n");
             if (items == 0) assert(entry.path == "tests/testRecursive2/a/b/c/file");
             if (items == 1) assert(entry.path == "tests/testRecursive2/a/b/c");
             
@@ -122,6 +132,39 @@ unittest
             ++items;
         }
         assert(items == 4);
+    }
+
+    // empty dir
+    {
+        createDirectories(Path("tests/empty-dir2"));
+        auto range = dirEntriesRecursive(Path("tests/empty-dir2"));
+        assert(range.empty);
+
+        auto range2 = dirEntriesRecursive(Path("tests/empty-dir2"), DirectoryOptions.spanDepthFirst);
+        assert(range2.empty);
+        remove(Path("tests/empty-dir2"));
+    }
+
+    // Create an empty dir inside this empty dir
+    {
+        createDirectories(Path("tests/empty-dir3/empty-again"));
+     
+        auto range = dirEntriesRecursive(Path("tests/empty-dir3"));
+        assert( ! range.empty);
+        DirectoryEntry de = range.front();
+        assert(de.path == "tests/empty-dir3/empty-again");
+        range.popFront();
+        assert(range.empty);
+
+        auto range2 = dirEntriesRecursive(Path("tests/empty-dir3"), DirectoryOptions.spanDepthFirst);
+        assert( ! range2.empty);
+        DirectoryEntry de2 = range2.front();
+        assert(de2.path == "tests/empty-dir3/empty-again");
+        range2.popFront();
+        assert(range2.empty);
+
+        remove(Path("tests/empty-dir3/empty-again"));
+        remove(Path("tests/empty-dir3"));
     }
 }
 /+
