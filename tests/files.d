@@ -81,9 +81,6 @@ unittest
         // iterate project dir
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive"), DirectoryOptions.none))
         {
-            printf("*** FOUND: ");
-            nprintf(entry.path);
-            printf("\n\n");
             ++items;
         }
         assert(items == 3);
@@ -94,15 +91,11 @@ unittest
         int items = 0;
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive"), DirectoryOptions.spanDepthFirst))
         {
-            printf("*** FOUND: ");
-            nprintf(entry.path);
-            printf("\n\n");
             ++items;
         }
         assert(items == 3);
     }
 
-    if (0)
     {
         int items = 0;
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive2")))
@@ -116,7 +109,6 @@ unittest
         assert(items == 4);
     }
 
-    if (0)
     {
         int items = 0;
         foreach(entry; dirEntriesRecursive(Path("tests/testRecursive2"), DirectoryOptions.spanDepthFirst))
