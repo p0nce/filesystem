@@ -1,5 +1,5 @@
 /**
-    Public API, import this to start using filesystem.
+    Stuff internal to `filesystem` package.
 
     Copyright: Guillaume Piolat 2026.
     License: MIT (https://mit-license.org/)

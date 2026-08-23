@@ -109,6 +109,7 @@ unittest
     // iterate empty dir
     {
         createDirectories(Path("tests/empty-dir"));
+        assert(isEmpty(Path("tests/empty-dir")));
         auto range = dirEntries(Path("tests/empty-dir"));
         assert(range.empty);
         remove(Path("tests/empty-dir"));

@@ -918,7 +918,17 @@ bool isDirectory(Path p) // symlinks are followed here
     => isDirectory(status(p));
 
 
-// TODO is_empty checks whether the given path refers to an empty file or directory
+/**
+    Checks whether the given path refers to an empty file or 
+    empty directory.
+*/
+bool isEmpty(Path p)
+{
+    if (isDirectory(p))
+        return dirEntries(p).empty;
+    else
+        return fileSize(p) == 0;
+}
 
 
 /**
