@@ -24,6 +24,7 @@ MIT.
 - File last write time, in seconds.
 - File copy, rename, and removal.
 - Recursive directory creation, listing and deletion.
+- Disc usage information.
 
 ## Documentation
 
@@ -31,7 +32,6 @@ See the `std::filesystem` documentation here: https://en.cppreference.com/cpp/fi
 
 ## Bugs and limitations
 
-- Should implement disc usage.
 - Windows-only for now, this is **WIP**.
 - Windows UNC path, `\\?\` and `\\.\` root pathes aren't supported.
 - Windows path can't exceed `MAX_PATH` yet.
