@@ -26,11 +26,6 @@ alias FileTime = long;
 */
 enum FileType
 {
-    // Those two states are not representable in this library.
-    // Before getting that state you would have gotten an exception.
-    // none,      /// File status has not been evaluated yet, or an error occurred.
-    // notFound,  /// File was not found (this is not considered an error).
-
     regular,   /// A regular file.
     directory, /// A directory.
     symlink,   /// A symbolic link.
@@ -64,12 +59,12 @@ struct FileStatus
 enum FilePerms : int
 {
     none       = 0,     /// No permission bits are set.
-    
+
     ownerRead  = 0x100,  /// File owner has read permission.
     ownerWrite = 0x080,  /// File owner has write permission.
     ownerExec  = 0x040,  /// File owner has execute/search permission.
     ownerAll   = 0x1C0,  /// File owner has read, write, and execute/search permissions.
-    
+
     groupRead  = 0x20,   /// The file's user group has read permission.
     groupWead  = 0x10,   /// The file's user group has write permission.
     groupExec  = 0x08,   /// The file's user group has execute/search permission.

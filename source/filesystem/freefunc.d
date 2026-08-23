@@ -33,14 +33,20 @@ version(Windows)
 }
 else version(Posix)
 {
-    import core.stdc.errno;
-    import core.sys.posix.unistd;
-    import core.sys.posix.fcntl;
-    import core.sys.posix.sys.stat;
+    import punistd  = core.sys.posix.unistd;    // open, close...
+    import pfcntl   = core.sys.posix.fcntl;     // read, write...
+    import pstat    = core.sys.posix.sys.stat;  // stat...
+    import pstatvfs = core.sys.posix.sys.statvfs;
+    //import pstdlib = core.sys.posix.stdlib;
 
-    import core.sys.posix.stdlib;
+    import cerrno  = core.stdc.errno;
     import cstdlib = core.stdc.stdlib;
     import cstdio = core.stdc.stdio: remove, rename;
+    
+
+    // Strange, often it isn't found in core.sys.posix.fcntl, despite
+    // being there...
+    //extern(C) int close(int fd);
 }
 
 // TODO: do we want isDirectory to throw when the path is invalid,
@@ -167,29 +173,29 @@ bool copyFile(Path from, Path to,
         int inHandle  = -1, 
             outHandle = -1;
 
-        if ((inHandle = .open(from.native.ptr, O_RDONLY)) < 0) 
+        if ((inHandle = pfcntl.open(from.native.ptr, pfcntl.O_RDONLY)) < 0) 
             throwIO(kStrErrOpenFileFailed); 
 
         assert(fromExists); // since it was opened, hence statusFrom is valid
 
-        int mode = O_CREAT | O_WRONLY | O_TRUNC;
+        int mode = pfcntl.O_CREAT | pfcntl.O_WRONLY | pfcntl.O_TRUNC;
         if (!overwrite)
-            mode |= O_EXCL;
+            mode |= pfcntl.O_EXCL;
 
-        if ((outHandle = .open(to.native.ptr, mode, statusFrom.perms & FilePerms.all)) < 0) 
+        if ((outHandle = pfcntl.open(to.native.ptr, mode, statusFrom.permissions & FilePerms.all)) < 0) 
         {
-            .close(inHandle);
+            punistd.close(inHandle);
             throwIO(kStrErrOpenFileFailed); 
         }
 
         if (overwrite)
         {
-            if (statusTo.perms != statusFrom.perms) 
+            if (statusTo.permissions != statusFrom.permissions) 
             {
-                if (.fchmod(outHandle, cast(mode_t)(statusFrom.perms & FilePerms.all)) != 0) 
+                if (pfcntl.fchmod(outHandle, cast(pfcntl.mode_t)(statusFrom.permissions & FilePerms.all)) != 0) 
                 {
-                    .close(inHandle);
-                    .close(outHandle);
+                    punistd.close(inHandle);
+                    punistd.close(outHandle);
                     throwIO(kStrErrChmodFailed); 
                 }
             }
@@ -206,8 +212,8 @@ bool copyFile(Path from, Path to,
 
             do 
             {
-                bytesRead = .read(inHandle, buf.ptr, BLOCK_SIZE);
-            } while (bytesRead == -1 && errno == EINTR);
+                bytesRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
+            } while (bytesRead == -1 && cerrno.errno == cerrno.EINTR);
 
             if (bytesRead < 0)
                 throwIO(kStrErrFileReadFailed);
@@ -218,23 +224,23 @@ bool copyFile(Path from, Path to,
             ptrdiff_t offset = 0;
             do 
             {
-                bytesWritten = .write(outHandle, buf.ptr + offset, bytesRead);
+                bytesWritten = punistd.write(outHandle, buf.ptr + offset, bytesRead);
                 if (bytesWritten > 0)
                 {
                     bytesRead -= bytesWritten;
                     offset += bytesWritten;
                 }
-                else if (bytesWritten <= 0 && errno != EINTR)
+                else if (bytesWritten <= 0 && cerrno.errno != cerrno.EINTR)
                 {
                     // Note: 0 byte progressed is an error.
-                    .close(inHandle);
-                    .close(outHandle);
+                    punistd.close(inHandle);
+                    punistd.close(outHandle);
                     throwIO(kStrErrFileWriteFailed);
                 }
             } while (bytesRead);
         }
-        .close(inHandle);
-        .close(outHandle);
+        punistd.close(inHandle);
+        punistd.close(outHandle);
         return true;
 
     }
@@ -279,8 +285,8 @@ bool createDirectory(Path p)
     }
     else version(Posix)
     {
-        mode_t attribs = cast(mode_t)FilePerms.all;
-        if (mkdir(p.native.ptr, attribs) != 0)
+        punistd.mode_t attribs = cast(punistd.mode_t)FilePerms.all;
+        if (pstat.mkdir(p.native.ptr, attribs) != 0)
             throwIO(kStrErrCreateDirectory);
     }
     return true;
@@ -343,11 +349,10 @@ bool createDirectories(Path p)
     Warning: this isn't thread-safe, as any other thread
     could modify this process' current directory.
 
-    May throw `FileSystemIOException` if an error occurs.
+    Throws: `FileSystemIOException` if an error occurs.
 */
 Path currentPath() /* pure */
 {
-
     version(Windows)
     {
         DWORD len = GetCurrentDirectoryW(0, null);
@@ -363,8 +368,8 @@ Path currentPath() /* pure */
     }
     else
     {
-        char[PATH_MAX] name;
-        if (getcwd(name.ptr, name.length) == null) 
+        char[4096] name;
+        if (punistd.getcwd(name.ptr, 4096) == null) 
             throwIO(kStrErrCurrentPath);
         return Path(nstring(name[0..fs_strlen(name.ptr)]));
     }
@@ -382,6 +387,7 @@ unique_ptr!DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOp
 {
     return unique_new!DirectoryRange(p, opts);
 }
+
 
 /**
     Returns: A recursive directory range to iterate over the files in
@@ -472,14 +478,13 @@ bool equivalent(Path p1, Path p2)
     }
     else
     {
-        stat_t buf1, buf2;
+        pstat.stat_t buf1, buf2;
         bool followSymlinks = true;
         posix_stat(p1, &buf1, followSymlinks);
         posix_stat(p2, &buf2, followSymlinks);
-        return s1.st_dev == s2.st_dev && s1.st_ino == s2.st_ino;
+        return buf1.st_dev == buf2.st_dev && buf1.st_ino == buf2.st_ino;
     }
 }
-
 
 
 /**
@@ -560,11 +565,11 @@ void permissions(Path p, FilePerms prms, PermOptions opts = PermOptions.replace)
         }
         else version(Posix)
         {
-            bool noFollow = (opts & FilePerms.nofollow) != 0;
+            bool noFollow = (opts & PermOptions.nofollow) != 0;
 
             if (! noFollow)
             {
-                if (.chmod(p.native.ptr, cast(mode_t)prms) != 0) 
+                if (pfcntl.chmod(p.native.ptr, cast(pstat.mode_t)prms) != 0) 
                     throwIO(kStrErrChmodFailed);
             }
         }
@@ -635,8 +640,8 @@ bool remove(Path p)
         // Warning: using libc here
         if (cstdio.remove(p.native().ptr) != 0)
         {
-            int error = errno;
-            if (error == ENOENT)
+            int error = cerrno.errno;
+            if (error == cerrno.ENOENT)
                 return false;
             else
                 throwIO(kStrErrRemoveFileDir);
@@ -765,8 +770,8 @@ SpaceInfo space(Path p)
     }
     else version(Posix)
     {
-        statvfs sfs;
-        if (statvfs(p.native.ptr, &sfs) != 0)
+        pstatvfs.statvfs_t sfs;
+        if (pstatvfs.statvfs(p.native.ptr, &sfs) != 0)
             throwIO(kStrErrFSAvailInfo);
 
         long frsize = cast(long)(sfs.f_frsize);

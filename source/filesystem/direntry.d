@@ -28,6 +28,11 @@ version(Windows)
     import core.sys.windows.windef;
     import core.sys.windows.winbase;
 }
+else version(Posix)
+{
+    import cerrno  = core.stdc.errno;
+    import pdirent = core.sys.posix.dirent;
+}
 
 @nogc:
 
@@ -129,16 +134,16 @@ class DirectoryRange
         }
         else version(Posix)
         {
-            Path nativePath = path.native();
+            Path nativePath = p.native();
             do 
             { 
-                dir = .opendir(nativePath.ptr);
-            } while(errno == EINTR && !dir);
+                dir = pdirent.opendir(nativePath.ptr);
+            } while(cerrno.errno == cerrno.EINTR && !dir);
             
             if (!dir) 
             {
-                int error = errno;
-                if ( (error == EACCES || error == EPERM) && skipPermDenied)
+                int error = cerrno.errno;
+                if ( (error == cerrno.EACCES || error == cerrno.EPERM) && skipPermDenied)
                 {
                     // lack of permission, ignore
                 }
@@ -200,7 +205,7 @@ private:
         }
         else version(Posix)
         {
-            .closedir(dir);
+            pdirent.closedir(dir);
             dir = null;
             // Note: errors on closedir are ignored there, a bit
             // like for fclose
@@ -211,7 +216,6 @@ private:
 
     void nextFile()
     {
-        
         version(Windows)
         {
             bool skip;
@@ -240,7 +244,7 @@ private:
         {
             bool skipPermDenied = (options & DirectoryOptions.skipPermissionDenied) != 0;
 
-            if (_dir) 
+            if (dir) 
             {
                 bool skip;
                 do 
@@ -254,10 +258,10 @@ private:
                         //  and errno is set to indicate the error.  To distinguish end of
                         //  stream from an error, set errno to zero before calling readdir()
                         //  and then check the value of errno if NULL is returned."
-                        errno = 0;
-                        dirent = .readdir(dir);
-                        err = errno;
-                    } while (err == EINTR && !dirent);
+                        cerrno.errno = 0;
+                        dirent = pdirent.readdir(dir);
+                        err = cerrno.errno;
+                    } while (err == cerrno.EINTR && !dirent);
 
                     if (dirent) 
                     {
@@ -273,7 +277,7 @@ private:
                         finished = true;
                         break;
                     }
-                    else if ((err == EACCES || err == EPERM) && skipPermDenied)
+                    else if ((err == cerrno.EACCES || err == cerrno.EPERM) && skipPermDenied)
                     {
                         skip = true;
                     }
@@ -329,8 +333,8 @@ private:
     }
     else version(Posix)
     {
-         DIR* dir;
-         dirent_t dirent;
+         pdirent.DIR* dir;
+         pdirent.dirent* dirent;
 
          bool isSpecial()
          {
@@ -562,8 +566,6 @@ private:
     State state;
     bool finished = false;
     DirectoryEntry stored;
-
-
 
     enum State
     {

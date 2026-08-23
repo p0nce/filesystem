@@ -10,6 +10,7 @@ import numem;
 import nulib;
 import nulib.text.unicode;
 import filesystem.types;
+import filesystem.path;
 
 version(Windows)
 {
@@ -20,7 +21,9 @@ version(Windows)
 }
 else version(Posix)
 {
-    import core.sys.posix.stdlib;
+    import pstdlib = core.sys.posix.stdlib;
+    import pstat   = core.sys.posix.sys.stat;
+    import cerrno  = core.stdc.errno;
     import cstdlib = core.stdc.stdlib;
 }
 
@@ -92,7 +95,7 @@ nstring getEnvironmentVariable(nstring name)
 {
     version(Posix)
     {
-        const(char)* p = getenv(name.ptr);
+        const(char)* p = cstdlib.getenv(name.ptr);
         if (p)
             return nstring(p[0..nu_strlen(p)]);
         else
@@ -123,13 +126,13 @@ nstring getEnvironmentVariable(nstring name)
 
 /// Set environment variable.
 /// Returns: true if successful.
-// FUTURE: unset variable if value == ""
+/// TODO: unset variable if value == ""
 bool setEnvironmentVariable(nstring name, nstring value)
 {
     version(Posix)
     {
         int overwrite = 1;
-        int r = setenv(name.ptr, value.ptr, overwrite);
+        int r = pstdlib.setenv(name.ptr, value.ptr, overwrite);
         return r == 0;
     }
     else version(Windows)
@@ -318,22 +321,21 @@ version(Windows)
 version(Posix)
 {
     //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException
-    void posix_stat(Path p, stat_t* buf, bool followIfSymlink)
+    void posix_stat(Path p, pstat.stat_t* buf, bool followIfSymlink)
     {
         FileStatus r;
         nstring s = p.native();
 
         int res;
         if (followIfSymlink)
-            res = stat(s.ptr, buf);
+            res = pstat.stat(s.ptr, buf);
         else
-            res = lstat(s.ptr, buf);
+            res = pstat.lstat(s.ptr, buf);
 
         if (res != 0)
         {
-            r.perms = FilePerms.none;
-            int err = errno;
-            if (errno == ENOENT)
+            r.permissions = FilePerms.none;
+            if (cerrno.errno == cerrno.ENOENT)
                 throwFileNotFound(p);
             else
                 throwIO(kStrFileAttributes);
@@ -343,25 +345,25 @@ version(Posix)
     //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException.
     FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
     {
-        stat_t buf;
+        pstat.stat_t buf;
         posix_stat(p, &buf, followIfSymlink);
         return statusFromPosixStat(buf);
     }
 
     // Throws: FileSystemIOException.
-    FileStatus statusFromPosixStat(ref stat_t buf)
+    FileStatus statusFromPosixStat(ref pstat.stat_t buf)
     {
         FileStatus r;
-        r.perms = cast(FilePerms) (buf.st_mode & FilePerms.mask);
-        switch(buf.st_mode & S_IFMT)
+        r.permissions = cast(FilePerms) (buf.st_mode & FilePerms.mask);
+        switch(buf.st_mode & pstat.S_IFMT)
         {
-            case S_IFREG:  r.type = FileType.regular; break;
-            case S_IFDIR:  r.type = FileType.directory; break;
-            case S_IFLNK:  r.type = FileType.symlink; break;
-            case S_IFBLK:  r.type = FileType.block; break;
-            case S_IFCHR:  r.type = FileType.character; break;
-            case S_IFIFO:  r.type = FileType.fifo; break;
-            case S_IFSOCK: r.type = FileType.socket; break;
+            case pstat.S_IFREG:  r.type = FileType.regular; break;
+            case pstat.S_IFDIR:  r.type = FileType.directory; break;
+            case pstat.S_IFLNK:  r.type = FileType.symlink; break;
+            case pstat.S_IFBLK:  r.type = FileType.block; break;
+            case pstat.S_IFCHR:  r.type = FileType.character; break;
+            case pstat.S_IFIFO:  r.type = FileType.fifo; break;
+            case pstat.S_IFSOCK: r.type = FileType.socket; break;
             default:
                 r.type = FileType.unknown;
         }
