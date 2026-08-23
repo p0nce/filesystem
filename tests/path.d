@@ -70,9 +70,18 @@ unittest
     assert(Path("foo/bar").rootPath() == "");
     assert(Path("/foo/bar").rootPath() == "/");
     assert(Path("///foo/bar").rootPath() == "/");
-    assert(Path("C:/foo").rootPath() == "C:/");
-    assert(Path("C:\\foo").rootPath() == "C:/");
-    assert(Path("C:foo").rootPath() == "C:");
+    version(Windows)
+    {
+        assert(Path("C:/foo").rootPath() == "C:/");
+        assert(Path("C:\\foo").rootPath() == "C:/");
+        assert(Path("C:foo").rootPath() == "C:");
+    }
+    else
+    {
+        assert(Path("C:/foo").rootPath() == "");
+        assert(Path("C:\\foo").rootPath() == "");
+        assert(Path("C:foo").rootPath() == "");
+    }
     assert(Path("tests/my/deeply/nested/hierarchy").rootPath() == "");
 }
 
@@ -95,6 +104,10 @@ unittest
         assert(Path("C:/foo").relativePath() == "foo");
         assert(Path("C:\\foo").relativePath() == "foo");
         assert(Path("C:foo").relativePath() == "foo");
+    }
+    else
+    {
+        assert(Path("C:foo").relativePath() == "C:foo");
     }
 }
 
@@ -248,6 +261,8 @@ unittest
     {
         assert(Path("/foo").isAbsolute());
     }
+
+    assert(Path("").isRelative());
 }
 
 @(".iterate")
@@ -301,6 +316,7 @@ unittest
     }
     else
     {
+
         assert(Path("foo") / "" == "foo/");
         assert(Path("foo") / "/bar" == "/bar");
     }

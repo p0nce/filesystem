@@ -486,15 +486,22 @@ public:
     //ditto
     ref Path append(Path p) /* pure */
     {
-        if (p.empty)
-            return this;
-
         // First we try to find the right separator for this append.
         // If both have an idea, prefers left path idea.
         SepPreference leftPref = detectSeparator();
         SepPreference rightPref = p.detectSeparator();
         if (leftPref == SepPreference.preferUnknown) leftPref = rightPref;
         char prefferedSep = prefToChar(leftPref);
+
+        if (p.empty)
+        {
+            version(Posix)
+            {
+                if (!empty && str[$-1] != prefferedSep)
+                    str ~= prefferedSep;
+            }
+            return this;
+        }
 
         if (p.isAbsolute() || (p.hasRootName() && p.rootName() != rootName()))
         {
