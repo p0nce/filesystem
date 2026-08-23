@@ -56,7 +56,9 @@ static immutable string
     kStrErrCopySameFile    = "Source and destination are the same",
     kStrErrMetadataAccess  = "Can't access file metadata",
     kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty",
-    kStrErrFileSearch      = "File search failed";
+    kStrErrFileSearch      = "File search failed",
+    kStrErrFSAvailInfo     = "Can't get filesystem disc usage information",
+    kStrErrUnrealDiscSize  = "Disc reports too large a size to be true";
 
 
 // Future: decide if we keep this file

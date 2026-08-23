@@ -251,3 +251,21 @@ unittest
     assert(7 == removeAll(Path("tests/remove-all-test")));
     assert(! exists(Path("tests/remove-all-test")));
 }
+
+@("space()")
+unittest
+{
+    SpaceInfo si;
+    try
+    {
+        si = space(currentPath());
+    }
+    catch(FileSystemException e)
+    {
+        e.free();
+        assert(0);
+    }
+    assert(si.capacity > 1024 * 1024);
+    assert(si.capacity > si.freeTheoretical);
+    assert(si.freeTheoretical >= si.available);
+}

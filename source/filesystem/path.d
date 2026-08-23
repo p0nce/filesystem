@@ -88,7 +88,7 @@ public:
     /**
         Returns the root path of the path, if present.
     */
-    Path rootPath() => rootName / rootDirectory;
+    Path rootPath() => rootName() / rootDirectory();
 
     /**
         Returns path relative to root-path, that is, a pathname 
@@ -198,6 +198,11 @@ public:
         return Path(fn.ptr[0..dotpos]);
     }
 
+    /**
+        Returns the extension of the filename component.
+
+        TODO example
+    */
     Path extension() pure const
     {
         Path fn = filename();

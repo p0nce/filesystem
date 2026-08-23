@@ -41,6 +41,21 @@ enum FileType
     unknown,   /// The file exists, but its type could not be determined.
 }
 
+
+/**
+    Stores information about the type and permissions of a file.
+
+    See_also: `status`, `symlinkStatus`.
+*/
+struct FileStatus
+{
+    FileType type;          /// Type of the file.
+    FilePerms permissions;  /// Permissions of the file.
+    long sizeBytes;         /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
+    FileTime lastWriteTime; /// In UNIX epoch.
+}
+
+
 /**
     Model permissions model POSIX permission bits, and any individual 
     file permissions (as reported by `FileStatus`) are a 
@@ -74,6 +89,7 @@ enum FilePerms : int
     mask       = 0xFFF  /// All valid permission bits. 
 }
 
+
 enum PermOptions : int
 {
     // Bit 0-1 = mode
@@ -89,6 +105,7 @@ enum PermOptions : int
     /// than on the file it resolves to.    
     nofollow  = 4,
 }
+
 
 /// All the options the copying functions support.
 enum CopyOptions : int 
@@ -117,26 +134,9 @@ enum CopyOptions : int
 
     // Options controlling the kind of copying copy() does .
     copyFileContent    = 0,  /// Copy file content (default behavior). 
-    directoriesOnly    = 32, /// UNSUPPORTED Copy the directory structure, but do not copy any non-directory files. 
-    createSymlinks     = 64, /// UNSUPPORTED Instead of creating copies of files, create symlinks pointing to the originals. Note: the source path must be an absolute path unless the destination path is in the current directory. 
-    createHardLinks    = 96  /// UNSUPPORTED Instead of creating copies of files, create hardlinks that resolve to the same files as the originals. 
-}
-
-
-
-
-
-/**
-    Stores information about the type and permissions of a file.
-
-    See_also: `status`, `symlinkStatus`.
-*/
-struct FileStatus
-{
-    FileType type;
-    FilePerms permissions;
-    long sizeBytes;         /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
-    FileTime lastWriteTime; /// In UNIX epoch.
+    directoriesOnly    = 32, /// UNSUPPORTED TODO Copy the directory structure, but do not copy any non-directory files. 
+    createSymlinks     = 64, /// UNSUPPORTED TODO Instead of creating copies of files, create symlinks pointing to the originals. Note: the source path must be an absolute path unless the destination path is in the current directory. 
+    createHardLinks    = 96  /// UNSUPPORTED TODO Instead of creating copies of files, create hardlinks that resolve to the same files as the originals. 
 }
 
 
@@ -166,6 +166,28 @@ enum DirectoryOptions
     /// When not present, the order is instead breadth first pre-order:
     /// visit the current node, then their children.
     spanDepthFirst         = 4
+}
+
+
+/**
+    Represents the filesystem information as determined by `space()`. 
+
+    See_also: `space()`.
+*/
+struct SpaceInfo
+{
+    /// Total size of the filesystem, in bytes.
+    long capacity;
+
+    /// Free space on the filesystem, in bytes.
+    ///
+    /// Warning: As it's not the space available to the caller, there 
+    /// is little reason to use that normally.
+    long freeTheoretical;
+
+    /// Free space available to a non-privileged process (may be equal 
+    /// or less than free).
+    long available;
 }
 
 
@@ -228,7 +250,8 @@ class FileSystemIOException : FileSystemException
 /**
     Specific exception type in case of invalid path.
     FUTURE: may merge with FileSystemIOException? It has
-    roughly the same effect.
+    roughly the same effect, and it always lead to the
+    same treatment until now.
 */
 class InvalidPathException : FileSystemException 
 {

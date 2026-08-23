@@ -728,7 +728,63 @@ bool rename(Path oldPath, Path newPath)
 
 
 // TODO resize_file
-// TODO space
+
+/**
+    Determines the information about the filesystem on which the 
+    pathname `p` is located, as if by POSIX `statvfs`.
+
+    Populates and returns an object of type `SpaceInfo`, set from the 
+    members of the POSIX `struct statvfs` as follows:
+    - `SpaceInfo.capacity` is set as if by `f_blocks * f_frsize`.
+    - `SpaceInfo.free` is set to `f_bfree * f_frsize`.
+    - `SpaceInfo.available` is set to `f_bavail * f_frsize`.
+
+    Throws: `FileSystemIOException`, `InvalidPathException`.
+*/
+SpaceInfo space(Path p)
+{
+    SpaceInfo info;
+    version(Windows)
+    {
+        // For GetDiskFreeSpaceExW, path must be a directory
+        // not a file.
+        Path dirPath = absolute(p).rootPath();
+
+        nwstring wpath = dirPath.native.toUTF16();
+
+        ULARGE_INTEGER availBytes;
+        ULARGE_INTEGER totalBytes;
+        ULARGE_INTEGER totalFreeBytes;
+
+        if (0 == GetDiskFreeSpaceExW(wpath.ptr, &availBytes, &totalBytes, &totalFreeBytes)) 
+            throwIO(kStrErrFSAvailInfo);
+
+        info.capacity        = totalBytes.QuadPart;
+        info.freeTheoretical = totalFreeBytes.QuadPart;
+        info.available       = availBytes.QuadPart;
+    }
+    else version(Posix)
+    {
+        statvfs sfs;
+        if (statvfs(p.native.ptr, &sfs) != 0)
+            throwIO(kStrErrFSAvailInfo);
+
+        long frsize = cast(long)(sfs.f_frsize);
+        info.capacity        = sfs.f_blocks * frsize;
+        info.freeTheoretical = sfs.f_bfree  * frsize;
+        info.available       = sfs.f_bavail * frsize;
+    }
+    else
+        static assert(0);
+
+    // Deal with overflow.
+    if (info.capacity < 0 || info.freeTheoretical < 0 || info.available < 0)
+        throwIO(kStrErrUnrealDiscSize);
+
+    return info;
+}
+
+
 // TODO temp_directory_path
 
 

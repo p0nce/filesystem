@@ -48,7 +48,13 @@ struct DirectoryEntry
 nothrow @nogc:
 public:
 
+    /// Path to the directory entry, can be relative or absolute.
     Path path;
+
+    /// Status of the file as it was when discovered. 
+    ///
+    /// Warning: By the time you access it, it might not exist 
+    /// anymore.
 	FileStatus status;
 
 	this(Path path, FileStatus status)
@@ -157,14 +163,6 @@ class DirectoryRange
             finished = true;
         }
     }
-
-    // non-copyable
-    //@disable this(this);
-    //@disable this(ref DirectoryRange);
-
-    // Unfortunately nulib's vector can't contain types
-    // that can be moved but not copied (std::vector can).
-    // So we're just going reference types instead.
 
     // range implementation
 
