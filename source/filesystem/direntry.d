@@ -67,9 +67,6 @@ public:
 		this.path = path;
 		this.status = status;
 	}
-
-private:
-
 }
 
 /**
@@ -162,14 +159,11 @@ class DirectoryRange
     ~this()
     {
         if (!finished) 
-        {
-            
+        {            
             cleanupSearch();
             finished = true;
         }
     }
-
-    // range implementation
 
     /**
         Returns: true if `front()` is the current file.
