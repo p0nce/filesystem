@@ -1,6 +1,7 @@
 name "filesystem"
 description "Implementation of roughly std::filesystem, for D."
 copyright "Copyright 2026, Guillaume Piolat"
+copyright "Copyright 2018, Steffen Schümann"
 license "MIT"
 targetPath "out/"
 
