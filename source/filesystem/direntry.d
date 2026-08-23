@@ -259,6 +259,12 @@ private:
 
                     if (dirent) 
                     {
+                        if (isSpecial())
+                        {
+                            skip = true;
+                            continue;
+                        }
+
                         resEntry.path = base / nstring(fromStringz(dirent.d_name.ptr));
                         // PERF status might be in dirent already
                         // TODO: this is racey and we should be prepared to abandon that file
@@ -332,6 +338,7 @@ private:
 
          bool isSpecial()
          {
+            assert(dirent);
             return fs_strcmp(dirent.d_name.ptr, ".".ptr) == 0 
                 || fs_strcmp(dirent.d_name.ptr, "..".ptr) == 0;
          }
