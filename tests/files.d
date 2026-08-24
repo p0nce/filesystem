@@ -7,7 +7,7 @@ import core.stdc.stdio;
 
 void nprintf(nstring s)
 {
-    printf("%20.*s", cast(int) s.length, s.ptr);
+    printf("%.*s", cast(int) s.length, s.ptr);
 }
 
 
@@ -248,8 +248,12 @@ unittest
 @("removeAll()")
 unittest
 {
+    if (exists(Path("tests/remove-all-test")))
+         removeAll(Path("tests/remove-all-test"));
+
     createDirectories(Path("tests/remove-all-test/a/b/c/d/e/f"));
     assert(7 == removeAll(Path("tests/remove-all-test")));
+    //removeAll(Path("tests/remove-all-test"));
     assert(! exists(Path("tests/remove-all-test")));
 }
 
@@ -269,4 +273,65 @@ unittest
     assert(si.capacity > 1024 * 1024);
     assert(si.capacity > si.freeTheoretical);
     assert(si.freeTheoretical >= si.available);
+}
+
+@("Standard paths")
+unittest
+{
+    void display(vector!Path paths)
+    {
+        foreach(p; paths)
+        {
+            printf(" - ");
+            nprintf(p);
+            printf("\n");
+        }
+    }
+
+    printf("Home dir is:\n");
+    printf(" - ");
+    nprintf(homeDir());
+    printf("\n");
+    
+    printf("Config dir is:\n");
+    display(standardPaths(StandardPath.config));
+
+    printf("App data dir is:\n");
+    display(standardPaths(StandardPath.data));
+
+    printf("Desktop dir is:\n");
+    display(standardPaths(StandardPath.desktop));
+
+    printf("Documents dir is:\n");
+    display(standardPaths(StandardPath.documents));
+
+    printf("Pictures dir is:\n");
+    display(standardPaths(StandardPath.pictures));
+
+    printf("Music dir is:\n");
+    display(standardPaths(StandardPath.music));
+
+    printf("Videos dir is:\n");
+    display(standardPaths(StandardPath.videos));
+
+    printf("Downloads dir is:\n");
+    display(standardPaths(StandardPath.downloads));
+
+    printf("Fonts dir is:\n");
+    display(standardPaths(StandardPath.fonts));
+
+    printf("Applications dir is:\n");
+    display(standardPaths(StandardPath.applications));
+
+    printf("Startup dir is:\n");
+    display(standardPaths(StandardPath.startup));
+
+    version(Windows)
+    {
+        printf("Roaming dir is:\n");
+        display(standardPaths(StandardPath.roaming));
+
+        printf("Game save files dir is:\n");
+        display(standardPaths(StandardPath.savedGames));
+    }
 }

@@ -17,3 +17,6 @@ public import filesystem.freefunc;
 
 // Structures related to directory search
 public import filesystem.direntry; 
+
+// Standard directories
+public import filesystem.standardpaths; 

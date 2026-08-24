@@ -91,7 +91,7 @@ void throwIO(const(char)[] msg)
 // to the filesystem library, but well.
 
 /// Get environment variable.
-nstring getEnvironmentVariable(nstring name)
+nstring getEnvironmentVariable(nstring name) nothrow
 {
     version(Posix)
     {
@@ -103,31 +103,57 @@ nstring getEnvironmentVariable(nstring name)
     }
     else version(Windows)
     {
-        nwstring name16 = toUTF16(name);
+        nwstring name16;
+        try
+        {
+            name16 = toUTF16(name);
+        }
+        catch(NuException e)
+        {
+            e.freeNoThrow();
+            // if the name is invalid Unicode,
+            // this is a programming error
+            assert(0);
+        }
+        catch(Exception e)
+        {
+            assert(0);
+        }
         enum int BUFSIZE = 16;
         wchar[BUFSIZE] buf;
+        wchar[] outbuf;
         DWORD res = GetEnvironmentVariableW(name16.ptr, buf.ptr, BUFSIZE);
         if (res == 0)
             return nstring.init;
         else if (res <= BUFSIZE)
-            return toUTF8(nwstring(buf[0..res]));
+            return toUTF8OrEmpty(nwstring(buf[0..res]));
         else
         {
             wchar[] buf2;
             buf2.nu_resize(res + 1);
             scope(exit) buf2.nu_resize(0);
             res = GetEnvironmentVariableW(name16.ptr, buf2.ptr, res + 1);
-            return toUTF8(nwstring(buf2[0..res]));
+            return toUTF8OrEmpty(nwstring(buf2[0..res]));            
         }
     }
     else
         static assert(0);
 }
+///ditto
+nstring getEnvironmentVariable(const(char)[] name) nothrow
+{
+    return getEnvironmentVariable(nstring(name));
+}
 
 /// Set environment variable.
+///
+/// Params:
+///     name = Name of envvar, MUST be valid Unicode or this will crash.
+///     value = Value of envvar, MUST be valid Unicode or this will crash.
+///
 /// Returns: true if successful.
 /// TODO: unset variable if value == ""
-bool setEnvironmentVariable(nstring name, nstring value)
+bool setEnvironmentVariable(nstring name, nstring value) nothrow
 {
     version(Posix)
     {
@@ -137,8 +163,8 @@ bool setEnvironmentVariable(nstring name, nstring value)
     }
     else version(Windows)
     {
-        nwstring name16 = toUTF16(name);
-        nwstring value16 = toUTF16(value);
+        nwstring name16 = toUTF16OrCrash(name);
+        nwstring value16 = toUTF16OrCrash(value);
         return SetEnvironmentVariableW(name16.ptr, value16.ptr) != 0;
     }
     else
@@ -146,6 +172,16 @@ bool setEnvironmentVariable(nstring name, nstring value)
 }
 
 size_t fs_strlen(const(char)* str) pure
+{
+    assert(str !is null);
+    size_t len = 0;
+    while (str[len] != '\0')
+        len++;
+
+    return len;
+}
+
+size_t fs_wstrlen(const(wchar)* str) pure
 {
     assert(str !is null);
     size_t len = 0;
@@ -187,7 +223,38 @@ int fs_wcscmp( const(wchar)* lhs, const(wchar)* rhs ) pure @system
     return 0;
 }
 
+nwstring toUTF16OrCrash(nstring s) nothrow
+{
+    try
+    {
+        return toUTF16(s);
+    }
+    catch(NuException e)
+    {
+        e.freeNoThrow();
+    }
+    catch(Exception e)
+    {   
+    }
+    assert(0);
+}
 
+nstring toUTF8OrEmpty(nwstring s) nothrow
+{
+    try
+    {
+        return toUTF8(s);
+    }
+    catch(NuException e)
+    {
+        e.freeNoThrow();
+    }
+    catch(Exception e)
+    {
+        
+    }
+    return nstring.init;
+}
 
 // Returns: true if path a == path b.
 // On Windows, compare with case-insensitive casing.
