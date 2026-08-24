@@ -10,11 +10,23 @@
  */
 module filesystem.standardpaths;
 
+import numem;
 import nulib.string;
 import nulib.collections.vector;
 
 import filesystem.path;
 import filesystem.internals;
+
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+else version (VisionOS)
+    version = Darwin;
 
 version(Windows) 
 {
@@ -23,11 +35,17 @@ version(Windows)
     import core.sys.windows.winnt;
     import core.sys.windows.basetyps;
 } 
-else version(Posix) 
+else version(Darwin) 
 {
+    version(D_ObjectiveC){}
+    else
+        static assert(0, "Need a compiler with D_ObjectiveC support");
+
+    import objc;
+    import foundation;
 }
 else
-    static assert(0);
+    static assert(0, "Unrecognized OS");
 
 @nogc:
 
@@ -79,7 +97,7 @@ enum StandardPath
     /// Directory for user's downloaded files.
     downloads,
 
-    /// Location of file templates (e.g. office suite document templates).
+    /// Location of file templates (e.g. office document templates).
     /// Note: Not available on OS X.
     templates,
 
@@ -158,7 +176,6 @@ Path homeDir() /* nothrow */ /* @safe */
 
     Params:
         type = Location to lookup.
-        params = Union of `FolderFlag`.
  
     Note: This function does not cache its results.
 
@@ -181,7 +198,7 @@ Path homeDir() /* nothrow */ /* @safe */
 
     See_Also: `StandardPath`, `standardPaths`.
 */
-Path writablePath(StandardPath type) /* nothrow */ @safe
+Path writablePath(StandardPath type) /* nothrow */ @trusted
 {
     version(Windows)
     {
@@ -220,9 +237,47 @@ Path writablePath(StandardPath type) /* nothrow */ @safe
                 return getKnownFolder(FOLDERID_SavedGames);
         }
     }
+    else version(Darwin)
+    {
+        final switch(type) 
+        {
+            case StandardPath.config:
+                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeBuild("Preferences");
+            case StandardPath.cache:
+                return domainDir(NSCachesDirectory, NSUserDomainMask);
+            case StandardPath.data:
+                return domainDir(NSApplicationSupportDirectory, NSUserDomainMask);
+            case StandardPath.desktop:
+                return domainDir(NSDesktopDirectory, NSUserDomainMask);
+            case StandardPath.documents:
+                return domainDir(NSDocumentDirectory, NSUserDomainMask);
+            case StandardPath.pictures:
+                return domainDir(NSPicturesDirectory, NSUserDomainMask);
+            case StandardPath.music:
+                return domainDir(NSMusicDirectory, NSUserDomainMask);
+            case StandardPath.videos:
+                return domainDir(NSMoviesDirectory, NSUserDomainMask);
+            case StandardPath.downloads:
+                return domainDir(NSDownloadsDirectory, NSUserDomainMask);
+            case StandardPath.templates:
+                return Path.init;
+            case StandardPath.publicShare:
+                return domainDir(NSSharedPublicDirectory, NSUserDomainMask);
+            case StandardPath.fonts:
+                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeBuild("Fonts");
+            case StandardPath.applications:
+                return domainDir(NSApplicationDirectory, NSUserDomainMask);
+            case StandardPath.startup:
+                return Path.init;
+            case StandardPath.roaming:
+                return Path.init;
+            case StandardPath.savedGames:
+                return Path.init;
+        }
+    }
     else 
     {
-        return null;
+        return Path.init;
     }
 }
 
@@ -234,470 +289,99 @@ Path writablePath(StandardPath type) /* nothrow */ @safe
    returned by `writablePath`, or an empty array if no paths are 
    defined for `type`.
 
-   Returned list of pathes are not  required to be unique, accessible, 
-   or even exists.
+   Returned paths in the list are not required to be unique, 
+   accessible, or even exists.
 
    Note: This function does not cache its results.
-   It may cause performance impact to call this function often since retrieving some paths can be relatively expensive operation.
+   It may cause performance impact to call this function often since 
+   retrieving some paths can be relatively expensive operation.
 
    See_Also: `StandardPath`, `writablePath`.
 */
 vector!Path standardPaths(StandardPath type) @safe
 {
+    vector!Path paths;
     Path commonPath;
 
-    switch(type) 
+    version(Windows)
+    {     
+        switch(type) 
+        {
+            case StandardPath.config:
+            case StandardPath.data:
+                commonPath = getKnownFolder(FOLDERID_ProgramData);
+                break;
+            case StandardPath.desktop:
+                commonPath = getKnownFolder(FOLDERID_PublicDesktop);
+                break;
+            case StandardPath.documents:
+                commonPath = getKnownFolder(FOLDERID_PublicDocuments);
+                break;
+            case StandardPath.pictures:
+                commonPath = getKnownFolder(FOLDERID_PublicPictures);
+                break;
+            case StandardPath.music:
+                commonPath = getKnownFolder(FOLDERID_PublicMusic);
+                break;
+            case StandardPath.videos:
+                commonPath = getKnownFolder(FOLDERID_PublicVideos);
+                break;
+            case StandardPath.downloads:
+                commonPath = getKnownFolder(FOLDERID_PublicDownloads);
+                break;
+            case StandardPath.templates:
+                commonPath = getKnownFolder(FOLDERID_CommonTemplates);
+                break;
+            case StandardPath.fonts:
+                commonPath = getKnownFolder(FOLDERID_Fonts);
+                break;
+            case StandardPath.applications:
+                commonPath = getKnownFolder(FOLDERID_CommonPrograms);
+                break;
+            case StandardPath.startup:
+                commonPath = getKnownFolder(FOLDERID_CommonStartup);
+                break;
+            default:
+                break;
+        }
+    }
+    else version(Darwin)
     {
-        case StandardPath.config:
-        case StandardPath.data:
-            commonPath = getKnownFolder(FOLDERID_ProgramData);
-            break;
-        case StandardPath.desktop:
-            commonPath = getKnownFolder(FOLDERID_PublicDesktop);
-            break;
-        case StandardPath.documents:
-            commonPath = getKnownFolder(FOLDERID_PublicDocuments);
-            break;
-        case StandardPath.pictures:
-            commonPath = getKnownFolder(FOLDERID_PublicPictures);
-            break;
-        case StandardPath.music:
-            commonPath = getKnownFolder(FOLDERID_PublicMusic);
-            break;
-        case StandardPath.videos:
-            commonPath = getKnownFolder(FOLDERID_PublicVideos);
-            break;
-        case StandardPath.downloads:
-            commonPath = getKnownFolder(FOLDERID_PublicDownloads);
-            break;
-        case StandardPath.templates:
-            commonPath = getKnownFolder(FOLDERID_CommonTemplates);
-            break;
-        case StandardPath.fonts:
-            commonPath = getKnownFolder(FOLDERID_Fonts);
-            break;
-        case StandardPath.applications:
-            commonPath = getKnownFolder(FOLDERID_CommonPrograms);
-            break;
-        case StandardPath.startup:
-            commonPath = getKnownFolder(FOLDERID_CommonStartup);
-            break;
-        default:
-            break;
+        switch(type) 
+        {
+            case StandardPath.fonts:
+                commonPath = domainDir(NSLibraryDirectory, NSSystemDomainMask).maybeBuild("Fonts");
+                break;
+            case StandardPath.applications:
+                commonPath = domainDir(NSApplicationDirectory, NSSystemDomainMask);
+                break;
+            case StandardPath.data:
+                commonPath = domainDir(NSApplicationSupportDirectory, NSSystemDomainMask);
+                break;
+            case StandardPath.cache:
+                commonPath = domainDir(NSCachesDirectory, NSSystemDomainMask);
+                break;
+            default:
+                break;
+        }
     }
 
-    // TODO userPath
-
-    vector!Path paths;
     Path userPath = writablePath(type);
+
+    import core.stdc.stdio;
+    debug printf("userPath %*.s\n", userPath.length, userPath.ptr);
+    debug printf("commonPath %*.s\n", commonPath.length, commonPath.ptr);
     if (userPath.length)
         paths ~= userPath;
     if (commonPath.length)
         paths ~= commonPath;
     return paths;
-    return paths;
 }
 
 
+
 /+
-else version(OSX) {
-    private {
-        import std.string : fromStringz;
-        version(StandardPathsCocoa) {
-            import core.attribute : selector;
 
-            alias size_t NSUInteger;
-
-            enum objectiveC_declarations = q{
-                extern (Objective-C)
-                interface NSString
-                {
-                    NSString initWithUTF8String(in char* str) @selector("initWithUTF8String:");
-                    const(char)* UTF8String() @selector("UTF8String");
-                    void release() @selector("release");
-                }
-
-                extern(Objective-C)
-                interface NSArray
-                {
-                    NSString objectAtIndex(size_t) @selector("objectAtIndex:");
-                    NSString firstObject() @selector("firstObject");
-                    NSUInteger count() @selector("count");
-                    void release() @selector("release");
-                }
-
-                extern(Objective-C)
-                interface NSURL
-                {
-                    NSString absoluteString() @selector("absoluteString");
-                    void release() @selector("release");
-                }
-
-                extern(Objective-C)
-                interface NSError
-                {
-
-                }
-
-                extern (C) NSFileManager objc_lookUpClass(in char* name);
-
-                extern(Objective-C)
-                interface NSFileManager
-                {
-                    NSFileManager defaultManager() @selector("defaultManager");
-                    NSURL URLForDirectory(NSSearchPathDirectory, NSSearchPathDomainMask domain, NSURL url, int shouldCreate, NSError* error) @selector("URLForDirectory:inDomain:appropriateForURL:create:error:");
-                }
-            };
-
-            mixin(objectiveC_declarations);
-
-            enum : NSUInteger {
-               NSApplicationDirectory = 1,
-               NSDemoApplicationDirectory,
-               NSDeveloperApplicationDirectory,
-               NSAdminApplicationDirectory,
-               NSLibraryDirectory,
-               NSDeveloperDirectory,
-               NSUserDirectory,
-               NSDocumentationDirectory,
-               NSDocumentDirectory,
-               NSCoreServiceDirectory,
-               NSAutosavedInformationDirectory = 11,
-               NSDesktopDirectory = 12,
-               NSCachesDirectory = 13,
-               NSApplicationSupportDirectory = 14,
-               NSDownloadsDirectory = 15,
-               NSInputMethodsDirectory = 16,
-               NSMoviesDirectory = 17,
-               NSMusicDirectory = 18,
-               NSPicturesDirectory = 19,
-               NSPrinterDescriptionDirectory = 20,
-               NSSharedPublicDirectory = 21,
-               NSPreferencePanesDirectory = 22,
-               NSItemReplacementDirectory = 99,
-               NSAllApplicationsDirectory = 100,
-               NSAllLibrariesDirectory = 101,
-            };
-
-            alias NSUInteger NSSearchPathDirectory;
-
-            enum : NSUInteger {
-               NSUserDomainMask = 1,
-               NSLocalDomainMask = 2,
-               NSNetworkDomainMask = 4,
-               NSSystemDomainMask = 8,
-               NSAllDomainsMask = 0x0ffff,
-            };
-
-            alias NSUInteger NSSearchPathDomainMask;
-
-            string domainDir(NSSearchPathDirectory dir, NSSearchPathDomainMask domain, bool shouldCreate = false) nothrow @trusted
-            {
-                import std.uri;
-                import std.algorithm : startsWith;
-
-                try {
-                    auto managerInterface = objc_lookUpClass("NSFileManager");
-                    if (!managerInterface) {
-                        return null;
-                    }
-
-                    auto manager = managerInterface.defaultManager();
-                    if (!manager) {
-                        return null;
-                    }
-
-                    NSURL url = manager.URLForDirectory(dir, domain, null, shouldCreate, null);
-                    if (!url) {
-                        return null;
-                    }
-                    scope(exit) url.release();
-                    NSString nsstr = url.absoluteString();
-                    scope(exit) nsstr.release();
-
-                    string str = fromStringz(nsstr.UTF8String()).idup;
-
-                    enum fileProtocol = "file://";
-                    if (str.startsWith(fileProtocol)) {
-                        str = str.decode()[fileProtocol.length..$];
-                        if (str.length > 1 && str[$-1] == '/') {
-                            return str[0..$-1];
-                        } else {
-                            return str;
-                        }
-                    }
-                } catch(Exception e) {
-
-                }
-                return null;
-            }
-        } else {
-            private enum : short {
-                kOnSystemDisk                 = -32768L, /* previously was 0x8000 but that is an unsigned value whereas vRefNum is signed*/
-                kOnAppropriateDisk            = -32767, /* Generally, the same as kOnSystemDisk, but it's clearer that this isn't always the 'boot' disk.*/
-                                                        /* Folder Domains - Carbon only.  The constants above can continue to be used, but the folder/volume returned will*/
-                                                        /* be from one of the domains below.*/
-                kSystemDomain                 = -32766, /* Read-only system hierarchy.*/
-                kLocalDomain                  = -32765, /* All users of a single machine have access to these resources.*/
-                kNetworkDomain                = -32764, /* All users configured to use a common network server has access to these resources.*/
-                kUserDomain                   = -32763, /* Read/write. Resources that are private to the user.*/
-                kClassicDomain                = -32762, /* Domain referring to the currently configured Classic System Folder.  Not supported in Mac OS X Leopard and later.*/
-                kFolderManagerLastDomain      = -32760
-            }
-
-            private @nogc int k(string s) nothrow {
-                return s[0] << 24 | s[1] << 16 | s[2] << 8 | s[3];
-            }
-
-            private enum {
-                kDesktopFolderType            = k("desk"), /* the desktop folder; objects in this folder show on the desktop. */
-                kTrashFolderType              = k("trsh"), /* the trash folder; objects in this folder show up in the trash */
-                kWhereToEmptyTrashFolderType  = k("empt"), /* the "empty trash" folder; Finder starts empty from here down */
-                kFontsFolderType              = k("font"), /* Fonts go here */
-                kPreferencesFolderType        = k("pref"), /* preferences for applications go here */
-                kSystemPreferencesFolderType  = k("sprf"), /* the PreferencePanes folder, where Mac OS X Preference Panes go */
-                kTemporaryFolderType          = k("temp"), /*    On Mac OS X, each user has their own temporary items folder, and the Folder Manager attempts to set permissions of these*/
-                                                        /*    folders such that other users can not access the data inside.  On Mac OS X 10.4 and later the data inside the temporary*/
-                                                        /*    items folder is deleted at logout and at boot, but not otherwise.  Earlier version of Mac OS X would delete items inside*/
-                                                        /*    the temporary items folder after a period of inaccess.  You can ask for a temporary item in a specific domain or on a */
-                                                        /*    particular volume by FSVolumeRefNum.  If you want a location for temporary items for a short time, then use either*/
-                                                        /*    ( kUserDomain, kkTemporaryFolderType ) or ( kSystemDomain, kTemporaryFolderType ).  The kUserDomain varient will always be*/
-                                                        /*    on the same volume as the user's home folder, while the kSystemDomain version will be on the same volume as /var/tmp/ ( and*/
-                                                        /*    will probably be on the local hard drive in case the user's home is a network volume ).  If you want a location for a temporary*/
-                                                        /*    file or folder to use for saving a document, especially if you want to use FSpExchangeFile() to implement a safe-save, then*/
-                                                        /*    ask for the temporary items folder on the same volume as the file you are safe saving.*/
-                                                        /*    However, be prepared for a failure to find a temporary folder in any domain or on any volume.  Some volumes may not have*/
-                                                        /*    a location for a temporary folder, or the permissions of the volume may be such that the Folder Manager can not return*/
-                                                        /*    a temporary folder for the volume.*/
-                                                        /*    If your application creates an item in a temporary items older you should delete that item as soon as it is not needed,*/
-                                                        /*    and certainly before your application exits, since otherwise the item is consuming disk space until the user logs out or*/
-                                                        /*    restarts.  Any items left inside a temporary items folder should be moved into a folder inside the Trash folder on the disk*/
-                                                        /*    when the user logs in, inside a folder named "Recovered items", in case there is anything useful to the end user.*/
-                kChewableItemsFolderType      = k("flnt"), /* similar to kTemporaryItemsFolderType, except items in this folder are deleted at boot or when the disk is unmounted */
-                kTemporaryItemsInCacheDataFolderType = k("vtmp"), /* A folder inside the kCachedDataFolderType for the given domain which can be used for transient data*/
-                kApplicationsFolderType       = k("apps"), /*    Applications on Mac OS X are typically put in this folder ( or a subfolder ).*/
-                kVolumeRootFolderType         = k("root"), /* root folder of a volume or domain */
-                kDomainTopLevelFolderType     = k("dtop"), /* The top-level of a Folder domain, e.g. "/System"*/
-                kDomainLibraryFolderType      = k("dlib"), /* the Library subfolder of a particular domain*/
-                kUsersFolderType              = k("usrs"), /* "Users" folder, usually contains one folder for each user. */
-                kCurrentUserFolderType        = k("cusr"), /* The folder for the currently logged on user; domain passed in is ignored. */
-                kSharedUserDataFolderType     = k("sdat"), /* A Shared folder, readable & writeable by all users */
-                kCachedDataFolderType         = k("cach"), /* Contains various cache files for different clients*/
-                kDownloadsFolderType          = k("down"), /* Refers to the ~/Downloads folder*/
-                kApplicationSupportFolderType = k("asup"), /* third-party items and folders */
-
-
-                kDocumentsFolderType          = k("docs"), /*    User documents are typically put in this folder ( or a subfolder ).*/
-                kPictureDocumentsFolderType   = k("pdoc"), /* Refers to the "Pictures" folder in a users home directory*/
-                kMovieDocumentsFolderType     = k("mdoc"), /* Refers to the "Movies" folder in a users home directory*/
-                kMusicDocumentsFolderType     = 0xB5646F63/*'µdoc'*/, /* Refers to the "Music" folder in a users home directory*/
-                kInternetSitesFolderType      = k("site"), /* Refers to the "Sites" folder in a users home directory*/
-                kPublicFolderType             = k("pubb"), /* Refers to the "Public" folder in a users home directory*/
-
-                kDropBoxFolderType            = k("drop") /* Refers to the "Drop Box" folder inside the user's home directory*/
-            };
-
-            struct FSRef {
-              char[80] hidden;    /* private to File Manager*/
-            };
-
-            alias ubyte Boolean;
-            alias int OSType;
-            alias short OSErr;
-            alias int OSStatus;
-
-            extern(C) @nogc @system OSErr _dummy_FSFindFolder(short, OSType, Boolean, FSRef*) nothrow { return 0; }
-            extern(C) @nogc @system OSStatus _dummy_FSRefMakePath(const(FSRef)*, char*, uint) nothrow { return 0; }
-
-            __gshared typeof(&_dummy_FSFindFolder) ptrFSFindFolder = null;
-            __gshared typeof(&_dummy_FSRefMakePath) ptrFSRefMakePath = null;
-        }
-    }
-
-    version(StandardPathsCocoa) {
-
-    } else {
-        shared static this()
-        {
-            enum carbonPath = "CoreServices.framework/Versions/A/CoreServices\0";
-
-            // This one still work as of macOS 15.1, it was used in Dplug for a good while
-            enum carbonPath2 = "/System/Library/Frameworks/CoreServices.framework/CoreServices\0";
-
-            import core.sys.posix.dlfcn;
-
-            void* handle = dlopen(carbonPath.ptr, RTLD_NOW | RTLD_LOCAL);
-            if (!handle)
-                handle = dlopen(carbonPath2.ptr, RTLD_NOW | RTLD_LOCAL);
-
-            if (handle) {
-                ptrFSFindFolder = cast(typeof(ptrFSFindFolder))dlsym(handle, "FSFindFolder");
-                ptrFSRefMakePath = cast(typeof(ptrFSRefMakePath))dlsym(handle, "FSRefMakePath");
-            }
-            if (ptrFSFindFolder == null || ptrFSRefMakePath == null) {
-                debug collectException(stderr.writeln("Could not load carbon functions"));
-                if (handle) dlclose(handle);
-            }
-        }
-
-        private @nogc @trusted bool isCarbonLoaded() nothrow
-        {
-            return ptrFSFindFolder != null && ptrFSRefMakePath != null;
-        }
-
-        private enum OSErr noErr = 0;
-
-        private string fsPath(short domain, OSType type, bool shouldCreate = false) nothrow @trusted
-        {
-            import std.stdio;
-            FSRef fsref;
-            if (isCarbonLoaded() && ptrFSFindFolder(domain, type, shouldCreate, &fsref) == noErr) {
-
-                char[2048] buf;
-                char* path = buf.ptr;
-                if (ptrFSRefMakePath(&fsref, path, buf.sizeof) == noErr) {
-                    try {
-                        return fromStringz(path).idup;
-                    }
-                    catch(Exception e) {
-
-                    }
-                }
-            }
-            return null;
-        }
-    }
-
-    private string writablePathImpl(StandardPath type, bool shouldCreate = false) nothrow @safe
-    {
-        version(StandardPathsCocoa) {
-            final switch(type) {
-                case StandardPath.config:
-                    return domainDir(NSLibraryDirectory, NSUserDomainMask, shouldCreate).maybeBuild("Preferences").createIfNeeded(shouldCreate);
-                case StandardPath.cache:
-                    return domainDir(NSCachesDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.data:
-                    return domainDir(NSApplicationSupportDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.desktop:
-                    return domainDir(NSDesktopDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.documents:
-                    return domainDir(NSDocumentDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.pictures:
-                    return domainDir(NSPicturesDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.music:
-                    return domainDir(NSMusicDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.videos:
-                    return domainDir(NSMoviesDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.downloads:
-                    return domainDir(NSDownloadsDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.templates:
-                    return null;
-                case StandardPath.publicShare:
-                    return domainDir(NSSharedPublicDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.fonts:
-                    return domainDir(NSLibraryDirectory, NSUserDomainMask, shouldCreate).maybeBuild("Fonts").createIfNeeded(shouldCreate);
-                case StandardPath.applications:
-                    return domainDir(NSApplicationDirectory, NSUserDomainMask, shouldCreate);
-                case StandardPath.startup:
-                    return null;
-                case StandardPath.roaming:
-                    return null;
-                case StandardPath.savedGames:
-                    return null;
-            }
-        } else {
-            final switch(type) {
-                case StandardPath.config:
-                    return fsPath(kUserDomain, kPreferencesFolderType, shouldCreate);
-                case StandardPath.cache:
-                    return fsPath(kUserDomain, kCachedDataFolderType, shouldCreate);
-                case StandardPath.data:
-                    return fsPath(kUserDomain, kApplicationSupportFolderType, shouldCreate);
-                case StandardPath.desktop:
-                    return fsPath(kUserDomain, kDesktopFolderType, shouldCreate);
-                case StandardPath.documents:
-                    return fsPath(kUserDomain, kDocumentsFolderType, shouldCreate);
-                case StandardPath.pictures:
-                    return fsPath(kUserDomain, kPictureDocumentsFolderType, shouldCreate);
-                case StandardPath.music:
-                    return fsPath(kUserDomain, kMusicDocumentsFolderType, shouldCreate);
-                case StandardPath.videos:
-                    return fsPath(kUserDomain, kMovieDocumentsFolderType, shouldCreate);
-                case StandardPath.downloads:
-                    return fsPath(kUserDomain, kDownloadsFolderType, shouldCreate);
-                case StandardPath.templates:
-                    return null;
-                case StandardPath.publicShare:
-                    return fsPath(kUserDomain, kPublicFolderType, shouldCreate);
-                case StandardPath.fonts:
-                    return fsPath(kUserDomain, kFontsFolderType, shouldCreate);
-                case StandardPath.applications:
-                    return fsPath(kUserDomain, kApplicationsFolderType, shouldCreate);
-                case StandardPath.startup:
-                    return null;
-                case StandardPath.roaming:
-                    return null;
-                case StandardPath.savedGames:
-                    return null;
-            }
-        }
-    }
-
-    string writablePath(StandardPath type, FolderFlag params = FolderFlag.none) nothrow @safe
-    {
-        const bool shouldCreate = (params & FolderFlag.create) != 0;
-        const bool shouldVerify = (params & FolderFlag.verify) != 0;
-        return writablePathImpl(type, shouldCreate).verifyIfNeeded(shouldVerify);
-    }
-
-    string[] standardPaths(StandardPath type) nothrow @safe
-    {
-        string commonPath;
-
-        version(StandardPathsCocoa) {
-            switch(type) {
-                case StandardPath.fonts:
-                    commonPath = domainDir(NSLibraryDirectory, NSSystemDomainMask).maybeBuild("Fonts");
-                    break;
-                case StandardPath.applications:
-                    commonPath = domainDir(NSApplicationDirectory, NSSystemDomainMask);
-                    break;
-                case StandardPath.data:
-                    commonPath = domainDir(NSApplicationSupportDirectory, NSSystemDomainMask);
-                    break;
-                case StandardPath.cache:
-                    commonPath = domainDir(NSCachesDirectory, NSSystemDomainMask);
-                    break;
-                default:
-                    break;
-            }
-        } else {
-            switch(type) {
-                case StandardPath.fonts:
-                    commonPath = fsPath(kOnAppropriateDisk, kFontsFolderType);
-                    break;
-                case StandardPath.applications:
-                    commonPath = fsPath(kOnAppropriateDisk, kApplicationsFolderType);
-                    break;
-                case StandardPath.data:
-                    commonPath = fsPath(kOnAppropriateDisk, kApplicationSupportFolderType);
-                    break;
-                case StandardPath.cache:
-                    commonPath = fsPath(kOnAppropriateDisk, kCachedDataFolderType);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        string[] paths;
-        string userPath = writablePath(type);
-        if (userPath.length)
-            paths ~= userPath;
-        if (commonPath.length)
-            paths ~= commonPath;
-        return paths;
-    }
 
 } else {
 
@@ -939,6 +623,12 @@ version(OSX) {
 }
 
 
+Path maybeBuild(Path start, string subdir) @trusted
+{
+    return start.empty ? Path.init : (start / Path(subdir));
+}
+
+
 //
 // Windows-specific internals
 //
@@ -1081,3 +771,111 @@ version(Windows)
         return Path.init;
     }
 }
+
+
+//
+// Darwin-specific internals
+//
+
+version(Darwin) 
+{
+    //import std.string : fromStringz;
+    import core.attribute : selector;
+
+    alias NSSearchPathDirectory = NSUInteger;
+    enum : NSSearchPathDirectory 
+    {
+        NSApplicationDirectory = 1,
+        NSDemoApplicationDirectory,
+        NSDeveloperApplicationDirectory,
+        NSAdminApplicationDirectory,
+        NSLibraryDirectory,
+        NSDeveloperDirectory,
+        NSUserDirectory,
+        NSDocumentationDirectory,
+        NSDocumentDirectory,
+        NSCoreServiceDirectory,
+        NSAutosavedInformationDirectory = 11,
+        NSDesktopDirectory = 12,
+        NSCachesDirectory = 13,
+        NSApplicationSupportDirectory = 14,
+        NSDownloadsDirectory = 15,
+        NSInputMethodsDirectory = 16,
+        NSMoviesDirectory = 17,
+        NSMusicDirectory = 18,
+        NSPicturesDirectory = 19,
+        NSPrinterDescriptionDirectory = 20,
+        NSSharedPublicDirectory = 21,
+        NSPreferencePanesDirectory = 22,
+        NSItemReplacementDirectory = 99,
+        NSAllApplicationsDirectory = 100,
+        NSAllLibrariesDirectory = 101,
+    };
+
+    alias NSSearchPathDomainMask = NSUInteger;
+
+    enum : NSSearchPathDomainMask 
+    {
+        NSUserDomainMask = 1,
+        NSLocalDomainMask = 2,
+        NSNetworkDomainMask = 4,
+        NSSystemDomainMask = 8,
+        NSAllDomainsMask = 0x0ffff,
+    };
+
+    extern(Objective-C)
+    extern class NSFileManager :  NSObject 
+    {
+    @nogc nothrow:
+    protected:
+        static NSFileManager defaultManager() @selector("defaultManager");
+        NSURL URLForDirectory(NSSearchPathDirectory dir, NSSearchPathDomainMask domain, NSURL url, int shouldCreate, NSError* error) @selector("URLForDirectory:inDomain:appropriateForURL:create:error:");
+    }
+
+    Path domainDir(NSSearchPathDirectory dir, NSSearchPathDomainMask domain) nothrow @trusted
+    {
+        bool shouldCreate = false;
+        import core.stdc.stdio;
+
+        try 
+        {
+            NSFileManager manager = NSFileManager.defaultManager();
+            if (!manager)
+                return Path.init;
+            NSURL url = manager.URLForDirectory(dir, domain, null, shouldCreate, null);
+            if (!url) {
+                return Path.init;
+            }
+            scope(exit) url.release();
+            NSString nsstr = url.absoluteString();
+            scope(exit) nsstr.release();
+
+            nstring str = nstring(fromStringz(nsstr.ptr)); // calls UTF8String
+printf("URLForDirectory returned %s\n", nsstr.ptr);
+            nstring fileProtocol = nstring("file://");
+            if (startsWith(str, fileProtocol)) 
+            {
+                str = nstring(str[7..$]);
+                if (str.length > 1 && str[$-1] == '/') 
+                {
+                    return Path(str[0..$-1]);
+                } 
+                else 
+                {
+                    return Path(str);
+                }
+            }
+            else
+                printf("fail to return something\n");
+        }
+        catch(NuException e)
+        {
+            e.freeNoThrow;
+        } 
+        catch(Exception e) 
+        {
+        }
+        return Path.init;
+    }
+}
+

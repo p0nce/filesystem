@@ -47,11 +47,11 @@ public:
     nstring str;
     alias this = str;
 
-    this(const(char)[] source) pure
+    this(const(char)[] source) pure nothrow
     {
         str = source;
     }
-    this(const(nstring) source) pure
+    this(const(nstring) source) pure nothrow
     {
         str = source;
     }
@@ -280,7 +280,7 @@ public:
     //
 
     /// Check if the path is empty.
-    bool empty()            pure const => str             == "";
+    bool empty()            pure nothrow const => str             == "";
     bool hasRootName()      pure const => rootName()      != "";
     bool hasRootDirectory() pure const => rootDirectory() != "";
     bool hasRelativePath()  pure const => relativePath()  != "";
