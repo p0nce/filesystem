@@ -367,10 +367,6 @@ vector!Path standardPaths(StandardPath type) @safe
     }
 
     Path userPath = writablePath(type);
-
-    import core.stdc.stdio;
-    debug printf("userPath %*.s\n", userPath.length, userPath.ptr);
-    debug printf("commonPath %*.s\n", commonPath.length, commonPath.ptr);
     if (userPath.length)
         paths ~= userPath;
     if (commonPath.length)
@@ -835,7 +831,6 @@ version(Darwin)
     Path domainDir(NSSearchPathDirectory dir, NSSearchPathDomainMask domain) nothrow @trusted
     {
         bool shouldCreate = false;
-        import core.stdc.stdio;
 
         try 
         {
@@ -851,11 +846,10 @@ version(Darwin)
             scope(exit) nsstr.release();
 
             nstring str = nstring(fromStringz(nsstr.ptr)); // calls UTF8String
-printf("URLForDirectory returned %s\n", nsstr.ptr);
             nstring fileProtocol = nstring("file://");
             if (startsWith(str, fileProtocol)) 
             {
-                str = nstring(str[7..$]);
+                str = str[7..$];
                 if (str.length > 1 && str[$-1] == '/') 
                 {
                     return Path(str[0..$-1]);
@@ -865,8 +859,6 @@ printf("URLForDirectory returned %s\n", nsstr.ptr);
                     return Path(str);
                 }
             }
-            else
-                printf("fail to return something\n");
         }
         catch(NuException e)
         {
