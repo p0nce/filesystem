@@ -260,7 +260,7 @@ bool copyFile(Path from, Path to,
     
     Throws: `FileSystemIOException` or `InvalidPathException`.
 
-    TODO: attributes, copy them from another file.
+    TODO: attributes, copy them from another file, or give them directly.
 */
 bool createDirectory(Path p)
 {
@@ -665,6 +665,11 @@ bool remove(Path p)
     (which may be zero if p did not exist to begin with).
 
     BUG: symlinks not implemented.
+
+    Throws:
+        `FileSystemIOException`,
+        `InvalidPathException`,
+        `FileNotFoundException`
 */
 int removeAll(Path p)
 {

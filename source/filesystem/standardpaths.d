@@ -16,6 +16,7 @@ import nulib.collections.vector;
 
 import filesystem.path;
 import filesystem.internals;
+import filesystem.xdgpaths;
 
 version (OSX)
     version = Darwin;
@@ -43,6 +44,10 @@ else version(Darwin)
 
     import objc;
     import foundation;
+}
+else static if (isFreedesktop)
+{
+    import filesystem.xdgpaths;
 }
 else
     static assert(0, "Unrecognized OS");
@@ -594,29 +599,6 @@ PICTURES=Images
 private:
 
 
-version(OSX) {
-    enum isFreedesktop = false;
-} else version(Android) {
-    enum isFreedesktop = false;
-} else version(linux) {
-    enum isFreedesktop = true;
-} else version(FreeBSD) {
-    enum isFreedesktop = true;
-} else version(OpenBSD) {
-    enum isFreedesktop = true;
-} else version(NetBSD) {
-    enum isFreedesktop = true;
-} else version(DragonFlyBSD) {
-    enum isFreedesktop = true;
-} else version(BSD) {
-    enum isFreedesktop = true;
-} else version(Hurd) {
-    enum isFreedesktop = true;
-} else version(Solaris) {
-    enum isFreedesktop = true;
-} else {
-    enum isFreedesktop = false;
-}
 
 
 Path maybeBuild(Path start, string subdir) @trusted

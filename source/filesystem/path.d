@@ -125,6 +125,8 @@ public:
         Warning: this is up to spec, but the spec function looks a bit
                  weird... parent path of "my/path/" is "my/path" since
                  the last separator is returned by the iterator.
+
+        See_also: `dirName()`.
     */
     Path parentPath() pure const
     {
@@ -146,6 +148,37 @@ public:
             r ~= item;
         }
         return Path(r.ptr[0..lastLen]);
+    }
+
+    /**
+        Phobos-compatible `dirName()`.
+
+        Similar to `parentPath` without the issues.
+    */
+    Path dirName() /* pure */ /* const */
+    {
+ 
+        Path r = hasRootPath() ? rootPath() : ".";
+        Path rlast = r;
+
+        auto range = iterate();
+        int skip = 0;
+        if (range.hasRootName) skip++;
+        if (range.hasRootDir) skip++;
+
+        foreach(item; iterate())
+        {
+            if (item == "")
+                continue;
+            if (skip > 0)
+            {
+                skip--;
+                continue;
+            }
+            rlast = r;
+            r = r / item;
+        }
+        return rlast.lexicallyNormal();
     }
 
     /**
@@ -283,6 +316,7 @@ public:
     bool empty()            pure nothrow const => str             == "";
     bool hasRootName()      pure const => rootName()      != "";
     bool hasRootDirectory() pure const => rootDirectory() != "";
+    bool hasRootPath()      /* pure */ /* const */ => rootPath()      != "";
     bool hasRelativePath()  pure const => relativePath()  != "";
     bool hasParentPath()    pure const => parentPath()    != "";
     bool hasFilename()      pure const => filename()      != "";
@@ -888,7 +922,9 @@ pure:
     {
         Token tok;
         if (lexer.consume(Token.type.rootDir, tok))
-            rootDir = "/"; // Note: payload ignored, it could be /// or `\\`.
+        {
+            rootDir = iprefToChar(lexer.sepPreference());
+        }
         else
             rootDir = null;
     }
@@ -1289,16 +1325,21 @@ enum SepPreference
 
 
 version(Windows)
-    enum char OS_PREFERRED_SEPARATOR = '\\';
+    enum string OS_PREFERRED_SEPARATOR = "\\";
 else
-    enum char OS_PREFERRED_SEPARATOR = '/';
+    enum string OS_PREFERRED_SEPARATOR = "/";
 
-char prefToChar(SepPreference pref) pure
+char prefToChar(SepPreference pref) pure nothrow @safe
+{
+    return iprefToChar(pref)[0];
+}
+
+string iprefToChar(SepPreference pref) pure nothrow @safe
 {
     switch(pref)
     {
-        case SepPreference.preferSlash:     return '/';
-        case SepPreference.preferBackslash: return '\\';
+        case SepPreference.preferSlash:     return "/";
+        case SepPreference.preferBackslash: return "\\";
         case SepPreference.preferUnknown:   return OS_PREFERRED_SEPARATOR;
         default:
             assert(0);
