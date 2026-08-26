@@ -41,6 +41,8 @@ else version(Posix)
 
     import cerrno  = core.stdc.errno;
     import cstdlib = core.stdc.stdlib;
+
+    // FUTURE: do without those libc function
     import cstdio = core.stdc.stdio: remove, rename;
     
 
@@ -201,6 +203,7 @@ bool copyFile(Path from, Path to,
             }
         }
 
+       // PERF: choose best block size
         enum int BLOCK_SIZE = 16384;
         vector!byte buf;
         buf.resize(BLOCK_SIZE);        
@@ -256,18 +259,25 @@ bool copyFile(Path from, Path to,
     Create a directory as if by POSIX `mkdir()`.
     The parent directory must already exist.
 
+    Attributes are copied from an optional `templateDir` directory, else
+    maximum permissions are set.
+
+    Params:
+        pathToDir   = Path to the directory to create.
+        templateDir = Existing directory to get attributes/permissions from.
+
     Returns: `true` if created, `false` if already existing.
     
-    Throws: `FileSystemIOException` or `InvalidPathException`.
-
-    TODO: attributes, copy them from another file, or give them directly.
+    Throws: `FileSystemIOException`, 
+            `FileNotFoundException`, 
+            `InvalidPathException`.
 */
-bool createDirectory(Path p)
+bool createDirectory(Path pathToDir, Path templateDir = Path.init)
 {
     // Already exists?
     try
     {
-        FileStatus fs = status(p);
+        FileStatus fs = status(pathToDir);
         if (isDirectory(fs))
             return false;
     }
@@ -279,14 +289,27 @@ bool createDirectory(Path p)
     // Doesn't yet exist, proceed to creation
     version(Windows)
     {
-        nwstring ws = p.native.toUTF16();
+        nwstring ws = pathToDir.native.toUTF16();
+
+        if (! templateDir.empty)
+        {
+            nwstring ts = templateDir.native.toUTF16();
+            if (! CreateDirectoryExW(ts.ptr, ws.ptr, null))
+                throwIO(kStrErrCreateDirectory);
+        }
+
         if (! CreateDirectoryW(ws.ptr, null))
             throwIO(kStrErrCreateDirectory);
     }
     else version(Posix)
     {
-        punistd.mode_t attribs = cast(punistd.mode_t)FilePerms.all;
-        if (pstat.mkdir(p.native.ptr, attribs) != 0)
+        FilePerms perms = FilePerms.all;        
+
+        if (! templateDir.empty())
+            perms = status(templateDir).permissions;
+
+        punistd.mode_t attribs = cast(punistd.mode_t) perms;        
+        if (pstat.mkdir(pathToDir.native.ptr, attribs) != 0)
             throwIO(kStrErrCreateDirectory);
     }
     return true;

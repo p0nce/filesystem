@@ -51,7 +51,7 @@ unittest
     version(Windows)
     {
         assert(Path("C:/foo").rootDirectory     == "/");
-        assert(Path("C:\\foo").rootDirectory    == "/");
+        assert(Path("C:\\foo").rootDirectory    == "\\");
         assert(Path("C:foo").rootDirectory      == "");
     }
 }
@@ -73,7 +73,7 @@ unittest
     version(Windows)
     {
         assert(Path("C:/foo").rootPath() == "C:/");
-        assert(Path("C:\\foo").rootPath() == "C:/");
+        assert(Path("C:\\foo").rootPath() == "C:\\");
         assert(Path("C:foo").rootPath() == "C:");
     }
     else
@@ -128,7 +128,7 @@ unittest
     version(Windows)
     {
         assert(Path("C:/foo").parentPath() == "C:/");
-        assert(Path("C:\\foo").parentPath() == "C:/");
+        assert(Path("C:\\foo").parentPath() == "C:\\");
         assert(Path("C:foo").parentPath() == "C:");
     }
 }
@@ -273,7 +273,7 @@ unittest
         Path p = Path(`C:\users\abcdef\AppData\Local\Temp\`);
         string[] correct = 
         [
-            "C:", "/", "users", "abcdef", "AppData", "Local", "Temp", ""
+            "C:", "\\", "users", "abcdef", "AppData", "Local", "Temp", ""
         ];
         int n = 0;
         foreach(part; p.iterate())
@@ -388,4 +388,38 @@ unittest
 {
     currentPath();
     absolute(".");
+}
+
+@(".dirName()")
+unittest
+{    
+    assert(Path("/my/path.txt").dirName()       == "/my");
+    assert(Path("/one/two/three.txt").dirName() == "/one/two");
+    assert(Path("/file").dirName()              == "/");
+    assert(Path("file").dirName()               == "."); 
+    assert(Path("dir/").dirName()               == ".");
+    assert(Path("/many-slashes/////").dirName() == "/");    
+    assert(Path("dir//file").dirName()   == "dir");
+    assert(Path("dir/subdir/").dirName() == "dir");    
+    assert(Path("/").dirName()           == "/");
+    assert(Path("\\").dirName()          == "\\");
+    assert(Path(`dir\`).dirName()        == ".");
+    assert(Path(`dir\\\`).dirName()      == ".");
+    assert(Path(`dir\file`).dirName()    == `dir`);
+    assert(Path(`dir\\\file`).dirName()  == `dir`);
+    assert(Path(`dir\subdir\`).dirName() == `dir`);      
+    assert(Path(`\dir\file`).dirName()   == `\dir`);
+    assert(Path(`\file`).dirName()       == `\`);
+    assert(Path(`\`).dirName()           == `\`);  
+    assert(Path(`\\\`).dirName()         == `\`);
+    version(Windows)
+    {
+        assert(Path(`d:`).dirName()          == "d:");
+        assert(Path(`d:file`).dirName()      == "d:");
+        assert(Path(`d:\`).dirName()         == `d:\`);
+        assert(Path(`d:\file`).dirName()     == `d:\`);
+        assert(Path(`d:\dir\file`).dirName() == `d:\dir`);
+    }
+    //assert(path_dirname(nstring(`\\server\share\dir\file`)) == `\\server\share\dir\`);
+    //assert(path_dirname(nstring(`\\server\share`)) == ""); // Phobos would return `\\server\share`
 }

@@ -189,8 +189,9 @@ vector!Path pathsFromEnv(nstring envName,
     => pathsFromEnvValue(getEnvironmentVariable(envName), separator, subfolder);
 
 version(none):
-    
-private bool ensureExists(string dir) nothrow
+
+//
+bool ensureExists(string dir) nothrow
 {
     bool ok;
     try {
@@ -208,7 +209,8 @@ private bool ensureExists(string dir) nothrow
 }
 
 
-private string xdgBaseDir(string envvar, string fallback, string subfolder = null, bool shouldCreate = false) nothrow {
+private string xdgBaseDir(string envvar, string fallback, string subfolder = null, bool shouldCreate = false) nothrow 
+{
     string dir;
     collectException(environment.get(envvar), dir);
     if (dir.length == 0) {

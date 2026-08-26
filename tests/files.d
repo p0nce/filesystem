@@ -10,7 +10,6 @@ void nprintf(nstring s)
     printf("%.*s", cast(int) s.length, s.ptr);
 }
 
-
 @("absolute()")
 unittest
 {
@@ -77,14 +76,7 @@ unittest
 
     // .. exist, but didn't need to create it
     assert(false == createDirectories(Path("..")));
-
-    assert(remove(Path("tests/createDir/my/deeply/nested/hierarchy")));
-    assert(remove(Path("tests/createDir/my/deeply/nested")));
-    assert(remove(Path("tests/createDir/my/deeply")));
-    assert(remove(Path("tests/createDir/my")));
-    assert(remove(Path("tests/createDir/our/hierarchy")));
-    assert(remove(Path("tests/createDir/our")));
-    assert(remove(Path("tests/createDir")));
+    removeAll(Path("tests/createDir"));
 }
 
 @("currentPath()")
@@ -119,6 +111,16 @@ unittest
 @("dirEntriesRecursive()")
 unittest
 {
+    try
+    {
+        removeAll(Path("tests/empty-dir2"));
+        removeAll(Path("tests/empty-dir3"));
+    }
+    catch(FileSystemException e)
+    {
+        e.free();
+    }
+
     {
         int items = 0;
         // iterate project dir
@@ -173,7 +175,7 @@ unittest
 
         auto range2 = dirEntriesRecursive(Path("tests/empty-dir2"), DirectoryOptions.spanDepthFirst);
         assert(range2.empty);
-        remove(Path("tests/empty-dir2"));
+        assert(1 == removeAll(Path("tests/empty-dir2")));
     }
 
     // Create an empty dir inside this empty dir

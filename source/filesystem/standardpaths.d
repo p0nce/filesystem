@@ -44,6 +44,7 @@ else version(Darwin)
 
     import objc;
     import foundation;
+    import core.attribute : selector;
 }
 else static if (isFreedesktop)
 {
@@ -757,9 +758,6 @@ version(Windows)
 
 version(Darwin) 
 {
-    //import std.string : fromStringz;
-    import core.attribute : selector;
-
     alias NSSearchPathDirectory = NSUInteger;
     enum : NSSearchPathDirectory 
     {
@@ -802,7 +800,7 @@ version(Darwin)
     };
 
     extern(Objective-C)
-    extern class NSFileManager :  NSObject 
+    extern class NSFileManager : NSObject 
     {
     @nogc nothrow:
     protected:
