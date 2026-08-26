@@ -251,6 +251,9 @@ public:
 
     /**
         Returns the internal pathname in native UTF-8 pathname format.
+
+        TODO: this should throw a single type of exception: InvalidPathException.
+              make it nothrow
     */
     nstring native() pure const
     {

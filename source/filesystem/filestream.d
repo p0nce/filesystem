@@ -3,12 +3,21 @@ module filesystem.filestream;
 // Note: currently using libc
 
 import nulib.io.stream;
+import nulib.string;
+import nulib.text.unicode;
 import numem;
 
 import filesystem.path;
 
-// TODO: use posix fopen like in Phobos
 import cstdio = core.stdc.stdio;
+import cconfig = core.stdc.config;
+version(Posix)
+    import pstdio = core.sys.posix.stdio;
+
+version (CRuntime_Microsoft)
+{
+    extern (C) nothrow @nogc cstdio.FILE* _wfopen(scope const wchar* filename, scope const wchar* mode);
+}
 
 /**
     A stream over a file backed by FILE*.
@@ -24,48 +33,205 @@ class FileStream : Stream
 private:
 @nogc nothrow @safe:
     cstdio.FILE* cfile = null;
+    Flags flags;
 
 public:
 
-    this(Path p, scope const(char)[] mode = "rb")
+    /**
+        Constructor.
+
+        Params:
+            path = A UTF-8 file path.
+            mode = Can be "r", "w", "a", "r+", "w+", "a+"...
+    */
+    this(Path path, scope const(char)[] accessMode = "rb") @trusted
     {
+        nstring mode = accessMode;
+        nstring npath;
+
+        try
+        {
+            npath = path.native(); // .native isn't nothrow yet
+        }
+        catch(Exception e)
+        {
+            assert(0);
+        }
+
+        version(CRuntime_Microsoft)
+        {
+            nwstring wmode, wpath;
+            try
+            {
+                wmode = mode.toUTF16(); // toUTF16 isn't nothrow
+                wpath = path.toUTF16();
+            }
+            catch(Exception e)
+            {
+                assert(0);
+            }
+            cfile = _wfopen(wpath.ptr, wmode.ptr);
+        }
+        else version(Posix)
+        {
+            // Phobos does this, with a convincing explanation.
+            cfile = pstdio.fopen(npath.ptr, mode.ptr);
+        }
+        else
+        {
+            cfile = cstdio.fopen(npath.ptr, mode.ptr);
+        }
+        flags = parseAccessMode(accessMode);
         assert(0);
     }
+    ///ditto
+    this(const(char)[] path, scope const(char)[] accessMode = "rb") @trusted
+        => this(Path(path), accessMode);
 
+    /**
+        Destructor.
+    */
     ~this()
     {
         close();
     }
 
-    override @property bool canRead() { return true; } // TODO
-    override @property bool canWrite() { return true; } // TODO
-    override @property bool canSeek() { return true; }
-    override @property bool canTimeout() { return false; }
-    override @property bool canFlush() { return true; }
+    /**
+        Whether the stream can be read from.
 
+        Returns:
+        $(D true) if you can read data from the stream,
+        $(D false) otherwise.
+    */
+    override @property bool canRead()    => (flags & Flags.read) != 0;
+
+    /**
+        Whether the stream can be written to.
+
+        Returns:
+        $(D true) if you can write data to the stream,
+        $(D false) otherwise.
+    */
+    override @property bool canWrite()   => (flags & Flags.write) != 0;
+
+    /**
+        Whether the stream can be seeked.
+
+        Returns:
+        $(D true) if you can seek through the stream,
+        $(D false) otherwise.
+    */
+    override @property bool canSeek()    { return true; }
+
+    /**
+        Whether the stream can timeout during operations.
+
+        Returns:
+        $(D true) if the stream may time out during operations,
+        $(D false) otherwise.
+    */
+    override @property bool canTimeout() { return false; }
+
+    /**
+        Whether the stream can be flushed to disk.
+
+        Returns:
+        $(D true) if the stream may be flushed,
+        $(D false) otherwise.
+    */
+    override @property bool canFlush()   { return true; }
+
+    /**
+        Length of the stream.
+
+        Returns:
+        Length of the stream, or $(D -1) if the length is unknown.
+    */
     override @property ptrdiff_t length() 
     {
-        assert(0); // TODO
+        ptrdiff_t oldpos = tell();
+        if (oldpos < 0)
+            return -1;
+
+        // Note: if we get a fseek() failure, then
+        // the stream is now invalid, but no way to
+        // tell the user.
+
+        long size = seek(0, SeekOrigin.end);
+        if (size < 0)
+            return -1;
+
+        long r = seek(oldpos, SeekOrigin.end);
+        if (r < 0)
+            return -1; 
+
+        return cast(ptrdiff_t) size;
     }
 
+
+    /**
+        Position in stream.
+
+        Returns:
+            Position in the stream, or $(D -1) if the position is unknown.
+    */    
     override @property ptrdiff_t tell() 
     { 
         return cast(ptrdiff_t) cstdio.ftell(cfile);
     }
 
+    /**
+        Timeout in milliseconds before a read operation will fail.
+
+        Returns:
+            A timeout in milliseconds, or $(D 0) if there's no timeout.
+    */
     override @property int readTimeout() { return 0; }
+
+    /**
+        Timeout in milliseconds before a write operation will fail.
+
+        Returns:
+            A timeout in milliseconds, or $(D 0) if there's no timeout.
+    */
     override @property int writeTimeout() { return 0; }
 
+    /**
+        Clears all buffers of the stream and causes data to be written to the underlying device.
+
+        Returns:
+            $(D true) if the flush operation succeeded,
+            $(D false) otherwise.
+    */
     override bool flush()
     {
         return cstdio.fflush(cfile) == 0;
     }
 
+    /**
+        Sets the reading position within the stream
+
+        Returns:
+            The new position in the stream, or a $(D StreamError) if the 
+            seek operation failed.
+
+        See_Also:
+            $(D StreamError)
+    */
     override long seek(ptrdiff_t offset, SeekOrigin origin)
     {
-        assert(0);
+        int res = cstdio.fseek(cfile, cast(cconfig.c_long) offset, cast(int) origin);
+        if (res == -1)
+            return STREAM_ERROR_INVALID_STATE;
+        long cur = cstdio.ftell(cfile);
+        if (cur == -1)
+            return STREAM_ERROR_INVALID_STATE;
+        return cur;
     }
 
+    /**
+        Closes the stream.
+    */
     override void close() @trusted
     {
         if (cfile)
@@ -75,15 +241,50 @@ public:
         }
     }
 
+    /**
+        Reads bytes from the specified stream in to the specified buffer.
 
-    override ptrdiff_t read(ubyte[] buffer) 
+        Notes:
+            The position and length to read is specified by the slice of `buffer`.  
+            Use slicing operation to specify a range to read to.
+
+        Returns:
+            The amount of bytes read from the stream, 
+            or a $(D StreamError).
+
+        See_Also:
+            $(D StreamError)
+    */
+    override ptrdiff_t read(ubyte[] buffer) @trusted
     {
-        assert(0);
+        assert(buffer.length > 0);
+        size_t res = cstdio.fread(&buffer[0], 1, buffer.length, cfile);
+        if (cstdio.ferror(cfile))
+            return STREAM_ERROR_INVALID_STATE;
+        return res;
     }
 
-    override ptrdiff_t write(ubyte[] buffer) 
+    /**
+        Writes bytes from the specified buffer in to the stream
+
+        Notes:
+            The position and length to write is specified by the slice of `buffer`.  
+            Use slicing operation to specify a range to write from.
+
+        Returns:
+            The amount of bytes written to the stream, 
+            or a $(D StreamError).
+
+        See_Also:
+            $(D StreamError)
+    */
+    override ptrdiff_t write(ubyte[] buffer) @trusted
     {
-        assert(0);
+        assert(buffer.length > 0);
+        size_t res = cstdio.fwrite(&buffer[0], 1, buffer.length, cfile);
+        if (cstdio.ferror(cfile))
+            return STREAM_ERROR_INVALID_STATE;
+        return res;
     }
 
     /**
@@ -95,5 +296,65 @@ public:
         cstdio.FILE* result = cfile;
         cfile = null;
         return result;
+    }
+
+private:
+
+    enum Flags
+    {
+        read      = 1, // read enabled
+        write     = 2, // write enabled
+        binary    = 4, // file open in binary mode
+        append    = 8, // start position is end of file
+    }
+
+    Flags parseAccessMode(scope const(char)[] accessMode)
+    {
+    //pure @nogc nothrow @safe:
+
+        int result = 0;
+        int nth = 0;
+
+        char peek() 
+        {
+            if (nth < accessMode.length)
+                return accessMode[nth];
+            else
+                return '\0';
+        }
+
+        bool consume(char ch)
+        {
+            if (peek() == ch)
+            {
+                nth++;
+                return true;
+            }
+            else
+                return false;
+        }
+
+        if (consume('r'))
+            result |= Flags.read;
+        else if (consume('w'))
+        {
+            result |= Flags.write;
+        }
+        else if (consume('a'))
+        {
+            result |= Flags.write;
+            result |= Flags.append;
+        }
+
+        if (consume('b'))
+            result |= Flags.binary;
+
+        if (consume('+'))
+        {
+            result |= Flags.read;
+            result |= Flags.write;
+        }
+
+        return cast(Flags) result;
     }
 }
