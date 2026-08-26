@@ -248,7 +248,7 @@ Path writablePath(StandardPath type) /* nothrow */ @trusted
         final switch(type) 
         {
             case StandardPath.config:
-                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeBuild("Preferences");
+                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeAppend("Preferences");
             case StandardPath.cache:
                 return domainDir(NSCachesDirectory, NSUserDomainMask);
             case StandardPath.data:
@@ -270,7 +270,7 @@ Path writablePath(StandardPath type) /* nothrow */ @trusted
             case StandardPath.publicShare:
                 return domainDir(NSSharedPublicDirectory, NSUserDomainMask);
             case StandardPath.fonts:
-                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeBuild("Fonts");
+                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeAppend("Fonts");
             case StandardPath.applications:
                 return domainDir(NSApplicationDirectory, NSUserDomainMask);
             case StandardPath.startup:
@@ -356,7 +356,7 @@ vector!Path standardPaths(StandardPath type) @safe
         switch(type) 
         {
             case StandardPath.fonts:
-                commonPath = domainDir(NSLibraryDirectory, NSSystemDomainMask).maybeBuild("Fonts");
+                commonPath = domainDir(NSLibraryDirectory, NSSystemDomainMask).maybeAppend("Fonts");
                 break;
             case StandardPath.applications:
                 commonPath = domainDir(NSApplicationDirectory, NSSystemDomainMask);
@@ -602,10 +602,7 @@ private:
 
 
 
-Path maybeBuild(Path start, string subdir) @trusted
-{
-    return start.empty ? Path.init : (start / Path(subdir));
-}
+
 
 
 //

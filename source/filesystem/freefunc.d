@@ -321,11 +321,16 @@ bool createDirectory(Path pathToDir, Path templateDir = Path.init)
 
     Params:
         pathToDir   = Path to the chain of directories to create.
-        templateDir = Existing directory to get attributes/permissions from.
+        templateDir = Existing directory to get attributes/permissions 
+                      from.
 
-    Returns: `true` if created, `false` if already existing.
+    Returns: `true` if created, `false` if already existing. If 
+        nothing is thrown, path `p` is guaranteed to exist at the
+        end of this function.
 
-    Throws: `FileSystemIOException` or `InvalidPathException`.
+    Throws: `FileSystemIOException`, 
+            `InvalidPathException`,
+            `FileNotFoundException`.
 
     Note: `std::filesystem` spec is remarkably bizarre about
     copying attributes from another directory here. That just
@@ -415,7 +420,8 @@ Path currentPath() /* pure */
     Warning: this DirectoryRange should be free after iteration with
     `dirEntriesFree()`.
 */
-unique_ptr!DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOptions.none)
+unique_ptr!DirectoryRange dirEntries(Path p, 
+    DirectoryOptions opts = DirectoryOptions.none)
 {
     return unique_new!DirectoryRange(p, opts);
 }
@@ -425,7 +431,8 @@ unique_ptr!DirectoryRange dirEntries(Path p, DirectoryOptions opts = DirectoryOp
     Returns: A recursive directory range to iterate over the files in
     this directory, and its sub-directories.
 */
-unique_ptr!RecursiveDirectoryRange dirEntriesRecursive(Path p, DirectoryOptions opts = DirectoryOptions.none)
+unique_ptr!RecursiveDirectoryRange dirEntriesRecursive(Path p, 
+    DirectoryOptions opts = DirectoryOptions.none)
 {
     return unique_new!RecursiveDirectoryRange(p, opts);
 }
@@ -553,11 +560,14 @@ FileTime lastWriteTime(Path p)
 
 
 /**
-    Changes access permissions of the file to which p resolves, as if by POSIX `fchmodat`. 
+    Changes access permissions of the file to which p resolves, as if 
+    by POSIX `fchmodat`. 
 
     Symlinks are followed unless `PermOptions.nofollow` is set in opts.
 */
-void permissions(Path p, FilePerms prms, PermOptions opts = PermOptions.replace)
+void permissions(Path p, 
+                 FilePerms prms, 
+                 PermOptions opts = PermOptions.replace)
 {
     FileStatus fs = symlinkStatus(p);
 
@@ -751,7 +761,7 @@ bool rename(Path oldPath, Path newPath)
 
     version(Windows)
     {
-        // BUG: MoveFileExW is not actually atomic
+        // BUG TODO: MoveFileExW is not actually atomic
         // https://github.com/untitaker/rust-atomicwrites/issues/27
         nwstring wold = oldPath.native.toUTF16();
         nwstring wnew = newPath.native.toUTF16();

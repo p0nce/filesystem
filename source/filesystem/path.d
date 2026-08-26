@@ -37,6 +37,9 @@ import filesystem.internals;
 
     On POSIX systems, the generic format is the native format and 
     there is no need to distinguish or convert between them. 
+
+    Important: `Path` is just a `nstring`. It implicitely converts to 
+    a `nstring`, and a path is empty iff its string `str` is empty.
 */
 struct Path
 {
@@ -611,6 +614,17 @@ public:
         Path r = str;
         r.append(p);
         return r;
+    }
+
+    /**
+        Path append operation, but only if the path isn't empty.
+        Else, it stays empty.
+    */
+    ref Path maybeAppend(const(char)[] subdir) @trusted
+    {
+        if (! empty)
+            append(subdir);
+        return this;
     }
 
     /**
