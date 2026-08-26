@@ -81,7 +81,9 @@ enum FilePerms : int
     setGid     = 0x400, /// Set group ID to file's user group ID on execution.
     stickyBit  = 0x200, /// Implementation-defined meaning.
 
-    mask       = 0xFFF  /// All valid permission bits. 
+    mask       = 0xFFF, /// All valid permission bits. 
+
+    invalid    = 0x1000 /// An invalid sentinel value. 
 }
 
 

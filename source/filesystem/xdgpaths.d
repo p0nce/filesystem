@@ -51,8 +51,6 @@ version(OSX) {
 }
 
 
-
-
 static if (isFreedesktop):
 
 
@@ -85,8 +83,6 @@ vector!Path xdgConfigDirs(string subfolder = null)
 }
 
 
-
-
 /**
     The base directory relative to which user-specific 
     data, state, config or cache files should be stored.
@@ -98,19 +94,17 @@ vector!Path xdgConfigDirs(string subfolder = null)
          subfolder = Subfolder to append to determined path.
          shouldCreate = If path does not exist, create directory using 
          700 permissions (i.e. allow access only for current user).
-
-    TODO it's not using 700 persmissions.
 */
-Path xdgDataHome(string subfolder = null, bool shouldCreate = false) nothrow
+Path xdgDataHome(string subfolder = null, bool shouldCreate = false)
     => xdgBaseDir("XDG_DATA_HOME", ".local/share", subfolder, shouldCreate);
 ///ditto
-Path xdgStateHome(string subfolder = null, bool shouldCreate = false) nothrow
+Path xdgStateHome(string subfolder = null, bool shouldCreate = false)
     => xdgBaseDir("XDG_STATE_HOME", ".local/state", subfolder, shouldCreate);
 ///ditto
-Path xdgConfigHome(string subfolder = null, bool shouldCreate = false) nothrow
+Path xdgConfigHome(string subfolder = null, bool shouldCreate = false)
     => xdgBaseDir("XDG_CONFIG_HOME", ".config", subfolder, shouldCreate);
 ///ditto
-Path xdgCacheHome(string subfolder = null, bool shouldCreate = false) nothrow
+Path xdgCacheHome(string subfolder = null, bool shouldCreate = false)
     => xdgBaseDir("XDG_CACHE_HOME", ".cache", subfolder, shouldCreate);
 
 
@@ -130,7 +124,7 @@ Path xdgCacheHome(string subfolder = null, bool shouldCreate = false) nothrow
 vector!Path xdgAllDataDirs(string subfolder = null)
 {
     vector!Path r;
-    Path user = xdgConfigHome(subfolder);
+    Path user = xdgDataHome(subfolder);
     if (! user.empty) r ~= user;
     r ~= xdgDataDirs(subfolder)[];
     return r;
@@ -145,7 +139,7 @@ vector!Path xdgAllConfigDirs(string subfolder = null)
     return r;
 }
 
-private FilePerms privateMode = FilePerms.ownerAll;
+enum FilePerms privateMode = FilePerms.ownerAll;
 
 
 vector!Path pathsFromEnvValue(const(nstring) envValue, 
@@ -185,28 +179,6 @@ vector!Path pathsFromEnvValue(const(nstring) envValue,
     return result;
 }
 
-@("pathsFromEnvValue")
-unittest
-{
-    vector!Path v = pathsFromEnvValue(nstring(""));
-    assert(v.length == 0);
-    v = pathsFromEnvValue(nstring(":"));
-
-    assert(v.length == 0);
-    v = pathsFromEnvValue(nstring("::"));
-    assert(v.length == 0);
-
-    v = pathsFromEnvValue(nstring("path1:path2"));
-    assert(v.length == 2);
-    
-    assert(v[0] == Path("path1/"));
-    assert(v[1] == Path("path2/"));
-
-    v = pathsFromEnvValue(nstring("path2:path1:path2"));
-    assert(v.length == 2);
-    assert(v[0] == Path("path2/"));
-    assert(v[1] == Path("path1/"));
-}
 
 
 vector!Path pathsFromEnv(const(char)[] envName, 
@@ -216,12 +188,12 @@ vector!Path pathsFromEnv(const(char)[] envName,
 
 
 
-bool ensureExists(Path dir, Path templateDir) nothrow
+bool ensureExists(Path dir, FilePerms perms) nothrow
 {
     bool ok;
     try 
     {
-        createDirectories(dir, templateDir);
+        createDirectories(dir, Path.init, perms);
         return true;
     } 
     catch(NuException e) 
@@ -239,7 +211,7 @@ bool ensureExists(Path dir, Path templateDir) nothrow
 Path xdgBaseDir(string envvar, 
                 string fallback, 
                 string subfolder = null, 
-                bool shouldCreate = false) nothrow 
+                bool shouldCreate = false) 
 {
     // First look at hypothetical envvar
     Path dir = Path(getEnvironmentVariable(envvar));
@@ -254,8 +226,8 @@ Path xdgBaseDir(string envvar,
     dir.maybeAppend(subfolder);
 
     if (shouldCreate) 
-    {        
-        if ( ! ensureExists(dir)) 
+    {
+        if (! ensureExists(dir, privateMode)) 
             return Path.init;
     }
     return dir;

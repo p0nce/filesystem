@@ -265,6 +265,8 @@ bool copyFile(Path from, Path to,
     Params:
         pathToDir   = Path to the directory to create.
         templateDir = Existing directory to get attributes/permissions from.
+                      This is ignored if `perms` is valid.
+        perms       = (POSIX-only) Permissions to create the directory with.
 
     Returns: `true` if created, `false` if already existing.
     
@@ -272,7 +274,9 @@ bool copyFile(Path from, Path to,
             `FileNotFoundException`, 
             `InvalidPathException`.
 */
-bool createDirectory(Path pathToDir, Path templateDir = Path.init)
+bool createDirectory(Path pathToDir, 
+                     Path templateDir = Path.init,
+                     FilePerms perms = FilePerms.invalid)
 {
     // Already exists?
     try
@@ -303,12 +307,16 @@ bool createDirectory(Path pathToDir, Path templateDir = Path.init)
     }
     else version(Posix)
     {
-        FilePerms perms = FilePerms.all;        
-
-        if (! templateDir.empty())
-            perms = status(templateDir).permissions;
-
-        punistd.mode_t attribs = cast(punistd.mode_t) perms;        
+        FilePerms aperms = FilePerms.all;
+        if (perms != FilePerms.invalid)
+        {
+            aperms = perms;
+        }
+        else if (! templateDir.empty())
+        {
+            aperms = status(templateDir).permissions;
+        }
+        punistd.mode_t attribs = cast(punistd.mode_t) aperms;
         if (pstat.mkdir(pathToDir.native.ptr, attribs) != 0)
             throwIO(kStrErrCreateDirectory);
     }
@@ -322,7 +330,8 @@ bool createDirectory(Path pathToDir, Path templateDir = Path.init)
     Params:
         pathToDir   = Path to the chain of directories to create.
         templateDir = Existing directory to get attributes/permissions 
-                      from.
+                      from. This is ignored if `perms` is valid.
+        perms       = (POSIX-only) Permissions to create the directory with.
 
     Returns: `true` if created, `false` if already existing. If 
         nothing is thrown, path `p` is guaranteed to exist at the
@@ -339,7 +348,9 @@ bool createDirectory(Path pathToDir, Path templateDir = Path.init)
     Steffen's implementation. We added the `templateDir` here
     since the API is easier to use that way.
 */
-bool createDirectories(Path p, Path templateDir = Path.init)
+bool createDirectories(Path p, 
+                       Path templateDir = Path.init,
+                       FilePerms perms = FilePerms.invalid)
 {
     Path native = p.native();
     bool created = false;
@@ -366,7 +377,7 @@ bool createDirectories(Path p, Path templateDir = Path.init)
             e.free();
 
             // Create the directory
-            if (createDirectory(current, templateDir))
+            if (createDirectory(current, templateDir, perms))
                 created = true;
             else
                 throwIO(kStrErrCreateDirectory);

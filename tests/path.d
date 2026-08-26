@@ -6,157 +6,95 @@ import nulib;
 import core.stdc.stdio;
 
 import filesystem.internals;
+import filesystem.xdgpaths;
 
 void nprintf(nstring s)
 {
     printf("%.*s", cast(int) s.length, s.ptr);
 }
 
-@(".rootName()")
-unittest
-{
-    assert(Path("").rootName           == "");
-    assert(Path(".").rootName          == "");
-    assert(Path("..").rootName         == "");
-    assert(Path("foo").rootName        == "");
-    assert(Path("/").rootName          == "");
-    assert(Path("/foo").rootName       == "");
-    assert(Path("foo/").rootName       == "");
-    assert(Path("/foo/").rootName      == "");
-    assert(Path("foo/bar").rootName    == "");
-    assert(Path("/foo/bar").rootName   == "");
-    assert(Path("///foo/bar").rootName == "");
-    version(Windows)
-    {
-        assert(Path("C:/foo").rootName     == "C:");
-        assert(Path("C:\\foo").rootName    == "C:");
-        assert(Path("C:foo").rootName      == "C:");
-    }
-}
 
-@(".rootDirectory()")
-unittest
-{
-    assert(Path("").rootDirectory           == "");
-    assert(Path(".").rootDirectory          == "");
-    assert(Path("..").rootDirectory         == "");
-    assert(Path("foo").rootDirectory        == "");
-    assert(Path("/").rootDirectory          == "/");
-    assert(Path("/foo").rootDirectory       == "/");
-    assert(Path("foo/").rootDirectory       == "");
-    assert(Path("/foo/").rootDirectory      == "/");
-    assert(Path("foo/bar").rootDirectory    == "");
-    assert(Path("/foo/bar").rootDirectory   == "/");
-    assert(Path("///foo/bar").rootDirectory == "/");
-    version(Windows)
-    {
-        assert(Path("C:/foo").rootDirectory     == "/");
-        assert(Path("C:\\foo").rootDirectory    == "\\");
-        assert(Path("C:foo").rootDirectory      == "");
-    }
-}
 
-@(".rootPath()")
+@(".append")
 unittest
 {
-    assert(Path("").rootPath() == "");
-    assert(Path(".").rootPath() == "");
-    assert(Path("..").rootPath() == "");
-    assert(Path("foo").rootPath() == "");
-    assert(Path("/").rootPath() == "/");
-    assert(Path("/foo").rootPath() == "/");
-    assert(Path("foo/").rootPath() == "");
-    assert(Path("/foo/").rootPath() == "/");
-    assert(Path("foo/bar").rootPath() == "");
-    assert(Path("/foo/bar").rootPath() == "/");
-    assert(Path("///foo/bar").rootPath() == "/");
+    import core.stdc.stdio;
     version(Windows)
     {
-        assert(Path("C:/foo").rootPath() == "C:/");
-        assert(Path("C:\\foo").rootPath() == "C:\\");
-        assert(Path("C:foo").rootPath() == "C:");
+        assert(Path("foo") / "c:/bar" == "c:/bar");
+        assert(Path("foo") / "c:" == "c:");
+        assert(Path("c:") / "" == "c:");
+        assert(Path("c:foo") / "/bar" == `c:/bar`);
+        assert(Path("c:foo") / "c:bar" == `c:foo\bar`); // small divergence vs spec, which is also unclear
     }
     else
     {
-        assert(Path("C:/foo").rootPath() == "");
-        assert(Path("C:\\foo").rootPath() == "");
-        assert(Path("C:foo").rootPath() == "");
+
+        assert(Path("foo") / "" == "foo/");
+        assert(Path("foo") / "/bar" == "/bar");
     }
-    assert(Path("tests/my/deeply/nested/hierarchy").rootPath() == "");
+    assert(Path("") / "rel" == "rel");
 }
 
-@(".relativePath()")
+@("currentPath() and absolute()")
 unittest
 {
-    assert(Path("").relativePath() == "");
-    assert(Path(".").relativePath() == ".");
-    assert(Path("..").relativePath() == "..");
-    assert(Path("foo").relativePath() == "foo");
-    assert(Path("/").relativePath() == "");
-    assert(Path("/foo").relativePath() == "foo");
-    assert(Path("foo/").relativePath() == "foo/");
-    assert(Path("/foo/").relativePath() == "foo/");
-    assert(Path("foo/bar").relativePath() == "foo/bar");
-    assert(Path("/foo/bar").relativePath() == "foo/bar");
-    assert(Path("///foo/bar").relativePath() == "foo/bar");
+    currentPath();
+    absolute(".");
+}
+
+@(".dirName()")
+unittest
+{    
+    assert(Path("/my/path.txt").dirName()       == "/my");
+    assert(Path("/one/two/three.txt").dirName() == "/one/two");
+    assert(Path("/file").dirName()              == "/");
+    assert(Path("file").dirName()               == "."); 
+    assert(Path("dir/").dirName()               == ".");
+    assert(Path("/many-slashes/////").dirName() == "/");    
+    assert(Path("dir//file").dirName()   == "dir");
+    assert(Path("dir/subdir/").dirName() == "dir");    
+    assert(Path("/").dirName()           == "/");
+    
     version(Windows)
     {
-        assert(Path("C:/foo").relativePath() == "foo");
-        assert(Path("C:\\foo").relativePath() == "foo");
-        assert(Path("C:foo").relativePath() == "foo");
+        assert(Path(`dir\`).dirName()        == ".");
+        assert(Path(`dir\\\`).dirName()      == ".");
+        assert(Path(`dir\file`).dirName()    == `dir`);
+        assert(Path(`dir\\\file`).dirName()  == `dir`);
+        assert(Path(`dir\subdir\`).dirName() == `dir`);      
+        assert(Path(`\dir\file`).dirName()   == `\dir`);
+        assert(Path(`\file`).dirName()       == `\`);
+        assert(Path(`\`).dirName()           == `\`);  
+        assert(Path(`\\\`).dirName()         == `\`);
+        assert(Path("\\").dirName()          == "\\");
+        assert(Path(`d:`).dirName()          == "d:");
+        assert(Path(`d:file`).dirName()      == "d:");
+        assert(Path(`d:\`).dirName()         == `d:\`);
+        assert(Path(`d:\file`).dirName()     == `d:\`);
+        assert(Path(`d:\dir\file`).dirName() == `d:\dir`);
     }
     else
     {
-        assert(Path("C:foo").relativePath() == "C:foo");
+        assert(Path("\\").dirName()          == ".");
+        assert(Path(`d:file`).dirName()      == ".");
     }
+    //assert(path_dirname(nstring(`\\server\share\dir\file`)) == `\\server\share\dir\`);
+    //assert(path_dirname(nstring(`\\server\share`)) == ""); // Phobos would return `\\server\share`
 }
 
-@(".parentPath()")
+@("equalsWithOSCaseSensitivity")
 unittest
 {
-    assert(Path("").parentPath() == "");
-    assert(Path(".").parentPath() == "");
-    assert(Path("..").parentPath() == "");  // unintuitive but as defined in the standard
-    assert(Path("foo").parentPath() == "");
-    assert(Path("/").parentPath() == "/");
-    assert(Path("/foo").parentPath() == "/");    
-    assert(Path("foo/").parentPath() == "foo");
-    assert(Path("/foo/").parentPath() == "/foo");
-    assert(Path("foo/bar").parentPath() == "foo");
-    assert(Path("/foo/bar").parentPath() == "/foo");
-    assert(Path("///foo/bar").parentPath() == "/foo");
     version(Windows)
     {
-        assert(Path("C:/foo").parentPath() == "C:/");
-        assert(Path("C:\\foo").parentPath() == "C:\\");
-        assert(Path("C:foo").parentPath() == "C:");
+        assert(equalsWithOSCaseSensitivity(nstring("/a/"), nstring("/A/")));
+        assert(equalsWithOSCaseSensitivity(nstring("é"), nstring("É")));
     }
-}
 
-@(".stem()")
-unittest
-{
-    assert(Path("/foo/bar.txt").stem() == "bar");
-
-    {
-        Path p = "foo.bar.baz.tar";
-        assert(p.extension() == ".tar");
-        p = p.stem();
-        assert(p.extension() == ".baz");
-        p = p.stem();
-        assert(p.extension() == ".bar");
-        p = p.stem();
-        assert(p == "foo");
-    }
-    assert(Path("/foo/.profile").stem() == ".profile");
-    assert(Path(".bar").stem() == ".bar");
-    assert(Path("..bar").stem() == ".");
-    version(Windows)
-        assert(Path("t:est.txt").stem() == "est");
-    else
-        assert(Path("t:est.txt").stem() == "t:est");
-    assert(Path("/foo/.").stem() == ".");
-    assert(Path("/foo/..").stem() == "..");
+    assert(equalsWithOSCaseSensitivity(nstring("/a/"), nstring("/a/")));
+    assert(!equalsWithOSCaseSensitivity(nstring("ab"), nstring("b")));
+    assert(!equalsWithOSCaseSensitivity(nstring("a"), nstring("b")));
 }
 
 @(".extension()")
@@ -197,54 +135,6 @@ unittest
     {
         assert(Path("t:est.txt").filename() == "t:est.txt");
     }
-}
-
-@(".makePreffered")
-unittest
-{
-    version(Windows)
-    {
-        assert(Path("foo/bar") == "foo/bar");
-        assert(Path("foo/bar").makePreferred() == "foo\\bar");
-    }
-    else
-    {
-        assert(Path("foo\\bar") == "foo\\bar");
-        assert(Path("foo\\bar").makePreferred() == "foo\\bar"); // should parse as one filename
-    }
-}
-
-@(".removeFilename()")
-unittest
-{
-    assert(Path("foo/bar").removeFilename() == "foo/");
-    assert(Path("foo/").removeFilename() == "foo/");
-    assert(Path("/foo").removeFilename() == "/");
-    assert(Path("/").removeFilename() == "/");
-    version(Windows)
-    {
-        assert(Path("c:/lol.txt").removeFilename() == "c:/");
-        assert(Path("path/diff.").removeFilename() == "path/");
-    }
-}
-
-@(".replaceFilename()")
-unittest
-{
-    assert(Path("/foo").replaceFilename("bar") == "/bar");
-    assert(Path("/").replaceFilename("bar") == "/bar");
-    assert(Path("/foo").replaceFilename("b//ar") == "/b/ar");
-}
-
-@(".replaceExtension()")
-unittest
-{
-    assert(Path("/foo/bar.txt").replaceExtension("odf") == "/foo/bar.odf");
-    assert(Path("/foo/bar.txt").replaceExtension() == "/foo/bar");
-    assert(Path("/foo/bar").replaceExtension("odf") == "/foo/bar.odf");
-    assert(Path("/foo/bar").replaceExtension(".odf") == "/foo/bar.odf");
-    assert(Path("/foo/bar.").replaceExtension(".odf") == "/foo/bar.odf");
-    assert(Path("/foo/bar/").replaceExtension("odf") == "/foo/bar/.odf");
 }
 
 @(".isAbsolute()")
@@ -302,27 +192,6 @@ unittest
     }
 }
 
-@(".append")
-unittest
-{
-    import core.stdc.stdio;
-    version(Windows)
-    {
-        assert(Path("foo") / "c:/bar" == "c:/bar");
-        assert(Path("foo") / "c:" == "c:");
-        assert(Path("c:") / "" == "c:");        
-        assert(Path("c:foo") / "/bar" == `c:/bar`);
-        assert(Path("c:foo") / "c:bar" == `c:foo\bar`); // small divergence vs spec, which is also unclear
-    }
-    else
-    {
-
-        assert(Path("foo") / "" == "foo/");
-        assert(Path("foo") / "/bar" == "/bar");
-    }
-    assert(Path("") / "rel" == "rel");
-}
-
 @(".lexicallyNormal")
 unittest
 {
@@ -354,20 +223,6 @@ unittest
     }
 }
 
-@("equalsWithOSCaseSensitivity")
-unittest
-{
-    version(Windows)
-    {
-        assert(equalsWithOSCaseSensitivity(nstring("/a/"), nstring("/A/")));
-        assert(equalsWithOSCaseSensitivity(nstring("é"), nstring("É")));
-    }
-
-    assert(equalsWithOSCaseSensitivity(nstring("/a/"), nstring("/a/")));
-    assert(!equalsWithOSCaseSensitivity(nstring("ab"), nstring("b")));
-    assert(!equalsWithOSCaseSensitivity(nstring("a"), nstring("b")));
-}
-
 @(".lexicallyRelative")
 unittest
 {
@@ -383,43 +238,231 @@ unittest
     assert(Path("a/b").lexicallyProximate("/a/b") == "a/b");
 }
 
-@("currentPath() and absolute()")
+@(".makePreffered")
 unittest
 {
-    currentPath();
-    absolute(".");
-}
-
-@(".dirName()")
-unittest
-{    
-    assert(Path("/my/path.txt").dirName()       == "/my");
-    assert(Path("/one/two/three.txt").dirName() == "/one/two");
-    assert(Path("/file").dirName()              == "/");
-    assert(Path("file").dirName()               == "."); 
-    assert(Path("dir/").dirName()               == ".");
-    assert(Path("/many-slashes/////").dirName() == "/");    
-    assert(Path("dir//file").dirName()   == "dir");
-    assert(Path("dir/subdir/").dirName() == "dir");    
-    assert(Path("/").dirName()           == "/");
-    assert(Path("\\").dirName()          == "\\");
-    assert(Path(`dir\`).dirName()        == ".");
-    assert(Path(`dir\\\`).dirName()      == ".");
-    assert(Path(`dir\file`).dirName()    == `dir`);
-    assert(Path(`dir\\\file`).dirName()  == `dir`);
-    assert(Path(`dir\subdir\`).dirName() == `dir`);      
-    assert(Path(`\dir\file`).dirName()   == `\dir`);
-    assert(Path(`\file`).dirName()       == `\`);
-    assert(Path(`\`).dirName()           == `\`);  
-    assert(Path(`\\\`).dirName()         == `\`);
     version(Windows)
     {
-        assert(Path(`d:`).dirName()          == "d:");
-        assert(Path(`d:file`).dirName()      == "d:");
-        assert(Path(`d:\`).dirName()         == `d:\`);
-        assert(Path(`d:\file`).dirName()     == `d:\`);
-        assert(Path(`d:\dir\file`).dirName() == `d:\dir`);
+        assert(Path("foo/bar") == "foo/bar");
+        assert(Path("foo/bar").makePreferred() == "foo\\bar");
     }
-    //assert(path_dirname(nstring(`\\server\share\dir\file`)) == `\\server\share\dir\`);
-    //assert(path_dirname(nstring(`\\server\share`)) == ""); // Phobos would return `\\server\share`
+    else
+    {
+        assert(Path("foo\\bar") == "foo\\bar");
+        assert(Path("foo\\bar").makePreferred() == "foo\\bar"); // should parse as one filename
+    }
+}
+
+@(".parentPath()")
+unittest
+{
+    assert(Path("").parentPath() == "");
+    assert(Path(".").parentPath() == "");
+    assert(Path("..").parentPath() == "");  // unintuitive but as defined in the standard
+    assert(Path("foo").parentPath() == "");
+    assert(Path("/").parentPath() == "/");
+    assert(Path("/foo").parentPath() == "/");    
+    assert(Path("foo/").parentPath() == "foo");
+    assert(Path("/foo/").parentPath() == "/foo");
+    assert(Path("foo/bar").parentPath() == "foo");
+    assert(Path("/foo/bar").parentPath() == "/foo");
+    assert(Path("///foo/bar").parentPath() == "/foo");
+    version(Windows)
+    {
+        assert(Path("C:/foo").parentPath() == "C:/");
+        assert(Path("C:\\foo").parentPath() == "C:\\");
+        assert(Path("C:foo").parentPath() == "C:");
+    }
+}
+
+static if (isFreedesktop)
+{
+    @("pathsFromEnvValue")
+    unittest
+    {
+        vector!Path v = pathsFromEnvValue(nstring(""));
+        assert(v.length == 0);
+        v = pathsFromEnvValue(nstring(":"));
+
+        assert(v.length == 0);
+        v = pathsFromEnvValue(nstring("::"));
+        assert(v.length == 0);
+
+        // relative path are ignored
+        v = pathsFromEnvValue(nstring("path1:path2"));
+        assert(v.length == 0);
+
+        version(Posix)
+        {
+
+            v = pathsFromEnvValue(nstring("/path1:/path2"));
+            assert(v.length == 2);
+            
+            assert(v[0] == Path("/path1/"));
+            assert(v[1] == Path("/path2/"));
+
+            v = pathsFromEnvValue(nstring("/path2:/path1:/path2"));
+            assert(v.length == 2);
+            assert(v[0] == Path("/path2/"));
+            assert(v[1] == Path("/path1/"));
+        }
+    }
+}
+
+@(".relativePath()")
+unittest
+{
+    assert(Path("").relativePath() == "");
+    assert(Path(".").relativePath() == ".");
+    assert(Path("..").relativePath() == "..");
+    assert(Path("foo").relativePath() == "foo");
+    assert(Path("/").relativePath() == "");
+    assert(Path("/foo").relativePath() == "foo");
+    assert(Path("foo/").relativePath() == "foo/");
+    assert(Path("/foo/").relativePath() == "foo/");
+    assert(Path("foo/bar").relativePath() == "foo/bar");
+    assert(Path("/foo/bar").relativePath() == "foo/bar");
+    assert(Path("///foo/bar").relativePath() == "foo/bar");
+    version(Windows)
+    {
+        assert(Path("C:/foo").relativePath() == "foo");
+        assert(Path("C:\\foo").relativePath() == "foo");
+        assert(Path("C:foo").relativePath() == "foo");
+    }
+    else
+    {
+        assert(Path("C:foo").relativePath() == "C:foo");
+    }
+}
+
+@(".removeFilename()")
+unittest
+{
+    assert(Path("foo/bar").removeFilename() == "foo/");
+    assert(Path("foo/").removeFilename() == "foo/");
+    assert(Path("/foo").removeFilename() == "/");
+    assert(Path("/").removeFilename() == "/");
+    version(Windows)
+    {
+        assert(Path("c:/lol.txt").removeFilename() == "c:/");
+        assert(Path("path/diff.").removeFilename() == "path/");
+    }
+}
+
+@(".replaceExtension()")
+unittest
+{
+    assert(Path("/foo/bar.txt").replaceExtension("odf") == "/foo/bar.odf");
+    assert(Path("/foo/bar.txt").replaceExtension() == "/foo/bar");
+    assert(Path("/foo/bar").replaceExtension("odf") == "/foo/bar.odf");
+    assert(Path("/foo/bar").replaceExtension(".odf") == "/foo/bar.odf");
+    assert(Path("/foo/bar.").replaceExtension(".odf") == "/foo/bar.odf");
+    assert(Path("/foo/bar/").replaceExtension("odf") == "/foo/bar/.odf");
+}
+
+@(".replaceFilename()")
+unittest
+{
+    assert(Path("/foo").replaceFilename("bar") == "/bar");
+    assert(Path("/").replaceFilename("bar") == "/bar");
+    assert(Path("/foo").replaceFilename("b//ar") == "/b/ar");
+}
+
+@(".rootDirectory()")
+unittest
+{
+    assert(Path("").rootDirectory           == "");
+    assert(Path(".").rootDirectory          == "");
+    assert(Path("..").rootDirectory         == "");
+    assert(Path("foo").rootDirectory        == "");
+    assert(Path("/").rootDirectory          == "/");
+    assert(Path("/foo").rootDirectory       == "/");
+    assert(Path("foo/").rootDirectory       == "");
+    assert(Path("/foo/").rootDirectory      == "/");
+    assert(Path("foo/bar").rootDirectory    == "");
+    assert(Path("/foo/bar").rootDirectory   == "/");
+    assert(Path("///foo/bar").rootDirectory == "/");
+    version(Windows)
+    {
+        assert(Path("C:/foo").rootDirectory     == "/");
+        assert(Path("C:\\foo").rootDirectory    == "\\");
+        assert(Path("C:foo").rootDirectory      == "");
+    }
+}
+
+@(".rootName()")
+unittest
+{
+    assert(Path("").rootName           == "");
+    assert(Path(".").rootName          == "");
+    assert(Path("..").rootName         == "");
+    assert(Path("foo").rootName        == "");
+    assert(Path("/").rootName          == "");
+    assert(Path("/foo").rootName       == "");
+    assert(Path("foo/").rootName       == "");
+    assert(Path("/foo/").rootName      == "");
+    assert(Path("foo/bar").rootName    == "");
+    assert(Path("/foo/bar").rootName   == "");
+    assert(Path("///foo/bar").rootName == "");
+    version(Windows)
+    {
+        assert(Path("C:/foo").rootName     == "C:");
+        assert(Path("C:\\foo").rootName    == "C:");
+        assert(Path("C:foo").rootName      == "C:");
+    }
+}
+
+@(".rootPath()")
+unittest
+{
+    assert(Path("").rootPath() == "");
+    assert(Path(".").rootPath() == "");
+    assert(Path("..").rootPath() == "");
+    assert(Path("foo").rootPath() == "");
+    assert(Path("/").rootPath() == "/");
+    assert(Path("/foo").rootPath() == "/");
+    assert(Path("foo/").rootPath() == "");
+    assert(Path("/foo/").rootPath() == "/");
+    assert(Path("foo/bar").rootPath() == "");
+    assert(Path("/foo/bar").rootPath() == "/");
+    assert(Path("///foo/bar").rootPath() == "/");
+    version(Windows)
+    {
+        assert(Path("C:/foo").rootPath() == "C:/");
+        assert(Path("C:\\foo").rootPath() == "C:\\");
+        assert(Path("C:foo").rootPath() == "C:");
+    }
+    else
+    {
+        assert(Path("C:/foo").rootPath() == "");
+        assert(Path("C:\\foo").rootPath() == "");
+        assert(Path("C:foo").rootPath() == "");
+    }
+    assert(Path("tests/my/deeply/nested/hierarchy").rootPath() == "");
+}
+
+@(".stem()")
+unittest
+{
+    assert(Path("/foo/bar.txt").stem() == "bar");
+
+    {
+        Path p = "foo.bar.baz.tar";
+        assert(p.extension() == ".tar");
+        p = p.stem();
+        assert(p.extension() == ".baz");
+        p = p.stem();
+        assert(p.extension() == ".bar");
+        p = p.stem();
+        assert(p == "foo");
+    }
+    assert(Path("/foo/.profile").stem() == ".profile");
+    assert(Path(".bar").stem() == ".bar");
+    assert(Path("..bar").stem() == ".");
+    version(Windows)
+        assert(Path("t:est.txt").stem() == "est");
+    else
+        assert(Path("t:est.txt").stem() == "t:est");
+    assert(Path("/foo/.").stem() == ".");
+    assert(Path("/foo/..").stem() == "..");
 }

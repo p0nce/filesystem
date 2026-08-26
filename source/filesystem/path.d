@@ -514,14 +514,16 @@ public:
     //
 
     /**
-        Appends elements to the path with a directory separator (if needed).    
+        Appends elements to the path with a directory separator (if needed). 
+
+        FUTURE rabbit-hole: try to make it nothrow.
     */
-    ref Path append(const(char)[] p) /* pure */
+    ref Path append(const(char)[] p) /* nothrow */ /* pure */
     {        
         return append(Path(p));
     }
     //ditto
-    ref Path append(Path p) /* pure */
+    ref Path append(Path p) /* nothrow */ /* pure */
     {
         // First we try to find the right separator for this append.
         // If both have an idea, prefers left path idea.

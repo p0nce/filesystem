@@ -1,6 +1,7 @@
 module files;
 
 import filesystem;
+import filesystem.xdgpaths;
 import nulib;
 
 import core.stdc.stdio;
@@ -8,6 +9,16 @@ import core.stdc.stdio;
 void nprintf(nstring s)
 {
     printf("%.*s", cast(int) s.length, s.ptr);
+}
+
+void display(vector!Path paths)
+{
+    foreach(p; paths)
+    {
+        printf(" - ");
+        nprintf(p);
+        printf("\n");
+    }
 }
 
 @("absolute()")
@@ -280,15 +291,7 @@ unittest
 @("Standard paths")
 unittest
 {
-    void display(vector!Path paths)
-    {
-        foreach(p; paths)
-        {
-            printf(" - ");
-            nprintf(p);
-            printf("\n");
-        }
-    }
+
 
     printf("Home dir is:\n");
     printf(" - ");
@@ -335,5 +338,38 @@ unittest
 
         printf("Game save files dir is:\n");
         display(standardPaths(StandardPath.savedGames));
+    }
+}
+
+static if (isFreedesktop)
+{
+    @("XDG paths")
+    unittest
+    {
+        printf("XDG Data home dir is:\n");
+        printf(" - ");
+        nprintf(xdgDataHome());
+        printf("\n");
+
+        printf("XDG State home dir is:\n");
+        printf(" - ");
+        nprintf(xdgStateHome());
+        printf("\n");
+
+        printf("XDG Config home dir is:\n");
+        printf(" - ");
+        nprintf(xdgConfigHome());
+        printf("\n");
+
+        printf("XDG Cache home dir is:\n");
+        printf(" - ");
+        nprintf(xdgCacheHome());
+        printf("\n");
+        
+        printf("XDG All data dirs:\n");
+        display(xdgAllDataDirs());
+
+        printf("XDG All config dirs:\n");
+        display(xdgAllConfigDirs());
     }
 }

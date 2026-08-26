@@ -204,8 +204,10 @@ Path homeDir() /* nothrow */ /* @safe */
 
     See_Also: `StandardPath`, `standardPaths`.
 */
-Path writablePath(StandardPath type) /* nothrow */ @trusted
+Path writablePath(StandardPath type, bool createIfMissing = false) /* nothrow */ @trusted
 {
+    // TODO: create the directory if createIfMissing, on Windows
+    // TODO: create the directory if createIfMissing, on darwin
     version(Windows)
     {
         final switch(type) 
@@ -275,6 +277,44 @@ Path writablePath(StandardPath type) /* nothrow */ @trusted
                 return domainDir(NSApplicationDirectory, NSUserDomainMask);
             case StandardPath.startup:
                 return Path.init;
+            case StandardPath.roaming:
+                return Path.init;
+            case StandardPath.savedGames:
+                return Path.init;
+        }
+    }
+    else static if (isFreedesktop)
+    {
+        final switch(type) 
+        {
+            case StandardPath.config:
+                return xdgConfigHome(null, createIfMissing);
+            case StandardPath.cache:
+                return xdgCacheHome(null, createIfMissing);
+            case StandardPath.data:
+                return xdgDataHome(null, createIfMissing);
+            case StandardPath.desktop:
+                return xdgUserDir("DESKTOP", "/Desktop").createIfNeeded(createIfMissing);
+            case StandardPath.documents:
+                return xdgUserDir("DOCUMENTS").createIfNeeded(createIfMissing);
+            case StandardPath.pictures:
+                return xdgUserDir("PICTURES").createIfNeeded(createIfMissing);
+            case StandardPath.music:
+                return xdgUserDir("MUSIC").createIfNeeded(createIfMissing);
+            case StandardPath.videos:
+                return xdgUserDir("VIDEOS").createIfNeeded(createIfMissing);
+            case StandardPath.downloads:
+                return xdgUserDir("DOWNLOAD").createIfNeeded(createIfMissing);
+            case StandardPath.templates:
+                return xdgUserDir("TEMPLATES", "/Templates").createIfNeeded(createIfMissing);
+            case StandardPath.publicShare:
+                return xdgUserDir("PUBLICSHARE", "/Public").createIfNeeded(createIfMissing);
+            case StandardPath.fonts:
+                return homeFontsPath().createIfNeeded(createIfMissing);
+            case StandardPath.applications:
+                return xdgDataHome("applications", createIfMissing);
+            case StandardPath.startup:
+                return xdgConfigHome("autostart", createIfMissing);
             case StandardPath.roaming:
                 return Path.init;
             case StandardPath.savedGames:
@@ -384,26 +424,6 @@ vector!Path standardPaths(StandardPath type) @safe
 
 /+
 
-
-} else {
-
-    static if (!isFreedesktop) {
-        static assert(false, "Unsupported platform");
-    } else {
-        public import xdgpaths;
-
-        private {
-            import std.stdio : File;
-            import std.algorithm : startsWith;
-            import std.string;
-            import std.traits;
-        }
-
-        unittest
-        {
-            assert(maybeConcat(null, "path") == string.init);
-            assert(maybeConcat("path", "/file") == "path/file");
-        }
 
         private @trusted string getFromUserDirs(Range)(string xdgdir, string home, Range range) if (isInputRange!Range && isSomeString!(ElementType!Range))
         {
@@ -523,43 +543,7 @@ PICTURES=Images
             }
         }
 
-        private string writablePathImpl(StandardPath type, bool shouldCreate) nothrow @safe
-        {
-            final switch(type) {
-                case StandardPath.config:
-                    return xdgConfigHome(null, shouldCreate);
-                case StandardPath.cache:
-                    return xdgCacheHome(null, shouldCreate);
-                case StandardPath.data:
-                    return xdgDataHome(null, shouldCreate);
-                case StandardPath.desktop:
-                    return xdgUserDir("DESKTOP", "/Desktop").createIfNeeded(shouldCreate);
-                case StandardPath.documents:
-                    return xdgUserDir("DOCUMENTS").createIfNeeded(shouldCreate);
-                case StandardPath.pictures:
-                    return xdgUserDir("PICTURES").createIfNeeded(shouldCreate);
-                case StandardPath.music:
-                    return xdgUserDir("MUSIC").createIfNeeded(shouldCreate);
-                case StandardPath.videos:
-                    return xdgUserDir("VIDEOS").createIfNeeded(shouldCreate);
-                case StandardPath.downloads:
-                    return xdgUserDir("DOWNLOAD").createIfNeeded(shouldCreate);
-                case StandardPath.templates:
-                    return xdgUserDir("TEMPLATES", "/Templates").createIfNeeded(shouldCreate);
-                case StandardPath.publicShare:
-                    return xdgUserDir("PUBLICSHARE", "/Public").createIfNeeded(shouldCreate);
-                case StandardPath.fonts:
-                    return homeFontsPath().createIfNeeded(shouldCreate);
-                case StandardPath.applications:
-                    return xdgDataHome("applications", shouldCreate);
-                case StandardPath.startup:
-                    return xdgConfigHome("autostart", shouldCreate);
-                case StandardPath.roaming:
-                    return null;
-                case StandardPath.savedGames:
-                    return null;
-            }
-        }
+
 
         string writablePath(StandardPath type, FolderFlag params = FolderFlag.none) nothrow @safe
         {
