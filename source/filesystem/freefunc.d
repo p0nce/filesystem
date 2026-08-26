@@ -319,13 +319,22 @@ bool createDirectory(Path pathToDir, Path templateDir = Path.init)
 /**
     Create a chain of directories.
 
+    Params:
+        pathToDir   = Path to the chain of directories to create.
+        templateDir = Existing directory to get attributes/permissions from.
+
     Returns: `true` if created, `false` if already existing.
 
     Throws: `FileSystemIOException` or `InvalidPathException`.
 
-    TODO: attributes, copy them from another file.
+    Note: `std::filesystem` spec is remarkably bizarre about
+    copying attributes from another directory here. That just
+    isn't provided, and it also mention for `createDirectory`
+    doesn't copy attributes on Windows ; but it does in 
+    Steffen's implementation. We added the `templateDir` here
+    since the API is easier to use that way.
 */
-bool createDirectories(Path p)
+bool createDirectories(Path p, Path templateDir = Path.init)
 {
     Path native = p.native();
     bool created = false;
@@ -352,7 +361,7 @@ bool createDirectories(Path p)
             e.free();
 
             // Create the directory
-            if (createDirectory(current))
+            if (createDirectory(current, templateDir))
                 created = true;
             else
                 throwIO(kStrErrCreateDirectory);

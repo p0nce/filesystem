@@ -36,7 +36,7 @@ else version(Posix)
 
 @nogc:
 
-// PERF: it would be possible to be all-struct if vector would hold
+// PERF: it would be possible to be all-struct if nulib vector would hold
 // movable, non-copyable structs.
 
 // To debug the tricky recursive subdir
