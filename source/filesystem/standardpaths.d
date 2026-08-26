@@ -56,7 +56,6 @@ else
 @nogc:
 
 /**
-
     Location types that can be passed to `writablePath` and 
     `standardPaths` functions.
  

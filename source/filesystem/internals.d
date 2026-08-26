@@ -11,6 +11,7 @@ import nulib;
 import nulib.text.unicode;
 import filesystem.types;
 import filesystem.path;
+import filesystem.freefunc;
 
 version(Windows)
 {
@@ -444,3 +445,43 @@ version(Posix)
     }
 }
 
+// Create a directory, return its path if successfully created, or
+// Path.init in case of error.
+Path createIfNeeded(Path path, bool shouldCreate) nothrow @trusted
+{
+    if (! path.empty() && shouldCreate)
+    {
+        // On POSIX, this will create the directory with 0700 perms
+        // Note: if creating .local, will create as 0700 not 0755
+        //       which can be a tiny bit unlike what distros do, but
+        //       I don't see how this could hurt.
+        if (ensureExists(path, FilePerms.ownerAll))
+            return path;
+        else
+            return Path.init;
+    }
+    else
+        return path;
+}
+
+// Returns true if path `dir` exists after this function, false if an
+// error occured.
+bool ensureExists(Path dir, FilePerms perms) nothrow
+{
+    bool ok;
+    try 
+    {
+        createDirectories(dir, Path.init, perms);
+        return true;
+    } 
+    catch(NuException e) 
+    {
+        e.freeNoThrow();
+        return false;
+    }
+    catch(Exception e) 
+    {
+        return false;
+    }
+    return ok;
+}
