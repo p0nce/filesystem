@@ -20,6 +20,3 @@ public import filesystem.direntry;
 
 // Standard directories
 public import filesystem.standardpaths;
-
-// FileStream
-public import filesystem.filestream; 

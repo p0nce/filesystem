@@ -16,6 +16,7 @@ import nulib;
 import nulib.text.unicode;
 import nulib.memory;
 import nulib.collections.vector;
+import nulib.io.stream.file;
 import numem;
 
 import filesystem.types;
@@ -551,6 +552,23 @@ long fileSize(Path p)
 {
     return status(p).sizeBytes;
 }
+
+/**
+    Open file and return a stream to it.
+
+    `fileOpen` lets you choose the libc access mode (eg: "wb+"),
+    while `fileOpenRead` and `fileOpenWrite` are for the common cases.
+*/
+unique_ptr!FileStream fileOpen(Path path, string accessMode = "rb")
+{
+    nstring nativePath = path.native();
+    return unique_new!FileStream(nativePath, accessMode);
+}
+///ditto
+unique_ptr!FileStream fileOpenRead(Path path) => fileOpen(path, "rb");
+///ditto
+unique_ptr!FileStream fileOpenWrite(Path path) => fileOpen(path, "wb");
+
 
 // TODO hard_link_count
 

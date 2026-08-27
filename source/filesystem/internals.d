@@ -447,6 +447,8 @@ version(Posix)
 
 // Create a directory, return its path if successfully created, or
 // Path.init in case of error.
+// This is used for user XDG paths such as "./local/share", so
+// the rights need to be restricted.
 Path createIfNeeded(Path path, bool shouldCreate) nothrow @trusted
 {
     if (! path.empty() && shouldCreate)

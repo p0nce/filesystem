@@ -25,6 +25,7 @@ import filesystem.types;
 import filesystem.freefunc;
 import filesystem.path;
 import filesystem.internals;
+import filesystem.standardpaths;
 
 version(OSX) {
     enum isFreedesktop = false;
@@ -212,7 +213,47 @@ Path xdgBaseDir(string envvar,
     return dir;
 }
 
+string xdgUserDir(const(char)[] key, string fallback = null)
+{
+    Path fileName = writablePath(StandardPath.config).maybeAppend("user-dirs.dirs");
+    Path home = homeDir();
 
+    try 
+    {
+        auto f = filename.fileOpen("r");
+        nstring xdgdir = nstring("XDG_") ~ key ~ "_DIR";
+        Path path = getFromUserDirs(xdgdir, home, f.byLine());
+        if (path.length)
+            return path;
+    } 
+    catch(Exception e) 
+    {
+        // TODO: be more specific
+    }
+
+    // Didn't find such a directory in 
+
+    if (home.length) 
+    {
+        try 
+        {
+            auto f = Path("/etc/xdg/user-dirs.defaults").fileOpen("r");
+            auto path = getFromDefaultDirs(key, home, f.byLine());
+            if (path.length)
+                return path;
+        } 
+        catch (FileSystemException e) 
+        {
+            // typically: file doesn't exist, or couldn't be accessed
+            e.free();
+        }
+    }
+
+    if (fallback !is null)
+        return home ~ fallback;
+
+    return Path.init;
+}
 
 
 string getFromUserDirs(Range)(string xdgdir, string home, Range range) 
@@ -286,36 +327,7 @@ PICTURES=Images
             assert(getFromDefaultDirs("VIDEOS", home, content.splitLines).empty);
         }
 
-        private string xdgUserDir(string key, string fallback = null) nothrow @trusted {
-            string fileName = maybeConcat(writablePath(StandardPath.config), "/user-dirs.dirs");
-            string home = homeDir();
-            try {
-                auto f = File(fileName, "r");
-                auto xdgdir = "XDG_" ~ key ~ "_DIR";
-                auto path = getFromUserDirs(xdgdir, home, f.byLine());
-                if (path.length) {
-                    return path;
-                }
-            } catch(Exception e) {
 
-            }
-
-            if (home.length) {
-                try {
-                    auto f = File("/etc/xdg/user-dirs.defaults", "r");
-                    auto path = getFromDefaultDirs(key, home, f.byLine());
-                    if (path.length) {
-                        return path;
-                    }
-                } catch (Exception e) {
-
-                }
-                if (fallback.length) {
-                    return home ~ fallback;
-                }
-            }
-            return null;
-        }
 
         private string homeFontsPath() nothrow @trusted {
             return maybeConcat(homeDir(), "/.fonts");
