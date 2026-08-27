@@ -11,7 +11,7 @@ expose ranges instead of iterators.
 
 ## Licence
 
-MIT.
+MIT + BSL-1.0.
 
 ## Features
 
