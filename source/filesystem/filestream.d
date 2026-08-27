@@ -310,7 +310,8 @@ private:
 
     Flags parseAccessMode(scope const(char)[] accessMode)
     {
-    //pure @nogc nothrow @safe:
+        // TODO: technically only need read and write flags
+        // besides, the mode flags have no ordering
 
         int result = 0;
         int nth = 0;

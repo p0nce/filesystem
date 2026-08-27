@@ -15,7 +15,9 @@ MIT.
 
 ## Features
 
-- Path manipulation with the `Path` type.
+- `@nogc`
+- POSIX, macOS, Windows.
+- Path manipulation with the `Path` struct type.
     * `Path.native().toUTF16()` can be used in Win32 functions.
     * `Path.native()` can be used in POSIX functions that
       accept UTF-8.
@@ -25,6 +27,8 @@ MIT.
 - File copy, rename, and removal.
 - Recursive directory creation, listing and deletion.
 - Disc usage information.
+- `FileStream` implements nulib's `Stream`, is a bit like `std.stdio.File`.
+- Getting standard paths, such as app data, XDG config (fork of `standardpaths` and `xdgpaths` and `isfreedesktop`).
 
 ## Documentation
 
@@ -32,12 +36,11 @@ See the `std::filesystem` documentation here: https://en.cppreference.com/cpp/fi
 
 ## Bugs and limitations
 
-- Windows-only for now, this is **WIP**.
-- Windows UNC path, `\\?\` and `\\.\` root pathes aren't supported.
-- Windows path can't exceed `MAX_PATH` yet.
+- This is **WIP**.
+- Windows UNC path, `\\?\` and `\\.\` root pathes aren't yet supported.
+  Windows path can't exceed `MAX_PATH` yet.
 - Very little support for symlinks.
-- Windows path
-- POSIX support is not yet done.
+
 
 ## Dependencies
 
