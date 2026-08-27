@@ -7,16 +7,19 @@
 module filesystem;
 
 // FileType, FileStatus...
-public import filesystem.types; 
+public import filesystem.types;
 
-// Path
-public import filesystem.path;  
+// Path manipulation without I/O
+public import filesystem.path;
 
-// Free functions in the API
-public import filesystem.freefunc; 
+// Free functions in the std::filesystem API, file manipulation
+public import filesystem.freefunc;
 
 // Structures related to directory search
-public import filesystem.direntry; 
+public import filesystem.direntry;
 
 // Standard directories
-public import filesystem.standardpaths; 
+public import filesystem.standardpaths;
+
+// FileStream
+public import filesystem.filestream; 

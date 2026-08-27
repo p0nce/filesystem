@@ -5,19 +5,43 @@ module filesystem.filestream;
 import nulib.io.stream;
 import nulib.string;
 import nulib.text.unicode;
+import nulib.memory;
+
 import numem;
 
+
 import filesystem.path;
+import filesystem.internals;
 
 import cstdio = core.stdc.stdio;
 import cconfig = core.stdc.config;
+
 version(Posix)
     import pstdio = core.sys.posix.stdio;
 
 version (CRuntime_Microsoft)
 {
+    // This is necessary so that we can open file with Unicode paths, regular fopen would instead
+    // asks for the current codepage.
     extern (C) nothrow @nogc cstdio.FILE* _wfopen(scope const wchar* filename, scope const wchar* mode);
 }
+
+@nogc:
+
+/**
+    Open file and return a stream to it.
+
+    `fileOpen` lets you choose the libc access mode (eg: "wb+"),
+    while `fileOpenRead` and `fileOpenWrite` are for the common cases.
+*/
+unique_ptr!FileStream fileOpen(Path path, scope const(char)[] accessMode = "rb")
+{
+    return unique_new!FileStream(path, accessMode);
+}
+///ditto
+unique_ptr!FileStream fileOpenRead(Path path) => fileOpen(path, "rb");
+///ditto
+unique_ptr!FileStream fileOpenWrite(Path path) => fileOpen(path, "wb");
 
 /**
     A stream over a file backed by FILE*.
@@ -31,18 +55,24 @@ version (CRuntime_Microsoft)
 class FileStream : Stream 
 {
 private:
-@nogc nothrow @safe:
+@nogc @safe:
     cstdio.FILE* cfile = null;
     Flags flags;
 
 public:
 
     /**
-        Constructor.
+        Constructor. This is the only function that may throw.
+
+        Throws: `FileSystemIOException`,
+                `InvalidPathException`.
 
         Params:
             path = A UTF-8 file path.
             mode = Can be "r", "w", "a", "r+", "w+", "a+"...
+
+        Warning: Do not forget "b" access mode. In text mode,
+            MSVC runtime will mess with the file bytes.
     */
     this(Path path, scope const(char)[] accessMode = "rb") @trusted
     {
@@ -52,6 +82,10 @@ public:
         try
         {
             npath = path.native(); // .native isn't nothrow yet
+        }
+        catch(NuException e)
+        {
+            throw e;
         }
         catch(Exception e)
         {
@@ -81,12 +115,17 @@ public:
         {
             cfile = cstdio.fopen(npath.ptr, mode.ptr);
         }
+
+        if (cfile is null)
+            throwIO(kStrErrOpenFileFailed);
+
         flags = parseAccessMode(accessMode);
-        assert(0);
     }
     ///ditto
     this(const(char)[] path, scope const(char)[] accessMode = "rb") @trusted
         => this(Path(path), accessMode);
+
+nothrow:
 
     /**
         Destructor.
@@ -103,7 +142,7 @@ public:
         $(D true) if you can read data from the stream,
         $(D false) otherwise.
     */
-    override @property bool canRead()    => (flags & Flags.read) != 0;
+    override @property bool canRead() => (flags & Flags.read) != 0;
 
     /**
         Whether the stream can be written to.
@@ -112,7 +151,7 @@ public:
         $(D true) if you can write data to the stream,
         $(D false) otherwise.
     */
-    override @property bool canWrite()   => (flags & Flags.write) != 0;
+    override @property bool canWrite() => (flags & Flags.write) != 0;
 
     /**
         Whether the stream can be seeked.
@@ -121,7 +160,7 @@ public:
         $(D true) if you can seek through the stream,
         $(D false) otherwise.
     */
-    override @property bool canSeek()    { return true; }
+    override @property bool canSeek() => true;
 
     /**
         Whether the stream can timeout during operations.
@@ -130,7 +169,7 @@ public:
         $(D true) if the stream may time out during operations,
         $(D false) otherwise.
     */
-    override @property bool canTimeout() { return false; }
+    override @property bool canTimeout() => false;
 
     /**
         Whether the stream can be flushed to disk.
@@ -139,7 +178,7 @@ public:
         $(D true) if the stream may be flushed,
         $(D false) otherwise.
     */
-    override @property bool canFlush()   { return true; }
+    override @property bool canFlush() => true;
 
     /**
         Length of the stream.
@@ -161,13 +200,12 @@ public:
         if (size < 0)
             return -1;
 
-        long r = seek(oldpos, SeekOrigin.end);
+        long r = seek(oldpos, SeekOrigin.start);
         if (r < 0)
             return -1; 
 
         return cast(ptrdiff_t) size;
     }
-
 
     /**
         Position in stream.
@@ -304,58 +342,28 @@ private:
     {
         read      = 1, // read enabled
         write     = 2, // write enabled
-        binary    = 4, // file open in binary mode
-        append    = 8, // start position is end of file
     }
 
     Flags parseAccessMode(scope const(char)[] accessMode)
     {
-        // TODO: technically only need read and write flags
-        // besides, the mode flags have no ordering
-
-        int result = 0;
-        int nth = 0;
-
-        char peek() 
+        int r = 0;
+        foreach(char ch; accessMode)
         {
-            if (nth < accessMode.length)
-                return accessMode[nth];
-            else
-                return '\0';
-        }
-
-        bool consume(char ch)
-        {
-            if (peek() == ch)
+            switch(ch)
             {
-                nth++;
-                return true;
+                case 'r': 
+                    r |= Flags.read; 
+                    break;
+                case 'a':
+                case 'w': 
+                    r |= Flags.write; 
+                    break;
+                case '+':
+                    r |= (Flags.read | Flags.write);
+                    break;
+                default:
             }
-            else
-                return false;
         }
-
-        if (consume('r'))
-            result |= Flags.read;
-        else if (consume('w'))
-        {
-            result |= Flags.write;
-        }
-        else if (consume('a'))
-        {
-            result |= Flags.write;
-            result |= Flags.append;
-        }
-
-        if (consume('b'))
-            result |= Flags.binary;
-
-        if (consume('+'))
-        {
-            result |= Flags.read;
-            result |= Flags.write;
-        }
-
-        return cast(Flags) result;
+        return cast(Flags) r;
     }
 }
