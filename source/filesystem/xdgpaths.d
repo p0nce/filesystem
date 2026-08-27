@@ -231,7 +231,7 @@ string xdgUserDir(const(char)[] key, string fallback = null)
         // TODO: be more specific
     }
 
-    // Didn't find such a directory in 
+    // Didn't find such a directory in user-dirs.dirs
 
     if (home.length) 
     {

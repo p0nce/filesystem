@@ -9,6 +9,8 @@ module filesystem.internals;
 import numem;
 import nulib;
 import nulib.text.unicode;
+import nulib.io.stream.file;
+import nulib.io.stream;
 import filesystem.types;
 import filesystem.path;
 import filesystem.freefunc;
@@ -486,4 +488,98 @@ bool ensureExists(Path dir, FilePerms perms) nothrow
         return false;
     }
     return ok;
+}
+
+// Input range that pulls from a file stream to give lines.
+// This one deletes the line endings.
+// It doesn't follow an input range interface!
+struct LineSplitter
+{
+@nogc:
+private:
+    enum State
+    {
+        regular,
+        seenCR  // last char was \r
+    }
+
+    Stream stream;
+    vector!char buf;
+    State state;
+
+public:
+
+    this(Stream stream)
+    {
+        this.stream = stream;
+        assert(stream.canRead());
+        state = State.regular;
+    }
+
+    // Give next lines and `null` if terminated/error.
+    // returned buffer is owned by the LineSplitter.
+    // Note: line endings can be: "\n", "\r\n" or "\r"
+    const(char)[] nextLine()
+    {
+        buf.resize(0); // clear content
+
+        int lineLen = 0;
+
+        while (true)
+        {
+            char ch;
+            if (next(ch))
+            {
+                bool isLF = ch == '\n';
+                bool isCR = ch == '\r';
+
+                if (isLF)
+                    break; // Seen \n or \r\n, line is complete
+                else if (isCR)
+                {
+                    if (state == State.regular)
+                        state = State.seenCR;
+                    else if (state == State.seenCR)
+                        break; // Seen "\r\r", line is complete
+                }
+                else
+                {
+                    if (state == State.seenCR)
+                    {
+                        undo(); // Seen a stray \r, remove one of lookahead and line is complete
+                        state = State.regular;
+                        break;
+                    }
+                    else
+                    {
+                        lineLen++;
+                        buf ~= ch;
+                    }
+                }
+            }
+            else
+                break;
+        }
+        if (buf.length)
+            return buf[0..lineLen];
+        else
+            return null;
+    }
+
+    void undo()
+    {
+        stream.seek(-1, SeekOrigin.relative);
+    }
+
+    // true if got a char, false on error or eof
+    bool next(out char ch)
+    {
+        ubyte[1] buf;
+        ptrdiff_t r = stream.read(buf);
+        if (r <= 0)
+            return false;
+        ch = buf[0];
+        return true;
+    }
+
 }
