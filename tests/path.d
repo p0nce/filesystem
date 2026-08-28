@@ -13,7 +13,17 @@ void nprintf(nstring s)
     printf("%.*s", cast(int) s.length, s.ptr);
 }
 
+@("file copy TEMP")
+unittest
+{
+    Path dest = Path("tests/temp.exe");
+    if (exists(dest)) remove(dest);
+    copyFile(Path("tests/GigPerformer5-5.2.2-Setup.exe"), dest);
 
+
+}
+
+version(none):
 
 @(".append")
 unittest

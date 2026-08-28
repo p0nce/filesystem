@@ -45,11 +45,6 @@ else version(Posix)
 
     // FUTURE: do without those libc function
     import cstdio = core.stdc.stdio: remove, rename;
-    
-
-    // Strange, often it isn't found in core.sys.posix.fcntl, despite
-    // being there...
-    //extern(C) int close(int fd);
 }
 
 // TODO: do we want isDirectory to throw when the path is invalid,
@@ -204,49 +199,54 @@ bool copyFile(Path from, Path to,
             }
         }
 
-       // PERF: choose best block size
-        enum int BLOCK_SIZE = 16384;
-        vector!byte buf;
-        buf.resize(BLOCK_SIZE);        
+        // Note: Linux has copy_file_range, yet on WSL was slower than a manual buffer copy
+        // for a 100 mb file.
 
-        while (true) 
         {
-            ptrdiff_t bytesRead;
-            ptrdiff_t bytesWritten;
+            // 128 kb isn't too much in a first approximation, while allowing for a measured
+            // 10% slowdown vs a 1mb chunk size for a 100mb file.
+            enum int BLOCK_SIZE = 128 * 1024;
+            vector!byte buf;
+            buf.resize(BLOCK_SIZE);        
 
-            do 
+            while (true) 
             {
-                bytesRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
-            } while (bytesRead == -1 && cerrno.errno == cerrno.EINTR);
+                ptrdiff_t bytesRead;
+                ptrdiff_t bytesWritten;
 
-            if (bytesRead < 0)
-                throwIO(kStrErrFileReadFailed);
-
-            if (bytesRead == 0)
-                break; // input file finished
-
-            ptrdiff_t offset = 0;
-            do 
-            {
-                bytesWritten = punistd.write(outHandle, buf.ptr + offset, bytesRead);
-                if (bytesWritten > 0)
+                do 
                 {
-                    bytesRead -= bytesWritten;
-                    offset += bytesWritten;
-                }
-                else if (bytesWritten <= 0 && cerrno.errno != cerrno.EINTR)
+                    bytesRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
+                } while (bytesRead == -1 && cerrno.errno == cerrno.EINTR);
+
+                if (bytesRead < 0)
+                    throwIO(kStrErrFileReadFailed);
+
+                if (bytesRead == 0)
+                    break; // input file finished
+
+                ptrdiff_t offset = 0;
+                do 
                 {
-                    // Note: 0 byte progressed is an error.
-                    punistd.close(inHandle);
-                    punistd.close(outHandle);
-                    throwIO(kStrErrFileWriteFailed);
-                }
-            } while (bytesRead);
+                    bytesWritten = punistd.write(outHandle, buf.ptr + offset, bytesRead);
+                    if (bytesWritten > 0)
+                    {
+                        bytesRead -= bytesWritten;
+                        offset += bytesWritten;
+                    }
+                    else if (bytesWritten <= 0 && cerrno.errno != cerrno.EINTR)
+                    {
+                        // Note: 0 byte progressed is an error.
+                        punistd.close(inHandle);
+                        punistd.close(outHandle);
+                        throwIO(kStrErrFileWriteFailed);
+                    }
+                } while (bytesRead);
+            }
         }
         punistd.close(inHandle);
         punistd.close(outHandle);
         return true;
-
     }
     else
         static assert(0);
