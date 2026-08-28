@@ -293,23 +293,23 @@ Path writablePath(StandardPath type, bool createIfMissing = false) /* nothrow */
             case StandardPath.data:
                 return xdgDataHome(null, createIfMissing);
             case StandardPath.desktop:
-                return xdgUserDir("DESKTOP", "/Desktop").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("DESKTOP", "/Desktop"), createIfMissing);
             case StandardPath.documents:
-                return xdgUserDir("DOCUMENTS").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("DOCUMENTS"), createIfMissing);
             case StandardPath.pictures:
-                return xdgUserDir("PICTURES").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("PICTURES"), createIfMissing);
             case StandardPath.music:
-                return xdgUserDir("MUSIC").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("MUSIC"), createIfMissing);
             case StandardPath.videos:
-                return xdgUserDir("VIDEOS").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("VIDEOS"), createIfMissing);
             case StandardPath.downloads:
-                return xdgUserDir("DOWNLOAD").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("DOWNLOAD"), createIfMissing);
             case StandardPath.templates:
-                return xdgUserDir("TEMPLATES", "/Templates").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("TEMPLATES", "/Templates"), createIfMissing);
             case StandardPath.publicShare:
-                return xdgUserDir("PUBLICSHARE", "/Public").createIfNeeded(createIfMissing);
+                return createIfNeeded(xdgUserDir("PUBLICSHARE", "/Public"), createIfMissing);
             case StandardPath.fonts:
-                return homeFontsPath().createIfNeeded(createIfMissing);
+                return createIfNeeded(homeFontsPath(), createIfMissing);
             case StandardPath.applications:
                 return xdgDataHome("applications", createIfMissing);
             case StandardPath.startup:

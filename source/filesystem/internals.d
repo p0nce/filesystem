@@ -11,9 +11,12 @@ import nulib;
 import nulib.text.unicode;
 import nulib.io.stream.file;
 import nulib.io.stream;
+import nulib.memory;
+
 import filesystem.types;
 import filesystem.path;
 import filesystem.freefunc;
+
 
 version(Windows)
 {
@@ -224,6 +227,31 @@ int fs_wcscmp( const(wchar)* lhs, const(wchar)* rhs ) pure @system
             break;
     }
     return 0;
+}
+
+const(char)[] fs_strip(return const(char)[] s) pure nothrow @safe 
+{
+    const(char)[] r = s;
+    while (r.length > 0 && fs_isspace(r[0])) r = r[1..$];
+    while (r.length > 0 && fs_isspace(r[$-1])) r = r[0..$-1];
+    return r;
+}
+
+int fs_isspace(char ch) pure nothrow @safe 
+{
+    switch (ch)
+    {
+    case ' ':
+    case '\t':
+    case '\n':
+    case '\v':
+    case '\f':
+    case '\r':
+        return true;
+
+    default:
+        return false;
+    }
 }
 
 nwstring toUTF16OrCrash(nstring s) nothrow
@@ -509,7 +537,11 @@ private:
 
 public:
 
-    this(Stream stream)
+    @disable this(this);
+    @disable this(ref LineSplitter);
+
+    // take ownership of the stream, use move
+    this(unique_ptr!FileStream stream)
     {
         this.stream = stream;
         assert(stream.canRead());
@@ -581,5 +613,53 @@ public:
         ch = buf[0];
         return true;
     }
+}
 
+Path getFromUserDirs(const(char)[] xdgdir, Path home, unique_ptr!FileStream file) 
+{
+    LineSplitter splitter = LineSplitter(move(file));
+    const(char)[] line;
+    while ((line = splitter.nextLine()) !is null)
+    {
+        line = fs_strip(line);
+        auto index = xdgdir.length;
+        if ( (line[0..index] == xdgdir) 
+             && line.length > index 
+            && line[index] == '=') 
+        {
+            line = line[index+1..$];
+            if (line.length > 2 && line[0] == '"' && line[$-1] == '"')
+            {
+                line = line[1..$-1];
+
+                if (line.startsWith("$HOME"))
+                    return home.maybeAppend(line[5..$]);
+
+                if (line.length == 0 || line[0] != '/') {
+                    continue; // skip relative paths
+                }
+                return Path(line);
+            }
+        }
+    }
+    return Path.init;
+}
+
+Path getFromDefaultDirs(const(char)[] key, Path home, unique_ptr!FileStream file) 
+{
+    LineSplitter splitter = LineSplitter(move(file));
+    const(char)[] line;
+    while ((line = splitter.nextLine()) !is null)
+    {
+        line = fs_strip(line);
+        auto index = key.length;
+        if ( (line[0..index] == key) 
+             && line.length > index 
+            && line[index] == '=')
+        {
+            line = line[index+1..$];
+            return home / line;
+        }
+    }
+    return Path.init;
 }

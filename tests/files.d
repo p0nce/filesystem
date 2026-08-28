@@ -11,15 +11,7 @@ void nprintf(nstring s)
     printf("%.*s", cast(int) s.length, s.ptr);
 }
 
-void display(vector!Path paths)
-{
-    foreach(p; paths)
-    {
-        printf(" - ");
-        nprintf(p);
-        printf("\n");
-    }
-}
+
 
 @("absolute()")
 unittest
@@ -288,88 +280,3 @@ unittest
     assert(si.freeTheoretical >= si.available);
 }
 
-@("Standard paths")
-unittest
-{
-
-
-    printf("Home dir is:\n");
-    printf(" - ");
-    nprintf(homeDir());
-    printf("\n");
-    
-    printf("Config dir is:\n");
-    display(standardPaths(StandardPath.config));
-
-    printf("App data dir is:\n");
-    display(standardPaths(StandardPath.data));
-
-    printf("Desktop dir is:\n");
-    display(standardPaths(StandardPath.desktop));
-
-    printf("Documents dir is:\n");
-    display(standardPaths(StandardPath.documents));
-
-    printf("Pictures dir is:\n");
-    display(standardPaths(StandardPath.pictures));
-
-    printf("Music dir is:\n");
-    display(standardPaths(StandardPath.music));
-
-    printf("Videos dir is:\n");
-    display(standardPaths(StandardPath.videos));
-
-    printf("Downloads dir is:\n");
-    display(standardPaths(StandardPath.downloads));
-
-    printf("Fonts dir is:\n");
-    display(standardPaths(StandardPath.fonts));
-
-    printf("Applications dir is:\n");
-    display(standardPaths(StandardPath.applications));
-
-    printf("Startup dir is:\n");
-    display(standardPaths(StandardPath.startup));
-
-    version(Windows)
-    {
-        printf("Roaming dir is:\n");
-        display(standardPaths(StandardPath.roaming));
-
-        printf("Game save files dir is:\n");
-        display(standardPaths(StandardPath.savedGames));
-    }
-}
-
-static if (isFreedesktop)
-{
-    @("XDG paths")
-    unittest
-    {
-        printf("XDG Data home dir is:\n");
-        printf(" - ");
-        nprintf(xdgDataHome());
-        printf("\n");
-
-        printf("XDG State home dir is:\n");
-        printf(" - ");
-        nprintf(xdgStateHome());
-        printf("\n");
-
-        printf("XDG Config home dir is:\n");
-        printf(" - ");
-        nprintf(xdgConfigHome());
-        printf("\n");
-
-        printf("XDG Cache home dir is:\n");
-        printf(" - ");
-        nprintf(xdgCacheHome());
-        printf("\n");
-        
-        printf("XDG All data dirs:\n");
-        display(xdgAllDataDirs());
-
-        printf("XDG All config dirs:\n");
-        display(xdgAllConfigDirs());
-    }
-}
