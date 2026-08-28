@@ -30,9 +30,9 @@ unittest
 {
     Path conf = Path("tests/test.conf");
     Path home = Path("/home/user");
-    assert(getFromDefaultDirs("DOCUMENTS", home, fileOpenRead(conf)) == "/home/user/MyDocuments");
-    assert(getFromDefaultDirs("PICTURES", home, fileOpenRead(conf)) == "/home/user/Images");
-    assert(getFromDefaultDirs("VIDEOS", home, fileOpenRead(conf)).empty);
+    assert(getFromDefaultDirs("DOCUMENTS", home, conf) == "/home/user/MyDocuments");
+    assert(getFromDefaultDirs("PICTURES", home, conf) == "/home/user/Images");
+    assert(getFromDefaultDirs("VIDEOS", home, conf).empty);
 }
 
 

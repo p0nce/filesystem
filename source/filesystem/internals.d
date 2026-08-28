@@ -534,6 +534,7 @@ private:
     Stream stream;
     vector!char buf;
     State state;
+    bool seenEOF;
 
 public:
 
@@ -541,18 +542,25 @@ public:
     @disable this(ref LineSplitter);
 
     // take ownership of the stream, use move
-    this(unique_ptr!FileStream stream)
+    this(weak_ptr!FileStream stream)
     {
         this.stream = stream;
         assert(stream.canRead());
         state = State.regular;
+        seenEOF = false;
     }
 
     // Give next lines and `null` if terminated/error.
     // returned buffer is owned by the LineSplitter.
     // Note: line endings can be: "\n", "\r\n" or "\r"
-    const(char)[] nextLine()
+    bool nextLine(out const(char)[] outLine)
     {
+        if (seenEOF)
+        {
+            outLine = null;
+            return false;
+        }
+
         buf.resize(0); // clear content
 
         int lineLen = 0;
@@ -590,12 +598,21 @@ public:
                 }
             }
             else
-                break;
+            {
+                seenEOF = true; // next time, return null
+                break; // EOF
+            }
         }
         if (buf.length)
-            return buf[0..lineLen];
+        {
+            outLine = buf[0..lineLen];
+            return true;
+        }
         else
-            return null;
+        {
+            outLine = null;
+            return true; // note: unclear whether to return this final "" here
+        }
     }
 
     void undo()
@@ -615,17 +632,18 @@ public:
     }
 }
 
-Path getFromUserDirs(const(char)[] xdgdir, Path home, unique_ptr!FileStream file) 
+Path getFromUserDirs(const(char)[] xdgdir, Path home, Path confpath)
 {
-    LineSplitter splitter = LineSplitter(move(file));
+    unique_ptr!FileStream file = fileOpenRead(confpath);
+    LineSplitter splitter = LineSplitter(file.borrow());
     const(char)[] line;
-    while ((line = splitter.nextLine()) !is null)
+    while (splitter.nextLine(line))
     {
         line = fs_strip(line);
         auto index = xdgdir.length;
-        if ( (line[0..index] == xdgdir) 
-             && line.length > index 
-            && line[index] == '=') 
+        if ( line.length > index
+             && (line[0..index] == xdgdir) 
+             && line[index] == '=') 
         {
             line = line[index+1..$];
             if (line.length > 2 && line[0] == '"' && line[$-1] == '"')
@@ -645,16 +663,18 @@ Path getFromUserDirs(const(char)[] xdgdir, Path home, unique_ptr!FileStream file
     return Path.init;
 }
 
-Path getFromDefaultDirs(const(char)[] key, Path home, unique_ptr!FileStream file) 
+Path getFromDefaultDirs(const(char)[] key, Path home, Path confpath) 
 {
-    LineSplitter splitter = LineSplitter(move(file));
+    import core.stdc.stdio;
+    unique_ptr!FileStream file = fileOpenRead(confpath);
+    LineSplitter splitter = LineSplitter(file.borrow());
     const(char)[] line;
-    while ((line = splitter.nextLine()) !is null)
+    while (splitter.nextLine(line))
     {
         line = fs_strip(line);
         auto index = key.length;
-        if ( (line[0..index] == key) 
-             && line.length > index 
+        if ( line.length > index
+            && (line[0..index] == key) 
             && line[index] == '=')
         {
             line = line[index+1..$];

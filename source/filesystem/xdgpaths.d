@@ -222,9 +222,8 @@ Path xdgUserDir(const(char)[] key, string fallback = null)
 
     try 
     {
-        unique_ptr!FileStream f = fileName.fileOpen("r");
         nstring xdgdir = nstring("XDG_") ~ key ~ "_DIR";
-        Path path = getFromUserDirs(xdgdir, home, move(f));
+        Path path = getFromUserDirs(xdgdir, home, fileName);
         if (path.length)
             return path;
     } 
@@ -239,8 +238,7 @@ Path xdgUserDir(const(char)[] key, string fallback = null)
     {
         try 
         {
-            unique_ptr!FileStream f = Path("/etc/xdg/user-dirs.defaults").fileOpen("r");
-            auto path = getFromDefaultDirs(key, home, move(f));
+            auto path = getFromDefaultDirs(key, home, Path("/etc/xdg/user-dirs.defaults"));
             if (path.length)
                 return path;
         } 
