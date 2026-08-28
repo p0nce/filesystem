@@ -36,24 +36,16 @@ unittest
 }
 
 
-/*
 @("getFromUserDirs")
 unittest
 {
-    string content =
-`# Comment
-
-XDG_DOCUMENTS_DIR="$HOME/My Documents"
-XDG_MUSIC_DIR="/data/Music"
-XDG_VIDEOS_DIR="data/Video"
-`;
-    string home = "/home/user";
-
-    assert(getFromUserDirs("XDG_DOCUMENTS_DIR", home, content.splitLines) == "/home/user/My Documents");
-    assert(getFromUserDirs("XDG_MUSIC_DIR", home, content.splitLines) == "/data/Music");
-    assert(getFromUserDirs("XDG_DOWNLOAD_DIR", home, content.splitLines).empty);
-    assert(getFromUserDirs("XDG_VIDEOS_DIR", home, content.splitLines).empty);
-}*/
+    Path conf = Path("tests/test2.conf");
+    Path home = Path("/home/user");
+    assert(getFromUserDirs("XDG_DOCUMENTS_DIR", home, conf) == "/home/user/My Documents");
+    assert(getFromUserDirs("XDG_MUSIC_DIR", home, conf) == "/data/Music");
+    assert(getFromUserDirs("XDG_DOWNLOAD_DIR", home, conf).empty);
+    assert(getFromUserDirs("XDG_VIDEOS_DIR", home, conf).empty);
+}
 
 @("File write")
 unittest
