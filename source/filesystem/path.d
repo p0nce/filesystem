@@ -628,7 +628,7 @@ public:
     ref Path maybeAppend(const(char)[] subdir) @trusted
     {
         if (! empty)
-            append(subdir);
+            return append(subdir);
         return this;
     }
 

@@ -650,8 +650,10 @@ Path getFromUserDirs(const(char)[] xdgdir, Path home, Path confpath)
             {
                 line = line[1..$-1];
 
-                if (line.startsWith("$HOME"))
-                    return home.maybeAppend(line[5..$]);
+                if (line.startsWith("$HOME/"))
+                {
+                    return home.maybeAppend(line[6..$]);
+                }
 
                 if (line.length == 0 || line[0] != '/') {
                     continue; // skip relative paths
