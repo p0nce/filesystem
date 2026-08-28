@@ -97,7 +97,7 @@ void throwIO(const(char)[] msg)
 // to the filesystem library, but well.
 
 /// Get environment variable.
-nstring getEnvironmentVariable(nstring name) nothrow
+nstring getEnvironmentVariable(nstring name) nothrow @trusted
 {
     version(Posix)
     {
@@ -146,7 +146,7 @@ nstring getEnvironmentVariable(nstring name) nothrow
         static assert(0);
 }
 ///ditto
-nstring getEnvironmentVariable(const(char)[] name) nothrow
+nstring getEnvironmentVariable(const(char)[] name) nothrow @trusted
 {
     return getEnvironmentVariable(nstring(name));
 }
@@ -159,7 +159,7 @@ nstring getEnvironmentVariable(const(char)[] name) nothrow
 ///
 /// Returns: true if successful.
 /// TODO: unset variable if value == ""
-bool setEnvironmentVariable(nstring name, nstring value) nothrow
+bool setEnvironmentVariable(nstring name, nstring value) nothrow @trusted
 {
     version(Posix)
     {

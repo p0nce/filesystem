@@ -66,7 +66,7 @@ static if (isFreedesktop):
         appear to be directories.
 
 */
-vector!Path xdgDataDirs(string subfolder = null)
+vector!Path xdgDataDirs(string subfolder = null) @trusted
 {
     vector!Path r = pathsFromEnv("XDG_DATA_DIRS", ':', nstring(subfolder));
     if (r.empty)
@@ -77,7 +77,7 @@ vector!Path xdgDataDirs(string subfolder = null)
     return r;
 }
 ///ditto
-vector!Path xdgConfigDirs(string subfolder = null)
+vector!Path xdgConfigDirs(string subfolder = null) @trusted
 {
     vector!Path r = pathsFromEnv("XDG_CONFIG_DIRS", ':', nstring(subfolder));
     if (r.empty)
@@ -98,16 +98,16 @@ vector!Path xdgConfigDirs(string subfolder = null)
          shouldCreate = If path does not exist, create directory using 
          700 permissions (i.e. allow access only for current user).
 */
-Path xdgDataHome(string subfolder = null, bool shouldCreate = false)
+Path xdgDataHome(string subfolder = null, bool shouldCreate = false) @safe
     => xdgBaseDir("XDG_DATA_HOME", ".local/share", subfolder, shouldCreate);
 ///ditto
-Path xdgStateHome(string subfolder = null, bool shouldCreate = false)
+Path xdgStateHome(string subfolder = null, bool shouldCreate = false) @safe
     => xdgBaseDir("XDG_STATE_HOME", ".local/state", subfolder, shouldCreate);
 ///ditto
-Path xdgConfigHome(string subfolder = null, bool shouldCreate = false)
+Path xdgConfigHome(string subfolder = null, bool shouldCreate = false) @safe
     => xdgBaseDir("XDG_CONFIG_HOME", ".config", subfolder, shouldCreate);
 ///ditto
-Path xdgCacheHome(string subfolder = null, bool shouldCreate = false)
+Path xdgCacheHome(string subfolder = null, bool shouldCreate = false) @safe
     => xdgBaseDir("XDG_CACHE_HOME", ".cache", subfolder, shouldCreate);
 
 
@@ -124,7 +124,7 @@ Path xdgCacheHome(string subfolder = null, bool shouldCreate = false)
     Note: This function does not check if paths actually exist and 
         appear to be directories.
 */
-vector!Path xdgAllDataDirs(string subfolder = null)
+vector!Path xdgAllDataDirs(string subfolder = null) @safe
 {
     vector!Path r;
     Path user = xdgDataHome(subfolder);
@@ -133,7 +133,7 @@ vector!Path xdgAllDataDirs(string subfolder = null)
     return r;
 }
 ///ditto
-vector!Path xdgAllConfigDirs(string subfolder = null)
+vector!Path xdgAllConfigDirs(string subfolder = null) @safe
 {
     vector!Path r;
     Path user = xdgConfigHome(subfolder);
@@ -182,8 +182,6 @@ vector!Path pathsFromEnvValue(const(nstring) envValue,
     return result;
 }
 
-
-
 vector!Path pathsFromEnv(const(char)[] envName, 
                          char separator = ':',
                          nstring subfolder = nstring.init) 
@@ -193,7 +191,7 @@ vector!Path pathsFromEnv(const(char)[] envName,
 Path xdgBaseDir(string envvar, 
                 string fallback, 
                 string subfolder = null, 
-                bool shouldCreate = false) 
+                bool shouldCreate = false) @trusted
 {
     // First look at hypothetical envvar
     Path dir = Path(getEnvironmentVariable(envvar));
@@ -215,7 +213,7 @@ Path xdgBaseDir(string envvar,
     return dir;
 }
 
-Path xdgUserDir(const(char)[] key, string fallback = null)
+Path xdgUserDir(const(char)[] key, string fallback = null) @trusted
 {
     Path fileName = writablePath(StandardPath.config).maybeAppend("user-dirs.dirs");
     Path home = homeDir();
@@ -257,7 +255,7 @@ Path xdgUserDir(const(char)[] key, string fallback = null)
 
 Path homeFontsPath() => homeDir() / "/.fonts";
 
-vector!Path fontPaths()
+vector!Path fontPaths() @trusted
 {    
     vector!Path r;
     Path homeFonts = homeFontsPath();
@@ -268,62 +266,5 @@ vector!Path fontPaths()
     return r;
 }
 
-
-
-
 // Note: xdgRuntimeDir() left out in 2026, but it is in the original
 // standardpaths package.
-
-/+
-
-@trusted string xdgRuntimeDir() nothrow // Do we need it on BSD systems?
-{
-    import std.exception : assumeUnique;
-    import core.sys.posix.pwd;
-
-    try { //one try to rule them all and for compatibility reasons
-        const uid_t uid = getuid();
-        string runtime;
-        collectException(environment.get("XDG_RUNTIME_DIR"), runtime);
-
-        if (!runtime.length) {
-            passwd* pw = getpwuid(uid);
-
-            try {
-                if (pw && pw.pw_name) {
-                    runtime = tempDir() ~ "/runtime-" ~ assumeUnique(fromStringz(pw.pw_name));
-
-                    if (!(runtime.exists && runtime.isDir)) {
-                        if (mkdir(runtime.toStringz, privateMode) != 0) {
-                            version(XdgPathsRuntimeDebug) stderr.writefln("Failed to create runtime directory %s: %s", runtime, fromStringz(strerror(errno)));
-                            return null;
-                        }
-                    }
-                } else {
-                    version(XdgPathsRuntimeDebug) stderr.writeln("Failed to get user name to create runtime directory");
-                    return null;
-                }
-            } catch(Exception e) {
-                version(XdgPathsRuntimeDebug) collectException(stderr.writefln("Error when creating runtime directory: %s", e.msg));
-                return null;
-            }
-        }
-        stat_t statbuf;
-        stat(runtime.toStringz, &statbuf);
-        if (statbuf.st_uid != uid) {
-            version(XdgPathsRuntimeDebug) collectException(stderr.writeln("Wrong ownership of runtime directory %s, %d instead of %d", runtime, statbuf.st_uid, uid));
-            return null;
-        }
-        if ((statbuf.st_mode & octal!777) != privateMode) {
-            version(XdgPathsRuntimeDebug) collectException(stderr.writefln("Wrong permissions on runtime directory %s, %o instead of %o", runtime, statbuf.st_mode, privateMode));
-            return null;
-        }
-
-        return runtime;
-    } catch (Exception e) {
-        version(XdgPathsRuntimeDebug) collectException(stderr.writeln("Error when getting runtime directory: %s", e.msg));
-        return null;
-    }
-}
-
-+/

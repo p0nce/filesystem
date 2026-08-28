@@ -347,6 +347,7 @@ vector!Path standardPaths(StandardPath type) @safe
 {
     vector!Path paths;
     Path commonPath;
+    vector!Path commonPaths;
 
     version(Windows)
     {     
@@ -410,49 +411,47 @@ vector!Path standardPaths(StandardPath type) @safe
                 break;
         }
     }
+    else static if (isFreedesktop)
+    {
+        switch(type) {
+            case StandardPath.data:
+                commonPaths = xdgAllDataDirs();
+                break;
+            case StandardPath.config:
+                commonPaths = xdgAllConfigDirs();
+                break;
+            case StandardPath.applications:
+                commonPaths = xdgAllDataDirs("applications");
+                break;
+            case StandardPath.startup:
+                commonPaths = xdgAllConfigDirs("autostart");
+                break;
+            case StandardPath.fonts:
+                commonPaths = fontPaths();
+                break;
+            default:
+                break;
+        }
+    }
+    else
+        static assert(0);
 
     Path userPath = writablePath(type);
     if (userPath.length)
         paths ~= userPath;
     if (commonPath.length)
         paths ~= commonPath;
+    foreach (p; commonPaths)
+    {
+        if (paths.find(p) == -1)
+            paths ~= p;
+    }
     return paths;
 }
 
 
 
-/+
 
-
-
-        string[] standardPaths(StandardPath type) nothrow @safe
-        {
-            string[] paths;
-
-            switch(type) {
-                case StandardPath.data:
-                    return xdgAllDataDirs();
-                case StandardPath.config:
-                    return xdgAllConfigDirs();
-                case StandardPath.applications:
-                    return xdgAllDataDirs("applications");
-                case StandardPath.startup:
-                    return xdgAllConfigDirs("autostart");
-                case StandardPath.fonts:
-                    return fontPaths();
-                default:
-                    break;
-            }
-
-            string userPath = writablePath(type);
-            if (userPath.length) {
-                return [userPath];
-            }
-            return null;
-        }
-    }
-}
-+/
 
 private:
 

@@ -50,11 +50,11 @@ public:
     nstring str;
     alias this = str;
 
-    this(const(char)[] source) pure nothrow
+    this(const(char)[] source) pure nothrow @trusted
     {
         str = source;
     }
-    this(const(nstring) source) pure nothrow
+    this(const(nstring) source) pure nothrow @trusted
     {
         str = source;
     }
@@ -319,7 +319,7 @@ public:
     //
 
     /// Check if the path is empty.
-    bool empty()            pure nothrow const => str             == "";
+    bool empty()            pure nothrow const @safe => str == "";
     bool hasRootName()      pure const => rootName()      != "";
     bool hasRootDirectory() pure const => rootDirectory() != "";
     bool hasRootPath()      /* pure */ /* const */ => rootPath()      != "";
@@ -871,7 +871,7 @@ pure:
         popIntoCurrent();
     }
 
-    bool empty()
+    bool empty() 
     {
         return current is null;
     }
