@@ -11,8 +11,6 @@ void nprintf(nstring s)
     printf("%.*s", cast(int) s.length, s.ptr);
 }
 
-version(none):
-
 @("absolute()")
 unittest
 {

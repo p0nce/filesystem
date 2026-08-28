@@ -24,7 +24,7 @@ void display(vector!Path paths)
         printf("\n");
     }
 }
-version(none):
+
 @("getFromDefaultDirs")
 unittest
 {

@@ -23,8 +23,6 @@ unittest
 
 }
 
-version(none):
-
 @(".append")
 unittest
 {
