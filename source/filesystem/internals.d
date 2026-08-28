@@ -165,7 +165,7 @@ bool setEnvironmentVariable(nstring name, nstring value) nothrow @trusted
     {
         int overwrite = 1;
         int r;
-        if (value.empy)
+        if (value.empty)
             r = pstdlib.unsetenv(name.ptr);
         else   
             r = pstdlib.setenv(name.ptr, value.ptr, overwrite);
