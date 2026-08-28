@@ -205,43 +205,41 @@ Path homeDir() /* nothrow */ /* @safe */
 */
 Path writablePath(StandardPath type, bool createIfMissing = false) /* nothrow */ @trusted
 {
-    // TODO: create the directory if createIfMissing, on Windows
-    // TODO: create the directory if createIfMissing, on darwin
     version(Windows)
     {
         final switch(type) 
         {
             case StandardPath.config:
             case StandardPath.data:
-                return getKnownFolder(FOLDERID_LocalAppData);
+                return getKnownFolder(FOLDERID_LocalAppData, createIfMissing);
             case StandardPath.cache:
                 return Path.init;
             case StandardPath.desktop:
-                return getKnownFolder(FOLDERID_Desktop);
+                return getKnownFolder(FOLDERID_Desktop, createIfMissing);
             case StandardPath.documents:
-                return getKnownFolder(FOLDERID_Documents);
+                return getKnownFolder(FOLDERID_Documents, createIfMissing);
             case StandardPath.pictures:
-                return getKnownFolder(FOLDERID_Pictures);
+                return getKnownFolder(FOLDERID_Pictures, createIfMissing);
             case StandardPath.music:
-                return getKnownFolder(FOLDERID_Music);
+                return getKnownFolder(FOLDERID_Music, createIfMissing);
             case StandardPath.videos:
-                return getKnownFolder(FOLDERID_Videos);
+                return getKnownFolder(FOLDERID_Videos, createIfMissing);
             case StandardPath.downloads:
-                return getKnownFolder(FOLDERID_Downloads);
+                return getKnownFolder(FOLDERID_Downloads, createIfMissing);
             case StandardPath.templates:
-                return getKnownFolder(FOLDERID_Templates);
+                return getKnownFolder(FOLDERID_Templates, createIfMissing);
             case StandardPath.publicShare:
                 return Path.init;
             case StandardPath.fonts:
                 return Path.init;
             case StandardPath.applications:
-                return getKnownFolder(FOLDERID_Programs);
+                return getKnownFolder(FOLDERID_Programs, createIfMissing);
             case StandardPath.startup:
-                return getKnownFolder(FOLDERID_Startup);
+                return getKnownFolder(FOLDERID_Startup, createIfMissing);
             case StandardPath.roaming:
-                return getKnownFolder(FOLDERID_RoamingAppData);
+                return getKnownFolder(FOLDERID_RoamingAppData, createIfMissing);
             case StandardPath.savedGames:
-                return getKnownFolder(FOLDERID_SavedGames);
+                return getKnownFolder(FOLDERID_SavedGames, createIfMissing);
         }
     }
     else version(Darwin)
@@ -249,31 +247,31 @@ Path writablePath(StandardPath type, bool createIfMissing = false) /* nothrow */
         final switch(type) 
         {
             case StandardPath.config:
-                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeAppend("Preferences");
+                return domainDir(NSLibraryDirectory, NSUserDomainMask, createIfMissing).maybeAppend("Preferences");
             case StandardPath.cache:
-                return domainDir(NSCachesDirectory, NSUserDomainMask);
+                return domainDir(NSCachesDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.data:
-                return domainDir(NSApplicationSupportDirectory, NSUserDomainMask);
+                return domainDir(NSApplicationSupportDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.desktop:
-                return domainDir(NSDesktopDirectory, NSUserDomainMask);
+                return domainDir(NSDesktopDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.documents:
-                return domainDir(NSDocumentDirectory, NSUserDomainMask);
+                return domainDir(NSDocumentDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.pictures:
-                return domainDir(NSPicturesDirectory, NSUserDomainMask);
+                return domainDir(NSPicturesDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.music:
-                return domainDir(NSMusicDirectory, NSUserDomainMask);
+                return domainDir(NSMusicDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.videos:
-                return domainDir(NSMoviesDirectory, NSUserDomainMask);
+                return domainDir(NSMoviesDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.downloads:
-                return domainDir(NSDownloadsDirectory, NSUserDomainMask);
+                return domainDir(NSDownloadsDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.templates:
                 return Path.init;
             case StandardPath.publicShare:
-                return domainDir(NSSharedPublicDirectory, NSUserDomainMask);
+                return domainDir(NSSharedPublicDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.fonts:
-                return domainDir(NSLibraryDirectory, NSUserDomainMask).maybeAppend("Fonts");
+                return domainDir(NSLibraryDirectory, NSUserDomainMask, createIfMissing).maybeAppend("Fonts");
             case StandardPath.applications:
-                return domainDir(NSApplicationDirectory, NSUserDomainMask);
+                return domainDir(NSApplicationDirectory, NSUserDomainMask, createIfMissing);
             case StandardPath.startup:
                 return Path.init;
             case StandardPath.roaming:
@@ -587,12 +585,13 @@ version(Windows)
     }
 
     // Get a known path, or "" if not possible.
-    Path getKnownFolder(const(KNOWNFOLDERID) folder) @trusted /* nothrow */
+    Path getKnownFolder(const(KNOWNFOLDERID) folder, bool createIfMissing = false) @trusted /* nothrow */
     {
         wchar* str;
 
         // Don't verify taht the folder exists, don't create it either.
         DWORD flags = KF_FLAG_DONT_VERIFY;
+        if (createIfMissing) flags |= KF_FLAG_CREATE;
 
         if (SHGetKnownFolderPath(cast(KNOWNFOLDERID*)&folder, flags, null, &str) == S_OK) 
         {
@@ -661,10 +660,8 @@ version(Darwin)
         NSURL URLForDirectory(NSSearchPathDirectory dir, NSSearchPathDomainMask domain, NSURL url, int shouldCreate, NSError* error) @selector("URLForDirectory:inDomain:appropriateForURL:create:error:");
     }
 
-    Path domainDir(NSSearchPathDirectory dir, NSSearchPathDomainMask domain) nothrow @trusted
+    Path domainDir(NSSearchPathDirectory dir, NSSearchPathDomainMask domain, bool shouldCreate) nothrow @trusted
     {
-        bool shouldCreate = false;
-
         try 
         {
             NSFileManager manager = NSFileManager.defaultManager();

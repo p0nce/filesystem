@@ -98,7 +98,7 @@ Path absolute(const(char)[] p)
 /*
 Path relative(Path p, Path base = currentPath())
 {
-    return weakly_canonical(p).lexicallyRelative(weaklyCanonical(base));
+    return weaklyCanonical(p).lexicallyRelative(weaklyCanonical(base));
 }
 */
 

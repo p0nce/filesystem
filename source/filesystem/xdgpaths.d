@@ -227,7 +227,7 @@ Path xdgUserDir(const(char)[] key, string fallback = null) @trusted
     } 
     catch(Exception e) 
     {
-        // TODO: be more specific
+        // TODO: be more specific maybe
     }
 
     // Didn't find such a directory in user-dirs.dirs

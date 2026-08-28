@@ -156,20 +156,26 @@ nstring getEnvironmentVariable(const(char)[] name) nothrow @trusted
 /// Params:
 ///     name = Name of envvar, MUST be valid Unicode or this will crash.
 ///     value = Value of envvar, MUST be valid Unicode or this will crash.
+///             If value is the empty string, delete the variable instead.
 ///
 /// Returns: true if successful.
-/// TODO: unset variable if value == ""
 bool setEnvironmentVariable(nstring name, nstring value) nothrow @trusted
 {
     version(Posix)
     {
         int overwrite = 1;
-        int r = pstdlib.setenv(name.ptr, value.ptr, overwrite);
+        int r;
+        if (value.empy)
+            r = pstdlib.unsetenv(name.ptr);
+        else   
+            r = pstdlib.setenv(name.ptr, value.ptr, overwrite);
         return r == 0;
     }
     else version(Windows)
     {
         nwstring name16 = toUTF16OrCrash(name);
+        if (value.empty)
+            return SetEnvironmentVariableW(name16.ptr, null) != 0;
         nwstring value16 = toUTF16OrCrash(value);
         return SetEnvironmentVariableW(name16.ptr, value16.ptr) != 0;
     }

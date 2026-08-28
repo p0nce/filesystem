@@ -1,0 +1,91 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+name: Run Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [ "opened", "synchronize", "edited" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: 'Build and Test Library'
+    strategy:
+      matrix:
+        variant: [unittest]
+        os: [macOS-latest, ubuntu-latest, windows-latest]
+        dc: [ldc-beta, ldc-1.41.0, dmd]
+        exclude:
+          - os: macOS-latest
+            dc: dmd
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install compiler
+      uses: dlang-community/setup-dlang@v2
+      with:
+        compiler: ${{ matrix.dc }}
+
+    - name: 'Build and Test ${{ matrix.variant }} with ${{ matrix.dc }} (on ${{ matrix.os }})' 
+      run: |
+        # Build and run tests, as defined by `unittest` configuration
+        # In this mode, `mainSourceFile` is excluded and `version (unittest)` are included
+        # See https://dub.pm/package-format-json.html#configurations
+        dub test --config=${{ matrix.variant }}
+
+        # Ditto, in release mode.
+        # Sometimes D packages break in release mode, so this is important to test.
+        dub test --config=${{ matrix.variant }} --build=release
+        
+  sanity_check:
+    name: 'Run a sanity check'
+    strategy:
+      matrix:
+        dc: [ldc-beta, ldc-1.40.0, dmd]
+    
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install compiler
+      uses: dlang-community/setup-dlang@v2
+      with:
+        compiler: ${{ matrix.dc }}
+      
+    - name: 'Run tests 10 times (${{ matrix.dc }})' 
+      run: |
+        for i in `seq 1 10`
+        do
+          dub test --config=unittest
+          dub test --config=unittest --build=release
+        done
+  
+  test_build:
+    name: 'Do buildchecks'
+    strategy:
+      matrix:
+        to_build:
+          - repo: p0nce/filesystem
+            tag: main
+            config: unittest
+            version: "99.0.0"
+            may_fail: false
+    
+    needs: [test, sanity_check]
+    uses: ./.github/workflows/dub_test_build.yml
+    with:
+      repo: ${{ matrix.to_build.repo }}
+      repo_tag: ${{ matrix.to_build.tag }}
+      dep_config: ${{ matrix.to_build.config }}
+      dep_version: ${{ matrix.to_build.version }}
+      linux_deps: ${{ matrix.to_build.linux_deps }}
+      may_fail: ${{ matrix.to_build.may_fail }}
+
