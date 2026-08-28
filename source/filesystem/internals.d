@@ -476,7 +476,12 @@ version(Posix)
             throwIO(kStrInvalidFileSize);
 
         r.sizeBytes = buf.st_size;
-        r.lastWriteTime = buf.st_mtime;
+        static long getMtime(ref pstat.stat_t buf)
+        {
+            return buf.st_mtime;
+        }
+        long mtime = assumeNoGC(&getMtime, buf);
+        r.lastWriteTime = mtime;//buf.st_mtime;
         return r;
     }
 }
