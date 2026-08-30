@@ -699,3 +699,43 @@ Path getFromDefaultDirs(const(char)[] key, Path home, Path confpath)
     }
     return Path.init;
 }
+
+vector!Path pathsFromEnvValue(const(nstring) envValue, 
+                                  char separator = ':',
+                                  nstring subfolder = nstring.init) /* nothrow */
+{
+    // Note: relative path are filtered out, as per XDG spec:
+    // 
+    // "All paths set in these environment variables must be absolute. 
+    //  If an implementation encounters a relative path in any of these 
+    // variables it should consider the path invalid and ignore it."
+
+    // Note: before using this for Windows PATH, make sure it works 
+    // there, because it's been done for XDG first.
+
+    vector!Path result;
+    int lastSep = -1;
+    for (int n = 0; n <= cast(int)envValue.length; ++n)
+    {
+        char ch = (n == envValue.length) ? separator : envValue[n];
+        bool issep = (ch == separator);
+        if (issep)
+        {
+            int start = lastSep + 1;
+            int stop  = n;
+            if (stop > start)
+            {
+                Path path = Path(envValue[start..stop]);
+                path = (path / subfolder).lexicallyNormal;
+                if (result.find(path) == -1)
+                {
+                    // only append to results if absolute
+                    if (path.isAbsolute())
+                        result ~= path;
+                }
+            }
+            lastSep = n;
+        }
+    }
+    return result;
+}

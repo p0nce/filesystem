@@ -1,7 +1,6 @@
 module files;
 
 import filesystem;
-import filesystem.xdgpaths;
 import nulib;
 
 import core.stdc.stdio;

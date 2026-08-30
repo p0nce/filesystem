@@ -8,7 +8,6 @@ import core.stdc.stdio;
 import filesystem.internals;
 import filesystem.path;
 import filesystem.freefunc;
-import filesystem.xdgpaths;
 
 void nprintf(nstring s)
 {
@@ -132,38 +131,5 @@ unittest
 
         printf("Game save files dir is:\n");
         display(standardPaths(StandardPath.savedGames));
-    }
-}
-
-static if (isFreedesktop)
-{
-    @("XDG paths")
-    unittest
-    {
-        printf("XDG Data home dir is:\n");
-        printf(" - ");
-        nprintf(xdgDataHome());
-        printf("\n");
-
-        printf("XDG State home dir is:\n");
-        printf(" - ");
-        nprintf(xdgStateHome());
-        printf("\n");
-
-        printf("XDG Config home dir is:\n");
-        printf(" - ");
-        nprintf(xdgConfigHome());
-        printf("\n");
-
-        printf("XDG Cache home dir is:\n");
-        printf(" - ");
-        nprintf(xdgCacheHome());
-        printf("\n");
-        
-        printf("XDG All data dirs:\n");
-        display(xdgAllDataDirs());
-
-        printf("XDG All config dirs:\n");
-        display(xdgAllConfigDirs());
     }
 }

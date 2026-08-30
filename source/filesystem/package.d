@@ -18,5 +18,6 @@ public import filesystem.freefunc;
 // Structures related to directory search
 public import filesystem.direntry;
 
-// Standard directories
+// Standard directories 
+// (Note: XDG parts are NOT in the public API).
 public import filesystem.standardpaths;

@@ -1,22 +1,36 @@
-/**
- * Functions for retrieving standard paths in cross-platform manner.
- * Authors:
- *  $(LINK2 https://github.com/FreeSlave, Roman Chistokhodov)
- * License:
- *  $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
- * Copyright:
- *  Roman Chistokhodov 2015-2016
- *  Guillaume Piolat 2026
- */
+/*
+    Functions for retrieving standard paths in cross-platform manner.
+
+    Also: getting XDG base directories.
+    Note: These functions are defined only on freedesktop systems.
+
+    Reference: 
+        https://specifications.freedesktop.org/basedir/latest/
+
+    Authors:
+        Roman Chistokhodov <https://github.com/FreeSlave>
+
+    Copyright:
+        Copyright (c) 2015 - 2016, Roman Chistokhodov.
+        Copyright (c) 2026, Guillaume Piolat.
+
+    License:
+        $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+*/
 module filesystem.standardpaths;
 
 import numem;
 import nulib.string;
+import nulib.memory;
 import nulib.collections.vector;
+import nulib.io.stream.file;
 
-import filesystem.path;
 import filesystem.internals;
-import filesystem.xdgpaths;
+import filesystem.types;
+import filesystem.path;
+import filesystem.freefunc;
+import filesystem.standardpaths;
+
 
 version (OSX)
     version = Darwin;
@@ -68,8 +82,8 @@ else
  
     See_Also: `writablePath`, `standardPaths`.
 */
-enum StandardPath 
-{    
+enum StandardPath
+{
     /// General location of persisted application data. Every 
     /// application should have its own subdirectory here.
     /// Note: on Windows it's the same as `config` path.
@@ -150,7 +164,7 @@ enum StandardPath
 */
 Path homeDir() /* nothrow */ /* @safe */
 {
-    nstring home;    
+    nstring home;
     version(Windows)
     {
         //Use GetUserProfileDirectoryW from Userenv.dll?
@@ -702,3 +716,210 @@ version(Darwin)
     }
 }
 
+
+//
+// Free desktop specifics (partial port of xdgpaths package by same author)
+//
+
+version(OSX) {
+    enum isFreedesktop = false;
+} else version(Android) {
+    enum isFreedesktop = false;
+} else version(linux) {
+    enum isFreedesktop = true;
+} else version(FreeBSD) {
+    enum isFreedesktop = true;
+} else version(OpenBSD) {
+    enum isFreedesktop = true;
+} else version(NetBSD) {
+    enum isFreedesktop = true;
+} else version(DragonFlyBSD) {
+    enum isFreedesktop = true;
+} else version(BSD) {
+    enum isFreedesktop = true;
+} else version(Hurd) {
+    enum isFreedesktop = true;
+} else version(Solaris) {
+    enum isFreedesktop = true;
+} else {
+    enum isFreedesktop = false;
+}
+
+static if (isFreedesktop)
+{
+
+    /**
+    The ordered set of non-empty base paths to search for :
+    data files, config, or cache files, in descending order of 
+    preference.
+
+    Note: This function does not check if paths actually exist and 
+    appear to be directories.
+
+    */
+    vector!Path xdgDataDirs(string subfolder = null) @trusted
+    {
+        vector!Path r = pathsFromEnv("XDG_DATA_DIRS", ':', nstring(subfolder));
+        if (r.empty)
+        {
+            r ~= Path("/usr/local/share") / subfolder;
+            r ~= Path("/usr/share") / subfolder;
+        }
+        return r;
+    }
+    ///ditto
+    vector!Path xdgConfigDirs(string subfolder = null) @trusted
+    {
+        vector!Path r = pathsFromEnv("XDG_CONFIG_DIRS", ':', nstring(subfolder));
+        if (r.empty)
+            r ~= Path("/etc/xdg") / subfolder;
+        return r;
+    }
+
+
+    /**
+    The base directory relative to which user-specific 
+    data, state, config or cache files should be stored.
+
+    Returns: 
+    Path to user-specific data directory or empty string on error.
+
+    Params:
+    subfolder = Subfolder to append to determined path.
+    shouldCreate = If path does not exist, create directory using 
+    700 permissions (i.e. allow access only for current user).
+    */
+    Path xdgDataHome(string subfolder = null, bool shouldCreate = false) @safe
+        => xdgBaseDir("XDG_DATA_HOME", ".local/share", subfolder, shouldCreate);
+    ///ditto
+    Path xdgStateHome(string subfolder = null, bool shouldCreate = false) @safe
+        => xdgBaseDir("XDG_STATE_HOME", ".local/state", subfolder, shouldCreate);
+    ///ditto
+    Path xdgConfigHome(string subfolder = null, bool shouldCreate = false) @safe
+        => xdgBaseDir("XDG_CONFIG_HOME", ".config", subfolder, shouldCreate);
+    ///ditto
+    Path xdgCacheHome(string subfolder = null, bool shouldCreate = false) @safe
+        => xdgBaseDir("XDG_CACHE_HOME", ".cache", subfolder, shouldCreate);
+
+
+    /**
+    The ordered set of non-empty base paths to search for data files, 
+    or config files, in descending order of preference.
+
+    The user data/config directory takes precedence, and is thus 
+    ordered first if it exists.
+
+    Returns: 
+    Data directories, including user's one if could be evaluated.
+
+    Note: This function does not check if paths actually exist and 
+    appear to be directories.
+    */
+    vector!Path xdgAllDataDirs(string subfolder = null) @safe
+    {
+        vector!Path r;
+        Path user = xdgDataHome(subfolder);
+        if (! user.empty) r ~= user;
+        r ~= xdgDataDirs(subfolder)[];
+        return r;
+    }
+    ///ditto
+    vector!Path xdgAllConfigDirs(string subfolder = null) @safe
+    {
+        vector!Path r;
+        Path user = xdgConfigHome(subfolder);
+        if (! user.empty) r ~= user;
+        r ~= xdgConfigDirs(subfolder)[];
+        return r;
+    }
+
+    enum FilePerms privateMode = FilePerms.ownerAll;
+
+
+    vector!Path pathsFromEnv(const(char)[] envName, 
+                             char separator = ':',
+                             nstring subfolder = nstring.init) 
+        => pathsFromEnvValue(getEnvironmentVariable(envName), separator, subfolder);
+
+
+    Path xdgBaseDir(string envvar, 
+                    string fallback, 
+                    string subfolder = null, 
+                    bool shouldCreate = false) @trusted
+                    {
+                        // First look at hypothetical envvar
+                        Path dir = Path(getEnvironmentVariable(envvar));
+
+                        // Fallback inside ~/<fallback> if no such envvar
+                        if (dir.empty)
+                            dir = Path(getEnvironmentVariable(nstring("HOME"))).maybeAppend(fallback);
+
+                        if (dir.empty)
+                            return dir;
+
+                        dir.maybeAppend(subfolder);
+
+                        if (shouldCreate) 
+                        {
+                            if (! ensureExists(dir, privateMode)) 
+                                return Path.init;
+                        }
+                        return dir;
+                    }
+
+    Path xdgUserDir(const(char)[] key, string fallback = null) @trusted
+    {
+        Path fileName = writablePath(StandardPath.config).maybeAppend("user-dirs.dirs");
+        Path home = homeDir();
+
+        try 
+        {
+            nstring xdgdir = nstring("XDG_") ~ key ~ "_DIR";
+            Path path = getFromUserDirs(xdgdir, home, fileName);
+            if (path.length)
+                return path;
+        } 
+        catch(Exception e) 
+        {
+            // TODO: be more specific maybe
+        }
+
+        // Didn't find such a directory in user-dirs.dirs
+
+        if (home.length) 
+        {
+            try 
+            {
+                auto path = getFromDefaultDirs(key, home, Path("/etc/xdg/user-dirs.defaults"));
+                if (path.length)
+                    return path;
+            } 
+            catch (FileSystemException e) 
+            {
+                // typically: file doesn't exist, or couldn't be accessed
+                e.free();
+            }
+        }
+
+        if (fallback !is null)
+            return home / fallback;
+
+        return Path.init;
+    }
+
+    Path homeFontsPath() => homeDir() / "/.fonts";
+
+    vector!Path fontPaths() @trusted
+    {    
+        vector!Path r;
+        Path homeFonts = homeFontsPath();
+        if (!homeFonts.empty)
+            r ~= homeFonts;
+        r ~= Path("/usr/local/share/fonts");
+        r ~= Path("/usr/share/fonts");
+        return r;
+    }
+
+    // Note: xdgRuntimeDir() left out in 2026, but it is in the original
+    // standardpaths package.
+}

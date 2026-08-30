@@ -6,7 +6,6 @@ import nulib;
 import core.stdc.stdio;
 
 import filesystem.internals;
-import filesystem.xdgpaths;
 
 void nprintf(nstring s)
 {
@@ -273,37 +272,34 @@ unittest
     }
 }
 
-static if (isFreedesktop)
+@("pathsFromEnvValue")
+unittest
 {
-    @("pathsFromEnvValue")
-    unittest
+    vector!Path v = pathsFromEnvValue(nstring(""));
+    assert(v.length == 0);
+    v = pathsFromEnvValue(nstring(":"));
+
+    assert(v.length == 0);
+    v = pathsFromEnvValue(nstring("::"));
+    assert(v.length == 0);
+
+    // relative path are ignored
+    v = pathsFromEnvValue(nstring("path1:path2"));
+    assert(v.length == 0);
+
+    version(Posix)
     {
-        vector!Path v = pathsFromEnvValue(nstring(""));
-        assert(v.length == 0);
-        v = pathsFromEnvValue(nstring(":"));
 
-        assert(v.length == 0);
-        v = pathsFromEnvValue(nstring("::"));
-        assert(v.length == 0);
+        v = pathsFromEnvValue(nstring("/path1:/path2"));
+        assert(v.length == 2);
+        
+        assert(v[0] == Path("/path1/"));
+        assert(v[1] == Path("/path2/"));
 
-        // relative path are ignored
-        v = pathsFromEnvValue(nstring("path1:path2"));
-        assert(v.length == 0);
-
-        version(Posix)
-        {
-
-            v = pathsFromEnvValue(nstring("/path1:/path2"));
-            assert(v.length == 2);
-            
-            assert(v[0] == Path("/path1/"));
-            assert(v[1] == Path("/path2/"));
-
-            v = pathsFromEnvValue(nstring("/path2:/path1:/path2"));
-            assert(v.length == 2);
-            assert(v[0] == Path("/path2/"));
-            assert(v[1] == Path("/path1/"));
-        }
+        v = pathsFromEnvValue(nstring("/path2:/path1:/path2"));
+        assert(v.length == 2);
+        assert(v[0] == Path("/path2/"));
+        assert(v[1] == Path("/path1/"));
     }
 }
 
