@@ -11,6 +11,32 @@ import filesystem.internals;
 public import numem.core.exception;
 import numem.lifetime;
 
+
+version(OSX) {
+    enum isFreedesktop = false;
+} else version(Android) {
+    enum isFreedesktop = false;
+} else version(linux) {
+    enum isFreedesktop = true;
+} else version(FreeBSD) {
+    enum isFreedesktop = true;
+} else version(OpenBSD) {
+    enum isFreedesktop = true;
+} else version(NetBSD) {
+    enum isFreedesktop = true;
+} else version(DragonFlyBSD) {
+    enum isFreedesktop = true;
+} else version(BSD) {
+    enum isFreedesktop = true;
+} else version(Hurd) {
+    enum isFreedesktop = true;
+} else version(Solaris) {
+    enum isFreedesktop = true;
+} else {
+    enum isFreedesktop = false;
+}
+
+
 /**
     Time used for modification dates. 
     Number of seconds since UNIX epoch.

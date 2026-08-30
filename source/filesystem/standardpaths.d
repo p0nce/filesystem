@@ -60,10 +60,6 @@ else version(Darwin)
     import foundation;
     import core.attribute : selector;
 }
-else static if (isFreedesktop)
-{
-    import filesystem.xdgpaths;
-}
 else
     static assert(0, "Unrecognized OS");
 
@@ -720,30 +716,6 @@ version(Darwin)
 //
 // Free desktop specifics (partial port of xdgpaths package by same author)
 //
-
-version(OSX) {
-    enum isFreedesktop = false;
-} else version(Android) {
-    enum isFreedesktop = false;
-} else version(linux) {
-    enum isFreedesktop = true;
-} else version(FreeBSD) {
-    enum isFreedesktop = true;
-} else version(OpenBSD) {
-    enum isFreedesktop = true;
-} else version(NetBSD) {
-    enum isFreedesktop = true;
-} else version(DragonFlyBSD) {
-    enum isFreedesktop = true;
-} else version(BSD) {
-    enum isFreedesktop = true;
-} else version(Hurd) {
-    enum isFreedesktop = true;
-} else version(Solaris) {
-    enum isFreedesktop = true;
-} else {
-    enum isFreedesktop = false;
-}
 
 static if (isFreedesktop)
 {
