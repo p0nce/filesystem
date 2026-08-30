@@ -48,10 +48,6 @@ else version(Posix)
     import cstdio = core.stdc.stdio: remove, rename;
 }
 
-// TODO: do we want isDirectory to throw when the path is invalid,
-// an I/O error returned, or the directory isn't found? Or just return
-// false.
-
 
 /**
     Returns a path referencing the same file system location as p, 
@@ -897,6 +893,12 @@ SpaceInfo space(Path p)
     - `FileNotFoundException`  => equivalent to C++'s file_type::not_found
     - `InvalidPathException`   => equivalent to C++'s file_type::none
     - `FileSystemIOException`  => equivalent to C++'s file_type::none
+
+    Note: unlike in C++, our version throw if there is no status
+        for the file. Typically:
+       - `InvalidPathException` is probably a bug in user code.
+       - `FileNotFoundException` might need special treatment.
+       - `FileSystemIOException` is a recoverable runtime error.
 */
 FileStatus status(Path path)
 {
@@ -980,14 +982,15 @@ FileStatus symlinkStatus(Path path)
     special file, as if determined by the POSIX `S_ISBLK`. Examples of 
     block special files are block devices such as `/dev/sda` or 
     `/dev/loop0` on Linux.
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isBlockFile(FileStatus s) pure nothrow
     => s.type == FileType.block;
 ///ditto
 bool isBlockFile(Path p) // symlinks are followed here
-    => isBlockFile(status(p));
+{
+    bool valid;
+    return isBlockFile(statusNothrow(p, valid)) && valid;
+}
 
 
 /**
@@ -1001,21 +1004,25 @@ bool isBlockFile(Path p) // symlinks are followed here
 bool isCharacterFile(FileStatus s) pure nothrow
     => s.type == FileType.character;
 ///ditto
-bool isCharacterFile(Path p) // symlinks are followed here
-    => isCharacterFile(status(p));
+bool isCharacterFile(Path p) nothrow // symlinks are followed here
+{
+    bool valid;
+    return isCharacterFile(statusNothrow(p, valid)) && valid;
+}
 
 
 /**
     Checks if the given file status or path corresponds to a 
     directory.
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isDirectory(FileStatus s) pure nothrow
     => s.type == FileType.directory;
 ///ditto
-bool isDirectory(Path p) // symlinks are followed here
-    => isDirectory(status(p));
+bool isDirectory(Path p) nothrow // symlinks are followed here
+{
+    bool valid;
+    return isDirectory(statusNothrow(p, valid)) && valid;
+}
 
 
 /**
@@ -1034,14 +1041,15 @@ bool isEmpty(Path p)
 /**
     Checks if the given file status or path corresponds to a FIFO or 
     pipe file as if determined by POSIX `S_ISFIFO`. 
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isFIFO(FileStatus s) pure nothrow
     => s.type == FileType.fifo;
 ///ditto
 bool isFIFO(Path p) // symlinks are followed here
-    => isFIFO(status(p));
+{
+    bool valid;
+    return isFIFO(statusNothrow(p, valid)) && valid;
+}
 
 
 /**
@@ -1050,40 +1058,43 @@ bool isFIFO(Path p) // symlinks are followed here
     - neither regular file, 
     - nor directory 
     - nor a symlink.
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isOther(FileStatus s) pure
     => !isRegularFile(s) && !isDirectory(s) && !isSymlink(s);
 ///ditto
 bool isOther(Path p) // symlinks are followed here
-    => isOther(status(p));
+{
+    bool valid;
+    return isOther(statusNothrow(p, valid)) && valid;
+}
 
 
 /**
     Checks if the given file status or path corresponds to a regular 
     file.
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isRegularFile(FileStatus s) pure nothrow
     => s.type == FileType.regular;
 ///ditto
-bool isRegularFile(Path p) // symlinks are followed here
-    => isRegularFile(status(p));
+bool isRegularFile(Path p) nothrow // symlinks are followed here
+{
+    bool valid;
+    return isRegularFile(statusNothrow(p, valid)) && valid;
+}
 
 
 /**
     Checks if the given file status or path corresponds to a named IPC 
     socket, as if determined by the POSIX `S_IFSOCK`.
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isSocket(FileStatus s) pure nothrow
     => s.type == FileType.socket;
 ///ditto
 bool isSocket(Path p) // symlinks are followed here
-    => isSocket(status(p));
+{
+    bool valid;
+    return isSocket(statusNothrow(p, valid)) && valid;
+}
 
 
 /**
@@ -1143,6 +1154,33 @@ FileStatus statusExists(Path p, out bool exists)
         e.free();
         exists = false;
         st = FileStatus.init;
+    }
+    return st;
+}
+
+/*
+    Version that return even if the file doesn't exist,
+    path is invalid, or I/O failed.
+
+    Returns: FileStatus.init if any error occured.
+*/
+FileStatus statusNothrow(Path p, out bool valid) nothrow
+{
+    FileStatus st;
+    try
+    {
+        st = status(p);
+        valid = true;
+    }
+    catch(FileSystemException e)
+    {
+        e.freeNoThrow();
+        valid = false;
+        st = FileStatus.init;
+    }
+    catch(Exception e)
+    {
+        assert(0);
     }
     return st;
 }
