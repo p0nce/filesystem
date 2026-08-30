@@ -63,6 +63,7 @@ static immutable string
     kStrErrChmodFailed     = "File chmod failed",
     kStrErrInvalidArg      = "Invalid argument",
     kStrErrCurrentPath     = "Can't get current path",
+    kStrErrTempPath        = "Can't get temp path",
     kStrErrCopySameFile    = "Source and destination are the same",
     kStrErrMetadataAccess  = "Can't access file metadata",
     kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty",

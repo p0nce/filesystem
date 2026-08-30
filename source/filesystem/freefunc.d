@@ -880,8 +880,38 @@ SpaceInfo space(Path p)
     return info;
 }
 
+/**
+    A directory suitable for temporary files. The path is guaranteed to exist and to be a directory. 
+*/
+Path tempDirectoryPath()
+{
+    version(Windows)
+    {
+        wchar[512] buffer;
+        DWORD rc = GetTempPathW(511, buffer.ptr);
+        if (!rc || rc > 511)
+            throwIO(kStrErrTempPath);
+    
+        return Path(nwstring(buffer[0..rc]).toUTF8());
+    }
+    else version(Posix)
+    {
+        static immutable string[4] TEMP_VARS = 
+        [
+            "TMPDIR", "TMP", "TEMP", "TEMPDIR"
+        ];
 
-// TODO temp_directory_path
+        foreach (string envname; TEMP_VARS)
+        {
+            nstring r = getEnvironmentVariable(envname);
+            if (! r.empty)
+                return Path(r);
+        }
+        return Path("/tmp");
+    }
+    else
+        static assert(0);
+}
 
 
 /**

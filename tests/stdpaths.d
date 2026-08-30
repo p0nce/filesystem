@@ -133,3 +133,12 @@ unittest
         display(standardPaths(StandardPath.savedGames));
     }
 }
+
+@("Temporary dir")
+unittest
+{
+    printf("Temp dir is:\n");
+    printf(" - ");
+    nprintf(tempDirectoryPath());
+    printf("\n");
+}
