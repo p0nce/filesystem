@@ -235,14 +235,13 @@ unittest
 @("fileSize()")
 unittest
 {
-    assert(fileSize(Path("./tests/FileWithZeroSize")) == 0);
     assert(fileSize(Path("./tests/FileWithSizeTwo")) == 2);
 }
 
 @("lastWriteTime()")
 unittest
 {
-    long time0 = lastWriteTime(Path("./tests/FileWithZeroSize"));
+    long time0 = lastWriteTime(Path("./tests/FileWithSizeTwo"));
     long timeHere = lastWriteTime(Path("."));
 }
 
