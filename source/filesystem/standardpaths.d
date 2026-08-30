@@ -59,7 +59,7 @@ else version(Darwin)
     import objc;
     import foundation;
     import core.attribute : selector;
-} static if (isFreedesktop)
+} else static if (isFreedesktop)
 {
 }
 else

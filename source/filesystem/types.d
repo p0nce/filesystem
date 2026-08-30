@@ -66,13 +66,16 @@ enum FileType
 /**
     Stores information about the type and permissions of a file.
 
+    Note: permissions and lastWriteTime are only meaningful for
+        regular files on Windows. FUTURE clarify that.
+
     See_also: `status`, `symlinkStatus`.
 */
 struct FileStatus
 {
     FileType type;          /// Type of the file.
-    FilePerms permissions;  /// Permissions of the file.
     long sizeBytes;         /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
+    FilePerms permissions;  /// Permissions of the file.    
     FileTime lastWriteTime; /// In UNIX epoch.
 }
 

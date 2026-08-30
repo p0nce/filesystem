@@ -485,7 +485,7 @@ version(Posix)
             return buf.st_mtime;
         }
         long mtime = assumeNoGC(&getMtime, buf);
-        r.lastWriteTime = mtime;//buf.st_mtime;
+        r.lastWriteTime = mtime;
         return r;
     }
 }

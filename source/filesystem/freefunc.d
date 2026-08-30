@@ -934,9 +934,15 @@ FileStatus status(Path path)
 {
     version(Windows)
     {
-        return symlinkStatus(path);
-        // TODO: this is wrong, need to detect symlink there.
-        // See std::filesystem implementations.
+        FileStatus symStat = symlinkStatus(path);
+        if (symStat.type == FileType.symlink)
+        {
+            Path target = resolveSymlink(path);
+            // FUTURE: protects against loops
+            return status(target); // recurse
+        }
+        else
+            return symStat;
     }
     else
     {
@@ -974,13 +980,39 @@ FileStatus symlinkStatus(Path path)
         }
         else
         {
-            r.setTimeFromFILETIME(info.ftLastWriteTime);            
+            if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) 
+            {
+                vector!ubyte rawReparseData = getReparseData(path);
+                REPARSE_DATA_BUFFER* reparseData = cast(REPARSE_DATA_BUFFER*) rawReparseData.ptr;
+                if (reparseData 
+                    && assumeNoGC(&IsReparseTagMicrosoft, reparseData.ReparseTag) && (reparseData.ReparseTag == IO_REPARSE_TAG_SYMLINK))
+                {
+                    r.type = FileType.symlink;
+                    r.sizeBytes = 0;
+                }
+            }
 
-            // FUTURE: support NTFS symbolic links
-            if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+
+
+            // dwReserved0 is undefined unless dwFileAttributes includes the
+            // FILE_ATTRIBUTE_REPARSE_POINT attribute according to microsoft
+            // documentation. In practice, dwReserved0 is not reset which
+            // causes it to report the incorrect symlink status.
+            // Note that microsoft documentation does not say whether there is
+            // a null value for dwReserved0, so we test for symlink directly
+            // instead of returning the tag which requires returning a null
+            // value for non-reparse-point files.
+           /* if ((info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+                && (info.dwReserved0 == IO_REPARSE_TAG_SYMLINK))
+            {
+                r.type = FileType.symlink;
+                r.sizeBytes = 0;
+            } */
+
+            else if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
                 r.type = FileType.directory;
-                r.sizeBytes = 0;                
+                r.sizeBytes = 0;
             }
             else
             {
