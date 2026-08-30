@@ -31,6 +31,7 @@ version(Windows)
     import core.sys.windows.stat;
     import core.sys.windows.windef;
     import core.sys.windows.winbase;
+    import core.sys.windows.winioctl;
 }
 else version(Posix)
 {
@@ -329,7 +330,7 @@ bool createDirectory(Path pathToDir,
     Create a chain of directories.
 
     Params:
-        pathToDir   = Path to the chain of directories to create.
+        p           = Path to the chain of directories to create.
         templateDir = Existing directory to get attributes/permissions 
                       from. This is ignored if `perms` is valid.
         perms       = (POSIX-only) Permissions to create the directory with.
@@ -553,6 +554,7 @@ long fileSize(Path p)
     return status(p).sizeBytes;
 }
 
+
 /**
     Open file and return a stream to it.
 
@@ -649,7 +651,24 @@ void permissions(Path p,
     }
 }
 
-// TODO read_symlink
+
+/**
+    If the path p refers to a symbolic link, returns a new `Path` 
+    object which refers to the target of that symbolic link.
+    It is an error if p does not refer to a symbolic link.
+
+    Throws:
+        FileSystemIOException on I/O error.
+        InvalidPathException on invalid path.
+        FileNotFoundException if not existing.
+*/
+Path readSymlink(Path p)
+{
+    FileStatus fs = symlinkStatus(p);
+    if (fs.type != FileType.symlink)
+        throwIO(kStrErrNotSymlink);
+    return resolveSymlink(p);
+}
 
 
 /**
@@ -1128,4 +1147,123 @@ FileStatus statusExists(Path p, out bool exists)
     return st;
 }
 
+Path resolveSymlink(Path p)
+{
+    version(Windows)
+    {
+        vector!ubyte rawReparseData = getReparseData(p);
+        REPARSE_DATA_BUFFER* reparseData = cast(REPARSE_DATA_BUFFER*) rawReparseData.ptr;
 
+        if (reparseData is null)
+            throwIO(kStrErrSymlinkRead);
+
+        // Directory junctions are defined using the exact same mechanism 
+        // (and reparse tag: IO_REPARSE_TAG_MOUNT_POINT) as volume mount points are. 
+        // The only difference is that their substitute names point to a subdirectory 
+        // of another volume that usually already has a drive letter. This function 
+        // is conceptually similar to symbolic links to directories in Unix, 
+        // except that the target in NTFS must always be another directory 
+        // (typical Unix file systems allow the target of a symbolic link to be any type of file).
+        if (reparseData.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
+        {
+            return getFullPathName(p);
+        }
+        else if (reparseData.ReparseTag == IO_REPARSE_TAG_SYMLINK)
+        {
+            wchar* parseBuf = assumeNoGC(&reparseData.SymbolicLinkReparseBuffer.PathBuffer);
+            size_t printOfs = reparseData.SymbolicLinkReparseBuffer.PrintNameOffset / wchar.sizeof;
+            size_t printLen = reparseData.SymbolicLinkReparseBuffer.PrintNameLength / wchar.sizeof;
+            wchar* printPtr = &parseBuf[printOfs];
+            nwstring printName = nwstring(printPtr[0..printLen]);
+
+            size_t substOfs = reparseData.SymbolicLinkReparseBuffer.SubstituteNameOffset / wchar.sizeof;
+            size_t substLen = reparseData.SymbolicLinkReparseBuffer.SubstituteNameLength / wchar.sizeof;
+            wchar* substPtr = &parseBuf[substOfs];
+            nwstring substName = nwstring(substPtr[0..substLen]);
+
+            Path result;
+            // Note sure why this check is there...
+            if (endsWith(substName, printName) && startsWith(substName, nwstring(`\??\`w)))
+                result = Path(printName.toUTF8());
+            else
+                result = Path(substName.toUTF8());
+
+            if (reparseData.SymbolicLinkReparseBuffer.Flags & 0x1 /*SYMLINK_FLAG_RELATIVE*/) 
+                result = p.parentPath() / result;
+
+            return result;
+        }
+        else
+            throwIO(kStrErrSymlinkRead);
+    }
+    else version(Posix)
+    {
+        size_t bufSize = 256;
+        while (bufSize <= 1024 * 1024) 
+        {
+            vector!char linkbuf;
+            linkbuf.resize(bufSize);
+            ptrdiff_t bytes = punistd.readlink(p.native.ptr, linkbuf.ptr, bufSize);
+            if (bytes < 0)
+                throwIO(kStrErrSymlinkRead);
+            else if (bytes < bufSize)
+            {
+                return Path(linkbuf[0..bytes]);
+            }
+            else
+                bufSize *= 2;
+        }
+        return Path.init;
+    }
+    else
+        static assert(0);
+}
+
+
+version(Windows)
+{
+    // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number of
+    // additional bytes.
+    // We return a ubyte buffer that should be read as a REPARSE_DATA_BUFFER
+
+
+    // Given a native UTF-16 Windows path, return full path.
+    Path getFullPathName(Path p)
+    {
+        nwstring wpath = p.native.toUTF16();
+        ULONG size = GetFullPathNameW(wpath.ptr, 0, null, null);
+        if (size == 0) 
+            throwIO(kStrFileFullPath);
+        vector!wchar buf;
+        buf.resize(size);
+        ULONG s2 = GetFullPathNameW(wpath.ptr, size, buf.ptr, null);
+        if (s2 && s2 < size)
+            return Path(nwstring(buf[0..s2]).toUTF8());
+        else
+            throwIO(kStrFileFullPath);
+    }
+
+    vector!ubyte getReparseData(Path p)
+    {
+        DWORD shareFlags = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+        DWORD fileFlags = FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS;
+        HANDLE file = CreateFileW(p.native.toUTF16().ptr, 0, shareFlags, null, OPEN_EXISTING, fileFlags, null);
+
+        if (!file)
+            throwIO(kStrErrSymlinkRead);
+
+        vector!ubyte r;
+        r.resize(MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
+        ULONG bufferUsed;
+        if (DeviceIoControl(file, FSCTL_GET_REPARSE_POINT, null, 0, r.ptr, MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &bufferUsed, null)) 
+        {
+            r.resize(bufferUsed);
+            return r;
+        }
+        else
+        {
+            r.resize(0);
+            throwIO(kStrErrSymlinkRead);
+        }
+    }
+}

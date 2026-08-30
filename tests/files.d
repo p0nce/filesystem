@@ -247,6 +247,17 @@ unittest
     long timeHere = lastWriteTime(Path("."));
 }
 
+@("readSymlink()")
+unittest
+{
+    /*version(Posix)
+    {
+        // TEMP
+        Path target = readSymlink(Path("/usr/bin/xzcat"));
+        nprintf(target);
+
+    }*/
+}
 
 @("removeAll()")
 unittest

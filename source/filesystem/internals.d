@@ -46,6 +46,7 @@ static immutable string
     kStrFileNotFound       = "File not found: `",
     kStrInvalidPath        = "Invalid path",
     kStrFileAttributes     = "Can't get file attributes",
+    kStrFileFullPath       = "Can't get file full path",
     kStrInvalidFileSize    = "Invalid file size",
     kStrDeepFuture         = "You've reached the deep future",
     kStrErrCreateDirectory = "Can't create directory",    
@@ -67,28 +68,30 @@ static immutable string
     kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty",
     kStrErrFileSearch      = "File search failed",
     kStrErrFSAvailInfo     = "Can't get filesystem disc usage information",
-    kStrErrUnrealDiscSize  = "Disc reports too large a size to be true";
+    kStrErrUnrealDiscSize  = "Disc reports too large a size to be true",
+    kStrErrNotSymlink      = "File is not a symlink",
+    kStrErrSymlinkRead     = "Can't read symlink";
 
 
 // Future: decide if we keep this file
 
-void throwException(const(char)[] msg)
+noreturn throwException(const(char)[] msg)
 {
     throw nogc_new!FileSystemException(msg);
 }
 
-void throwFileNotFound(const(char)[] path)
+noreturn throwFileNotFound(const(char)[] path)
 {
     throw nogc_new!FileNotFoundException(path);
 }
 
-void throwInvalidPath(const(char)[] path)
+noreturn throwInvalidPath(const(char)[] path)
 {
     // FUTURE: build proper exc message
     throw nogc_new!InvalidPathException(kStrInvalidPath);
 }
 
-void throwIO(const(char)[] msg)
+noreturn throwIO(const(char)[] msg)
 {
     throw nogc_new!FileSystemIOException(msg);
 }

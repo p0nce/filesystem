@@ -181,6 +181,7 @@ Path homeDir() /* nothrow */ /* @safe */
 
     Params:
         type = Location to lookup.
+        createIfMissing = Create the directory if not existing.
  
     Note: This function does not cache its results.
 
