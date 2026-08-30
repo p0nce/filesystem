@@ -18,16 +18,15 @@ MIT + BSL-1.0.
 - `@nogc`
 - POSIX, macOS, Windows.
 - Path manipulation with the `Path` struct type.
-    * `Path.native().toUTF16()` can be used in Win32 functions.
-    * `Path.native()` can be used in POSIX functions that
-      accept UTF-8.
+    * `Path.native().toUTF16().ptr` can be used in Win32 functions.
+    * `Path.native().ptr` can be used in POSIX functions that
+      accept zero-terminated UTF-8.
 - File type.
 - File size, in bytes.
 - File last write time, in seconds.
 - File copy, rename, and removal.
 - Recursive directory creation, listing and deletion.
 - Disc usage information.
-- `FileStream` implements nulib's `Stream`, is a bit like `std.stdio.File`.
 - Getting standard paths, such as app data, XDG config (fork of `standardpaths` and `xdgpaths` and `isfreedesktop`).
 
 ## Documentation
