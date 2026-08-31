@@ -269,6 +269,21 @@ unittest
     assert(! exists(Path("tests/remove-all-test")));
 }
 
+@("resizeFile()")
+unittest
+{
+    Path f = Path("tests/fileToResize");
+    remove(f);
+    copyFile(Path("tests/fileWithSizeTwo"), f);
+    resizeFile(f, 5);
+    assert(fileSize(f) == 5);
+
+    // can resize file to zero bytes
+    resizeFile(f, 0);
+    assert(fileSize(f) == 0);
+    remove(f);
+}
+
 @("space()")
 unittest
 {

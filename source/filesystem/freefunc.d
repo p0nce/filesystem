@@ -39,7 +39,6 @@ else version(Posix)
     import pfcntl   = core.sys.posix.fcntl;     // read, write...
     import pstat    = core.sys.posix.sys.stat;  // stat...
     import pstatvfs = core.sys.posix.sys.statvfs;
-    //import pstdlib = core.sys.posix.stdlib;
 
     import cerrno  = core.stdc.errno;
     import cstdlib = core.stdc.stdlib;
@@ -159,8 +158,8 @@ bool copyFile(Path from, Path to,
         nwstring wfrom = from.native.toUTF16();
         nwstring wto = to.native.toUTF16();
         BOOL bFailIfExists = ! overwrite;
-        if (! CopyFileW(wfrom.ptr, wto.ptr, bFailIfExists)) 
-            throwIO(kStrErrFileCopyFailed);        
+        if (! CopyFileW(wfrom.ptr, wto.ptr, bFailIfExists))
+            throwIO(kStrErrFileCopyFailed);
         return true;
     }
     else version(Posix)
@@ -402,7 +401,7 @@ void createSymlink(Path target, Path linkname)
     return createSymlinkImpl(target, linkname, false);
 }
 ///ditto
-void create_directory_symlink(Path target, Path linkname)
+void createDirectorySymlink(Path target, Path linkname)
 {
     return createSymlinkImpl(target, linkname, true);
 }
@@ -525,12 +524,14 @@ bool equivalent(Path p1, Path p2)
 
         if (h1 == INVALID_HANDLE_VALUE)
             throwIO(kStrErrMetadataAccess);
+        scope(exit) CloseHandle(h1);
 
         HANDLE h2 = CreateFileW(wp2.ptr, dwDesiredAccess, dwShareMode, 
             null, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, null);
 
         if (h2 == INVALID_HANDLE_VALUE)
             throwIO(kStrErrMetadataAccess);
+        scope(exit) CloseHandle(h2);
 
         BY_HANDLE_FILE_INFORMATION inf1, inf2;
         if (! GetFileInformationByHandle(h1, &inf1))
@@ -845,7 +846,43 @@ bool rename(Path oldPath, Path newPath)
 }
 
 
-// TODO resize_file
+/**
+    Changes the size of the regular file named by `p` as if by POSIX 
+    `truncate`: if the file size was previously larger than `newSize`, 
+    the remainder of the file is discarded. If the file was previously 
+    smaller than `newSize`, the file size is increased and the new 
+    area appears as if zero-filled. 
+
+    Throws: `FileSystemIOException`, `InvalidPathException`, `FileNotFoundException`.
+*/
+void resizeFile(Path p, long newSize)
+{
+    assert(newSize >= 0);
+    version(Windows)
+    {
+        LARGE_INTEGER lisize;
+        lisize.QuadPart = newSize;
+        nwstring wp = p.native.toUTF16();
+        HANDLE file = CreateFileW(wp.ptr,  GENERIC_WRITE, 0, null, OPEN_EXISTING, 0, null);
+        if (file == INVALID_HANDLE_VALUE)
+            throwIO(kStrErrOpenFileFailed);
+        scope(exit) CloseHandle(file);
+
+        if (SetFilePointerEx(file, lisize, null, FILE_BEGIN) == 0)
+            throwIO(kStrErrFileResizeFail);
+
+        if (SetEndOfFile(file) == 0)
+            throwIO(kStrErrFileResizeFail);
+    }
+    else version(Posix)
+    {
+        if (punistd.truncate(p.native.ptr, cast(punistd.off_t) newSize) != 0)
+            throwIO(kStrErrFileResizeFail);
+    }
+    else
+        static assert(0);
+}
+
 
 /**
     Determines the information about the filesystem on which the 
@@ -1316,7 +1353,6 @@ Path resolveSymlink(Path p)
             size_t printLen = reparseData.SymbolicLinkReparseBuffer.PrintNameLength / wchar.sizeof;
             wchar* printPtr = &parseBuf[printOfs];
             printName = nwstring(printPtr[0..printLen]);
-
             size_t substOfs = reparseData.SymbolicLinkReparseBuffer.SubstituteNameOffset / wchar.sizeof;
             size_t substLen = reparseData.SymbolicLinkReparseBuffer.SubstituteNameLength / wchar.sizeof;
             wchar* substPtr = &parseBuf[substOfs];
@@ -1363,8 +1399,6 @@ Path resolveSymlink(Path p)
 
 version(Windows)
 {
-
-
     // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number of
     // additional bytes.
     // We return a ubyte buffer that should be read as a REPARSE_DATA_BUFFER
@@ -1376,6 +1410,8 @@ version(Windows)
 
         if (!file)
             throwIO(kStrErrSymlinkRead);
+
+        scope(exit) CloseHandle(file);
 
         vector!ubyte r;
         r.resize(MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
@@ -1424,7 +1460,7 @@ void createSymlinkImpl(Path target, Path linkname, bool toDir)
     }
     else version(Posix)
     {
-        int r = symlink(target.native.ptr, linkname.native.ptr);
+        int r = punistd.symlink(target.native.ptr, linkname.native.ptr);
         if (r != 0)
             throwIO(kStrErrSymlinkCreate);
     }
