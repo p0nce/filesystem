@@ -356,18 +356,6 @@ version(Windows)
                 || err == ERROR_INVALID_DRIVE);
     }
 
-    bool isWindowsSymlink(ref WIN32_FILE_ATTRIBUTE_DATA info) pure nothrow
-    {
-        if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
-        {
-            // TODO support for Windows symlink requires much more additional work.
-            // See std::filesystem implementations.
-            return false;
-        }
-        else
-            return false;
-    }
-
     void setFileSizeAndType(ref FileStatus r, 
                             DWORD dwFileAttributes,
                             DWORD nFileSizeHigh,

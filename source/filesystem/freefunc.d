@@ -385,7 +385,6 @@ bool createDirectories(Path p,
     return created;
 }
 
-// TODO create_hard_link
 
 /**
     Creates a symbolic link `linkname` with its target set to `target` 
@@ -588,7 +587,10 @@ unique_ptr!FileStream fileOpenRead(Path path) => fileOpen(path, "rb");
 unique_ptr!FileStream fileOpenWrite(Path path) => fileOpen(path, "wb");
 
 
-// TODO hard_link_count
+// Note: Left unimplemented: create_hard_link and hard_link_count
+// from std::filesystem.
+// The reason is that hardlink are very special-case, typically
+// allowed only to the super-user, cannot be used in FAT, etc.
 
 
 /**
@@ -1362,23 +1364,6 @@ Path resolveSymlink(Path p)
 version(Windows)
 {
 
-
-    // Given a native UTF-16 Windows path, return full path.
-    // Note: unused
-    Path getFullPathName(Path p)
-    {
-        nwstring wpath = p.native.toUTF16();
-        ULONG size = GetFullPathNameW(wpath.ptr, 0, null, null);
-        if (size == 0) 
-            throwIO(kStrFileFullPath);
-        vector!wchar buf;
-        buf.resize(size);
-        ULONG s2 = GetFullPathNameW(wpath.ptr, size, buf.ptr, null);
-        if (s2 && s2 < size)
-            return Path(nwstring(buf[0..s2]).toUTF8());
-        else
-            throwIO(kStrFileFullPath);
-    }
 
     // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number of
     // additional bytes.
