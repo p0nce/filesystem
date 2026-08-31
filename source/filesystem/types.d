@@ -179,7 +179,7 @@ enum DirectoryOptions
     none = 0, 
 
     /// Follow rather than skip directory symlinks.
-    followDirectorySymlink = 1, // TODO not implemented
+    followDirectorySymlink = 1,
 
     /// Skip directories that would otherwise result in "permission 
     /// denied" errors.

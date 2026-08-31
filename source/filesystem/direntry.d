@@ -80,6 +80,10 @@ class DirectoryRange
         directory entry of a directory identified by `p`. If `p` 
         refers to a non-existing file or not a directory, throws.
 
+        Content of the directory doesn't follow the symlinks,
+        the symlinks are returned instead. You can eventually 
+        resolve them using `readSymlink`.
+
         Params:
             p = Path to a directory.
             options = Options modifier for traversal.
@@ -116,7 +120,7 @@ class DirectoryRange
                 {
                     // there is no file => no error
                 }
-                else if ((err == ERROR_ACCESS_DENIED) && skipPermDenied)
+                else if (err == ERROR_ACCESS_DENIED && skipPermDenied)
                 {
                     // access is denied, no files and no errors
                 }
@@ -313,23 +317,18 @@ private:
             nwstring name = nwstring(fromStringz(findData.cFileName.ptr));
             nstring nameutf8 = name.toUTF8();
             
-            // buggy, validate(".") and validate("a") return false
             // Invalid Unicode, do not consider this file.
-            //if (!nulib.text.unicode.utf16.validate(name))
-            //{
-            //    return false;
-            //}
+            if (! nulib.text.unicode.utf16.validate(name))
+                return false;
 
             resEntry.path = base / name.toUTF8();
-
-            // FUTURE: support NTFS symbolic links
 
             setTimeFromFILETIME(resEntry.status, findData.ftLastWriteTime);
             setFileSizeAndType(resEntry.status,
                                findData.dwFileAttributes,
                                findData.nFileSizeHigh,
                                findData.nFileSizeLow);
-            resEntry.status = status(resEntry.path);
+            resEntry.status = symlinkStatus(resEntry.path);
 
             return true;
         }
@@ -477,6 +476,18 @@ class RecursiveDirectoryRange
 
                     DirectoryEntry f = top.range.front();
                     debug(recursive) printf("top.front() is %.*s\n", cast(int) f.path.length, f.path.ptr);
+
+                    if ((opts & DirectoryOptions.followDirectorySymlink) && isSymlink(f.status))
+                    {
+                        // FUTURE: detect when a link points upper in the tree, 
+                        // makes for an infinite loop
+                        Path target = resolveSymlink(f.path);
+                        if (isDirectory(target))
+                        {
+                            f.path = target;
+                            f.status.type = FileType.directory;
+                        }
+                    }
 
                     if (f.status.type == FileType.directory)
                     {
