@@ -266,9 +266,12 @@ private:
                         }
 
                         resEntry.path = base / nstring(fromStringz(dirent.d_name.ptr));
-                        // PERF status might be in dirent already
-                        // TODO: this is racey and we should be prepared to abandon that file
-                        resEntry.status = status(resEntry.path);
+
+                        // Now getting its file status, however it may fail (eg: file being 
+                        // deleted in a racey way between readdir and stat). In this case,
+                        // skip this entry.
+                        if (!statusNothrow(resEntry.path, resEntry.status))
+                            continue;
                     }
                     else if (err == 0)
                     {

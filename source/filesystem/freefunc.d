@@ -1010,6 +1010,38 @@ FileStatus status(Path path)
 }
 
 
+/*
+    Line `status`/`symlinkStatus` but return even if the file doesn't exist,
+    path is invalid, or I/O failed.
+
+    Returns: true if no error occured. In this case, `st`
+        is meaningful.
+*/
+bool statusNothrow(Path p, out FileStatus st) nothrow
+{
+    try
+    {
+        st = status(p);
+        return true;
+    }
+    catch(FileSystemException e) { e.freeNoThrow(); }
+    catch(Exception e) { assert(0); }
+    return false;
+}
+///ditto
+bool symlinkStatusNothrow(Path p, out FileStatus st) nothrow
+{
+    try
+    {
+        st = symlinkStatus(p);
+        return true;
+    }
+    catch(FileSystemException e) { e.freeNoThrow(); }
+    catch(Exception e) { assert(0); }
+    return false;
+}
+
+
 /**
     Determines the type and attributes of the filesystem object 
     identified by `path` as if by POSIX `lstat` (symlinks are 
@@ -1092,8 +1124,10 @@ bool isBlockFile(FileStatus s) pure nothrow
 ///ditto
 bool isBlockFile(Path p) // symlinks are followed here
 {
-    bool valid;
-    return isBlockFile(statusNothrow(p, valid)) && valid;
+    FileStatus st;
+    if (!statusNothrow(p, st))
+        return false;
+    return isBlockFile(st);
 }
 
 
@@ -1110,8 +1144,10 @@ bool isCharacterFile(FileStatus s) pure nothrow
 ///ditto
 bool isCharacterFile(Path p) nothrow // symlinks are followed here
 {
-    bool valid;
-    return isCharacterFile(statusNothrow(p, valid)) && valid;
+    FileStatus st;
+    if (!statusNothrow(p, st))
+        return false;
+    return isCharacterFile(st);
 }
 
 
@@ -1124,8 +1160,10 @@ bool isDirectory(FileStatus s) pure nothrow
 ///ditto
 bool isDirectory(Path p) nothrow // symlinks are followed here
 {
-    bool valid;
-    return isDirectory(statusNothrow(p, valid)) && valid;
+    FileStatus st;
+    if (!statusNothrow(p, st))
+        return false;
+    return isDirectory(st);
 }
 
 
@@ -1151,8 +1189,10 @@ bool isFIFO(FileStatus s) pure nothrow
 ///ditto
 bool isFIFO(Path p) // symlinks are followed here
 {
-    bool valid;
-    return isFIFO(statusNothrow(p, valid)) && valid;
+    FileStatus st;
+    if (!statusNothrow(p, st))
+        return false;
+    return isFIFO(st);
 }
 
 
@@ -1168,8 +1208,10 @@ bool isOther(FileStatus s) pure
 ///ditto
 bool isOther(Path p) // symlinks are followed here
 {
-    bool valid;
-    return isOther(statusNothrow(p, valid)) && valid;
+    FileStatus st;
+    if (!statusNothrow(p, st))
+        return false;
+    return isOther(st);
 }
 
 
@@ -1182,8 +1224,10 @@ bool isRegularFile(FileStatus s) pure nothrow
 ///ditto
 bool isRegularFile(Path p) nothrow // symlinks are followed here
 {
-    bool valid;
-    return isRegularFile(statusNothrow(p, valid)) && valid;
+    FileStatus st;
+    if (!statusNothrow(p, st))
+        return false;
+    return isRegularFile(st);
 }
 
 
@@ -1196,8 +1240,10 @@ bool isSocket(FileStatus s) pure nothrow
 ///ditto
 bool isSocket(Path p) // symlinks are followed here
 {
-    bool valid;
-    return isSocket(statusNothrow(p, valid)) && valid;
+    FileStatus st;
+    if (!statusNothrow(p, st))
+        return false;
+    return isSocket(st);
 }
 
 
@@ -1211,29 +1257,15 @@ bool isSocket(Path p) // symlinks are followed here
     May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isSymlink(FileStatus s) pure nothrow
-    => s.type == FileType.socket;
+    => s.type == FileType.symlink;
 ///ditto
 bool isSymlink(Path p)
 {
-    // symlinks are NOT followed here
-    // unlik the other isXXX functions.
-    return isSymlink(symlinkStatus(p));
+    FileStatus st;
+    if (!symlinkStatusNothrow(p, st))
+        return false;
+    return isSymlink(st);
 }
-
-
-// Not public:
-//
-// - bool statusKnown(FileStatus s) pure nothrow;
-//
-//   The problem with this API is it's not intuitive at
-//   all, it returns true if the file status was queried
-//   and the OS called didn't fail, which means the file
-//   may not exist, or have a type we don't recognize.
-//   Specifically the "unknown" file type still yield
-//   true for statusKnown in std::filesystem.
-//   So perhaps best to leave this function out, it's too
-//   easy to misunderstand it.
-
 
 
 private:
@@ -1258,33 +1290,6 @@ FileStatus statusExists(Path p, out bool exists)
         e.free();
         exists = false;
         st = FileStatus.init;
-    }
-    return st;
-}
-
-/*
-    Version that return even if the file doesn't exist,
-    path is invalid, or I/O failed.
-
-    Returns: FileStatus.init if any error occured.
-*/
-FileStatus statusNothrow(Path p, out bool valid) nothrow
-{
-    FileStatus st;
-    try
-    {
-        st = status(p);
-        valid = true;
-    }
-    catch(FileSystemException e)
-    {
-        e.freeNoThrow();
-        valid = false;
-        st = FileStatus.init;
-    }
-    catch(Exception e)
-    {
-        assert(0);
     }
     return st;
 }
