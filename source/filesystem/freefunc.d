@@ -257,14 +257,15 @@ bool copyFile(Path from, Path to,
     Create a directory as if by POSIX `mkdir()`.
     The parent directory must already exist.
 
-    Attributes are copied from an optional `templateDir` directory, else
-    maximum permissions are set.
+    Attributes are copied from an optional `templateDir` directory, 
+    else maximum permissions are set.
 
     Params:
         pathToDir   = Path to the directory to create.
-        templateDir = Existing directory to get attributes/permissions from.
-                      This is ignored if `perms` is valid.
-        perms       = (POSIX-only) Permissions to create the directory with.
+        templateDir = Existing directory to get attributes/permissions 
+                      from. This is ignored if `perms` is valid.
+        perms       = Permissions to create the directory with.
+                      (POSIX-only) 
 
     Returns: `true` if created, `false` if already existing.
     
@@ -385,8 +386,27 @@ bool createDirectories(Path p,
 }
 
 // TODO create_hard_link
-// TODO create_symlink
-// TODO create_directory_symlink
+
+/**
+    Creates a symbolic link `linkname` with its target set to `target` 
+    as if by POSIX `symlink()`: the pathname target may be invalid or 
+    non-existing.
+
+    Some operating systems require symlink creation to identify that 
+    the link is to a directory. Portable code should use 
+    `createDirectorySymlink to create directory symlinks rather than 
+    `createSymlink`, even though there is no distinction on POSIX 
+    systems. 
+*/
+void createSymlink(Path target, Path linkname)
+{
+    return createSymlinkImpl(target, linkname, false);
+}
+///ditto
+void create_directory_symlink(Path target, Path linkname)
+{
+    return createSymlinkImpl(target, linkname, true);
+}
 
 
 /**
@@ -985,30 +1005,13 @@ FileStatus symlinkStatus(Path path)
                 vector!ubyte rawReparseData = getReparseData(path);
                 REPARSE_DATA_BUFFER* reparseData = cast(REPARSE_DATA_BUFFER*) rawReparseData.ptr;
                 if (reparseData 
-                    && assumeNoGC(&IsReparseTagMicrosoft, reparseData.ReparseTag) && (reparseData.ReparseTag == IO_REPARSE_TAG_SYMLINK))
+                    && ((reparseData.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
+                     || (reparseData.ReparseTag == IO_REPARSE_TAG_SYMLINK)))
                 {
                     r.type = FileType.symlink;
                     r.sizeBytes = 0;
                 }
             }
-
-
-
-            // dwReserved0 is undefined unless dwFileAttributes includes the
-            // FILE_ATTRIBUTE_REPARSE_POINT attribute according to microsoft
-            // documentation. In practice, dwReserved0 is not reset which
-            // causes it to report the incorrect symlink status.
-            // Note that microsoft documentation does not say whether there is
-            // a null value for dwReserved0, so we test for symlink directly
-            // instead of returning the tag which requires returning a null
-            // value for non-reparse-point files.
-           /* if ((info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
-                && (info.dwReserved0 == IO_REPARSE_TAG_SYMLINK))
-            {
-                r.type = FileType.symlink;
-                r.sizeBytes = 0;
-            } */
-
             else if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
                 r.type = FileType.directory;
@@ -1247,54 +1250,90 @@ FileStatus statusNothrow(Path p, out bool valid) nothrow
     return st;
 }
 
+version(Windows)
+{
+    align(1) struct FS_REPARSE_DATA_BUFFER 
+    {
+        ULONG  ReparseTag;
+        USHORT ReparseDataLength;
+        USHORT Reserved;
+        union 
+        {
+            align(1) static struct SymbolicLinkReparseBuffer_t
+            {
+                USHORT SubstituteNameOffset;
+                USHORT SubstituteNameLength;
+                USHORT PrintNameOffset;
+                USHORT PrintNameLength;
+                ULONG  Flags;
+                WCHAR[1]  PathBuffer;
+            } 
+            
+            align(1) static struct MountPointReparseBuffer_t
+            {
+                USHORT SubstituteNameOffset;
+                USHORT SubstituteNameLength;
+                USHORT PrintNameOffset;
+                USHORT PrintNameLength;
+                WCHAR[1]  PathBuffer;
+            }
+
+            SymbolicLinkReparseBuffer_t SymbolicLinkReparseBuffer;
+            MountPointReparseBuffer_t MountPointReparseBuffer;
+        }
+    }
+}
+
 Path resolveSymlink(Path p)
 {
     version(Windows)
     {
         vector!ubyte rawReparseData = getReparseData(p);
-        REPARSE_DATA_BUFFER* reparseData = cast(REPARSE_DATA_BUFFER*) rawReparseData.ptr;
+        FS_REPARSE_DATA_BUFFER* reparseData = cast(FS_REPARSE_DATA_BUFFER*) rawReparseData.ptr;
 
         if (reparseData is null)
             throwIO(kStrErrSymlinkRead);
 
-        // Directory junctions are defined using the exact same mechanism 
-        // (and reparse tag: IO_REPARSE_TAG_MOUNT_POINT) as volume mount points are. 
-        // The only difference is that their substitute names point to a subdirectory 
-        // of another volume that usually already has a drive letter. This function 
-        // is conceptually similar to symbolic links to directories in Unix, 
-        // except that the target in NTFS must always be another directory 
-        // (typical Unix file systems allow the target of a symbolic link to be any type of file).
+        nwstring printName, substName;
         if (reparseData.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
         {
-            return getFullPathName(p);
+            wchar* parseBuf = reparseData.MountPointReparseBuffer.PathBuffer.ptr;
+            size_t printOfs = reparseData.MountPointReparseBuffer.PrintNameOffset / wchar.sizeof;
+            size_t printLen = reparseData.MountPointReparseBuffer.PrintNameLength / wchar.sizeof;
+            wchar* printPtr = &parseBuf[printOfs];
+            printName = nwstring(printPtr[0..printLen]);
+            size_t substOfs = reparseData.MountPointReparseBuffer.SubstituteNameOffset / wchar.sizeof;
+            size_t substLen = reparseData.MountPointReparseBuffer.SubstituteNameLength / wchar.sizeof;
+            wchar* substPtr = &parseBuf[substOfs];
+            substName = nwstring(substPtr[0..substLen]);
         }
         else if (reparseData.ReparseTag == IO_REPARSE_TAG_SYMLINK)
         {
-            wchar* parseBuf = assumeNoGC(&reparseData.SymbolicLinkReparseBuffer.PathBuffer);
+            wchar* parseBuf = reparseData.SymbolicLinkReparseBuffer.PathBuffer.ptr;
             size_t printOfs = reparseData.SymbolicLinkReparseBuffer.PrintNameOffset / wchar.sizeof;
             size_t printLen = reparseData.SymbolicLinkReparseBuffer.PrintNameLength / wchar.sizeof;
             wchar* printPtr = &parseBuf[printOfs];
-            nwstring printName = nwstring(printPtr[0..printLen]);
+            printName = nwstring(printPtr[0..printLen]);
 
             size_t substOfs = reparseData.SymbolicLinkReparseBuffer.SubstituteNameOffset / wchar.sizeof;
             size_t substLen = reparseData.SymbolicLinkReparseBuffer.SubstituteNameLength / wchar.sizeof;
             wchar* substPtr = &parseBuf[substOfs];
-            nwstring substName = nwstring(substPtr[0..substLen]);
-
-            Path result;
-            // Note sure why this check is there...
-            if (endsWith(substName, printName) && startsWith(substName, nwstring(`\??\`w)))
-                result = Path(printName.toUTF8());
-            else
-                result = Path(substName.toUTF8());
-
-            if (reparseData.SymbolicLinkReparseBuffer.Flags & 0x1 /*SYMLINK_FLAG_RELATIVE*/) 
-                result = p.parentPath() / result;
-
-            return result;
+            substName = nwstring(substPtr[0..substLen]);
         }
         else
-            throwIO(kStrErrSymlinkRead);
+            assert(0);
+        Path result;
+        // Strip the weird \??\ prefix.
+        if (startsWith(substName, nwstring(`\??\`w)))
+        {
+            substName = substName[4..$];
+        }
+        result = Path(substName.toUTF8());
+
+        if (reparseData.SymbolicLinkReparseBuffer.Flags & 0x1 /*SYMLINK_FLAG_RELATIVE*/) 
+            result = p.parentPath() / result;
+
+        return result;
     }
     else version(Posix)
     {
@@ -1322,12 +1361,10 @@ Path resolveSymlink(Path p)
 
 version(Windows)
 {
-    // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number of
-    // additional bytes.
-    // We return a ubyte buffer that should be read as a REPARSE_DATA_BUFFER
 
 
     // Given a native UTF-16 Windows path, return full path.
+    // Note: unused
     Path getFullPathName(Path p)
     {
         nwstring wpath = p.native.toUTF16();
@@ -1343,6 +1380,9 @@ version(Windows)
             throwIO(kStrFileFullPath);
     }
 
+    // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number of
+    // additional bytes.
+    // We return a ubyte buffer that should be read as a REPARSE_DATA_BUFFER
     vector!ubyte getReparseData(Path p)
     {
         DWORD shareFlags = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
@@ -1366,4 +1406,43 @@ version(Windows)
             throwIO(kStrErrSymlinkRead);
         }
     }
+}
+
+void createSymlinkImpl(Path target, Path linkname, bool toDir)
+{
+
+    bool exists;
+    FileStatus fs = statusExists(target, exists);
+    if (exists && fs.type == FileType.directory && !toDir)
+        throwException(kStrErrSymlinkCreate);
+    if (exists && fs.type == FileType.regular && toDir)
+        throwException(kStrErrSymlinkCreate);
+
+    version(Windows)
+    {
+        nwstring wtarget = target.native.toUTF16();
+        nwstring wlinkname = linkname.native.toUTF16();
+        DWORD flags = 0;
+        if (toDir)
+            flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
+        DWORD r = CreateSymbolicLinkW(wtarget.ptr, wlinkname.ptr, flags);
+        if (r == 0)
+            return;
+        if (GetLastError() == ERROR_PRIVILEGE_NOT_HELD)
+        {
+            flags |= SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+            r = CreateSymbolicLinkW(wtarget.ptr, wlinkname.ptr, flags);
+            if (r == 0) 
+                return;
+        }
+        throwIO(kStrErrSymlinkCreate);
+    }
+    else version(Posix)
+    {
+        int r = symlink(target.native.ptr, linkname.native.ptr);
+        if (r != 0)
+            throwIO(kStrErrSymlinkCreate);
+    }
+    else
+        static assert(0);
 }

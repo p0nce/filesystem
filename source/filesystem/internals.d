@@ -71,8 +71,8 @@ static immutable string
     kStrErrFSAvailInfo     = "Can't get filesystem disc usage information",
     kStrErrUnrealDiscSize  = "Disc reports too large a size to be true",
     kStrErrNotSymlink      = "File is not a symlink",
-    kStrErrSymlinkRead     = "Can't read symlink";
-
+    kStrErrSymlinkRead     = "Can't read symlink",
+    kStrErrSymlinkCreate   = "Can't create symlink";
 
 // Future: decide if we keep this file
 
