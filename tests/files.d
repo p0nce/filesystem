@@ -58,11 +58,7 @@ unittest
     if (exists(tempFile))
         remove(tempFile);
 
-    printf("Current path is:\n");
-    nprintf(currentPath());
-    printf("\n");
-
-    assert(copyFile(Path("./tests/FileWithSizeTwo"), tempFile));
+    assert(copyFile(Path("./tests/fileWithSizeTwo"), tempFile));
     assert(exists(tempFile));
     assert(fileSize(tempFile) == 2);
     assert(remove(tempFile));
@@ -239,13 +235,13 @@ unittest
 @("fileSize()")
 unittest
 {
-    assert(fileSize(Path("./tests/FileWithSizeTwo")) == 2);
+    assert(fileSize(Path("./tests/fileWithSizeTwo")) == 2);
 }
 
 @("lastWriteTime()")
 unittest
 {
-    long time0 = lastWriteTime(Path("./tests/FileWithSizeTwo"));
+    long time0 = lastWriteTime(Path("./tests/fileWithSizeTwo"));
     long timeHere = lastWriteTime(Path("."));
 }
 
