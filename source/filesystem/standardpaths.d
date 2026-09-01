@@ -855,7 +855,6 @@ static if (isFreedesktop)
         } 
         catch(Exception e) 
         {
-            // TODO: be more specific maybe
         }
 
         // Didn't find such a directory in user-dirs.dirs

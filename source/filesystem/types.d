@@ -162,7 +162,12 @@ enum CopyOptions : int
     copyFileContent    = 0,  /// Copy file content (default behavior). 
     directoriesOnly    = 32, /// UNSUPPORTED TODO Copy the directory structure, but do not copy any non-directory files. 
     createSymlinks     = 64, /// UNSUPPORTED TODO Instead of creating copies of files, create symlinks pointing to the originals. Note: the source path must be an absolute path unless the destination path is in the current directory. 
-    createHardLinks    = 96  /// UNSUPPORTED TODO Instead of creating copies of files, create hardlinks that resolve to the same files as the originals. 
+    
+
+    // Left unsupported. I don't see why anyone would want that.
+    //createHardLinks    = 96  /// Instead of creating copies of files, create hardlinks that resolve to the same files as the originals.
+
+
 }
 
 

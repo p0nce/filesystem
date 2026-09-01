@@ -72,7 +72,7 @@ unittest
     createDirectories(Path("tests/createDir/my/deeply/../../our/hierarchy"));
 
     // Exist, we created it before
-    assert(false == createDirectories(Path("tests/createDir/my/deeply/")));
+    assert(false == createDirectories(Path("./tests/./createDir/my/../my/deeply/")));
 
     // .. exist, but didn't need to create it
     assert(false == createDirectories(Path("..")));
