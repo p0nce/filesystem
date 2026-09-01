@@ -58,6 +58,10 @@ unittest
     if (exists(tempFile))
         remove(tempFile);
 
+    printf("Current path is:\n");
+    nprintf(currentPath());
+    printf("\n");
+
     assert(copyFile(Path("./tests/FileWithSizeTwo"), tempFile));
     assert(exists(tempFile));
     assert(fileSize(tempFile) == 2);
