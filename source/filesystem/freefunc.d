@@ -95,8 +95,95 @@ Path relative(Path p, Path base = currentPath())
 // TODO relative
 // TODO proximate
 
-// TODO copy
-//  * it needs working symlinkStatus
+/**
+    Copies files and directories, with a variety of options.
+*/
+void copy(Path from, Path to, CopyOptions options)
+{
+    bool skipSymlinks    = (options & CopyOptions.ignoreSymlinks) != 0;
+    bool copySymlinks    = (options & CopyOptions.copySymlinks) != 0;
+    bool createSymlinks  = (options & CopyOptions.createSymlinks) != 0;
+    bool directoriesOnly = (options & CopyOptions.directoriesOnly) != 0;
+
+    // Get status of `from`
+    FileStatus stfrom;
+    if (skipSymlinks || copySymlinks || createSymlinks)
+        stfrom = symlinkStatus(from);
+    else
+        stfrom = status(from);
+    // At this point, from guaranteed to exist
+
+    // Get status of `to`
+    bool toExists;
+    FileStatus stto;
+    if (skipSymlinks || createSymlinks)
+        stto = symlinkStatusExists(to, toExists);
+    else
+        stto = statusExists(to, toExists);
+
+    if (toExists && equivalent(from, to))
+        throwException(kStrErrCopySameFile);
+
+    if (isOther(stfrom) || (toExists && isOther(stto)))
+        throwException(kStrErrCopyOther);
+
+    if (isDirectory(stfrom) && (toExists && isRegularFile(stto)))
+        throwException(kStrErrFileCopyFailed);
+
+    if (isSymlink(stfrom))
+    {
+        if (skipSymlinks) {
+            // do nothing
+        }
+        else if (!toExists && copySymlinks) {
+            // TODO when copySymlink is impl
+            //copySymlink(from, to);
+        }
+        else
+            throwException(kStrErrFileCopyFailed);
+    }
+    else if (isRegularFile(stfrom))
+    {
+        if (directoriesOnly) { 
+            // do nothing
+        }
+        else if (createSymlinks)
+        {
+            // TODO implement, rather tricky
+        }
+        else if (toExists && isDirectory(stto))
+        {
+            // copy a file to a directory
+            copyFile(from, to / from.filename(), options);
+        }
+        else
+        {
+            // copy a file to a file
+            copyFile(from, to, options); 
+        }
+    }
+    else if (isDirectory(stfrom) && createSymlinks)
+    {
+        throwException(kStrErrFileCopyFailed);
+    }
+    else if (isDirectory(stfrom) && (options == CopyOptions.none || ((options & CopyOptions.recursive) != 0)))
+    {
+        // Create destination with attributes from source.
+        if (!toExists)
+            createDirectory(to, from);
+
+        // skip directory symlinks, permission denied is an error
+
+        foreach(DirectoryEntry x; dirEntries(from, DirectoryOptions.none))
+        {
+            // Spec asks us to add the `inRecursiveCopy`, not sure where it's used...
+            copy(x.path, to / x.path.filename(), options | CopyOptions.inRecursiveCopy);
+        }
+
+
+    }
+}
+
 
 /**
     Copies a single file from from to to, using the copy options 
@@ -766,8 +853,6 @@ bool remove(Path p)
     Returns: the number of files and directories that were deleted 
     (which may be zero if p did not exist to begin with).
 
-    BUG: symlinks not implemented.
-
     Throws:
         `FileSystemIOException`,
         `InvalidPathException`,
@@ -821,7 +906,7 @@ bool rename(Path oldPath, Path newPath)
 
     version(Windows)
     {
-        // BUG TODO: MoveFileExW is not actually atomic
+        // BUG FUTURE: MoveFileExW is not actually atomic
         // https://github.com/untitaker/rust-atomicwrites/issues/27
         nwstring wold = oldPath.native.toUTF16();
         nwstring wnew = newPath.native.toUTF16();
@@ -978,7 +1063,7 @@ Path tempDirectoryPath()
 
     Note: unlike in C++, our version throw if there is no status
         for the file. Typically:
-       - `InvalidPathException` is probably a bug in user code.
+       - `InvalidPathException` is probably an issue in user code.
        - `FileNotFoundException` might need special treatment.
        - `FileSystemIOException` is a recoverable runtime error.
 */
@@ -1266,7 +1351,7 @@ private:
 
 /*
     Version that return even if the file doesn't exist.
-    Can still throw on I/O and invalid path.
+    Will still throw on I/O and invalid path.
 
     Returns: FileStatus.init if the file doesn't exists.
 */
@@ -1276,6 +1361,23 @@ FileStatus statusExists(Path p, out bool exists)
     try
     {
         st = status(p);
+        exists = true;
+    }
+    catch(FileNotFoundException e)
+    {
+        e.free();
+        exists = false;
+        st = FileStatus.init;
+    }
+    return st;
+}
+///ditto
+FileStatus symlinkStatusExists(Path p, out bool exists)
+{
+    FileStatus st;
+    try
+    {
+        st = symlinkStatus(p);
         exists = true;
     }
     catch(FileNotFoundException e)

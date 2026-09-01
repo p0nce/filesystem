@@ -75,7 +75,8 @@ static immutable string
     kStrErrUnrealDiscSize  = "Disc reports too large a size to be true",
     kStrErrNotSymlink      = "File is not a symlink",
     kStrErrSymlinkRead     = "Can't read symlink",
-    kStrErrSymlinkCreate   = "Can't create symlink";
+    kStrErrSymlinkCreate   = "Can't create symlink",
+    kStrErrCopyOther       = "Can only copy regular files, directories, and symlinks.";
 
 // Future: decide if we keep this file
 

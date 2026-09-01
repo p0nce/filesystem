@@ -1,8 +1,8 @@
 # `filesystem`
 
-**DO NOT USE, THIS IS UNFINISHED BUSINESS.**
-
-The `filesystem` package is a @nogc D library for use in context where you can't use Phobos. It is a `nulib`-based, DUB package that provides a ranges of services related to filesystem:
+The `filesystem` package is a @nogc D library for use in context where 
+you can't use Phobos. It is a `nulib`-based, DUB package that provides 
+a ranges of services related to filesystem:
 
 Its design is 95% the one in `std::filesystem`, who did a lot of 
 semantic work, only most of the API was D-ified and will for example 
@@ -27,7 +27,8 @@ MIT + BSL-1.0.
 - File copy, rename, and removal.
 - Recursive directory creation, listing and deletion.
 - Disc usage information.
-- Getting standard paths, such as app data, XDG config (fork of `standardpaths` and `xdgpaths` and `isfreedesktop`).
+- Getting standard paths, such as app data, XDG config (fork of 
+  `standardpaths` and `xdgpaths` and `isfreedesktop`).
 
 ## Documentation
 
@@ -38,7 +39,6 @@ See the `std::filesystem` documentation here: https://en.cppreference.com/cpp/fi
 - This is **WIP**.
 - Windows UNC path, `\\?\` and `\\.\` root pathes aren't yet supported.
   Windows path can't exceed `MAX_PATH` yet.
-- Very little support for symlinks.
 
 
 ## Dependencies
@@ -46,5 +46,5 @@ See the `std::filesystem` documentation here: https://en.cppreference.com/cpp/fi
 - libc (bindings in druntime)
 - POSIX (bindings in druntime)
 - Win32 (bindings in druntime)
-- DUB packages `numem` and `nulib`
+- DUB packages `numem`, `nulib`, `nulib:io`
 

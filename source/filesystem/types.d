@@ -156,18 +156,19 @@ enum CopyOptions : int
     // Bit 3-4
     followSymlinks     = 0,  /// Follow symlinks (default behaviour)
     copySymlinks       = 8,  /// Copy symlinks as symlinks, not as the files they point to. 
-    ignoreSymlinks     = 16, /// Ignore symlinks. 
+    ignoreSymlinks     = 16, /// Ignore symlinks.
 
     // Options controlling the kind of copying copy() does .
     copyFileContent    = 0,  /// Copy file content (default behavior). 
-    directoriesOnly    = 32, /// UNSUPPORTED TODO Copy the directory structure, but do not copy any non-directory files. 
-    createSymlinks     = 64, /// UNSUPPORTED TODO Instead of creating copies of files, create symlinks pointing to the originals. Note: the source path must be an absolute path unless the destination path is in the current directory. 
+    directoriesOnly    = 32, /// Copy the directory structure, but do not copy any non-directory files. 
+    createSymlinks     = 64, /// Instead of creating copies of files, create symlinks pointing to the originals. Note: the source path must be an absolute path unless the destination path is in the current directory. 
     
 
     // Left unsupported. I don't see why anyone would want that.
     //createHardLinks    = 96  /// Instead of creating copies of files, create hardlinks that resolve to the same files as the originals.
 
 
+    inRecursiveCopy     = 128
 }
 
 
