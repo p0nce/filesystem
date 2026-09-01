@@ -39,11 +39,11 @@ jobs:
         # Build and run tests, as defined by `unittest` configuration
         # In this mode, `mainSourceFile` is excluded and `version (unittest)` are included
         # See https://dub.pm/package-format-json.html#configurations
-        dub test --config=${{ matrix.variant }}
+        dub test --config=${{ matrix.variant }} -- -t 1
 
         # Ditto, in release mode.
         # Sometimes D packages break in release mode, so this is important to test.
-        dub test --config=${{ matrix.variant }} --build=release
+        dub test --config=${{ matrix.variant }} --build=release -- -t 1
         
   sanity_check:
     name: 'Run a sanity check'

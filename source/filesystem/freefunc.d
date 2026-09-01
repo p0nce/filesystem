@@ -150,8 +150,6 @@ bool copyFile(Path from, Path to,
         }
     }
 
-    // PERF Linux use instead copy_file_range
-
     version(Windows)
     {
         nwstring wfrom = from.native.toUTF16();
@@ -181,63 +179,59 @@ bool copyFile(Path from, Path to,
             throwIO(kStrErrOpenFileFailed); 
         }
 
-        if (overwrite)
+        if (overwrite && statusTo.permissions != statusFrom.permissions)
         {
-            if (statusTo.permissions != statusFrom.permissions) 
+            if (pfcntl.fchmod(outHandle, cast(pfcntl.mode_t)(statusFrom.permissions & FilePerms.all)) != 0) 
             {
-                if (pfcntl.fchmod(outHandle, cast(pfcntl.mode_t)(statusFrom.permissions & FilePerms.all)) != 0) 
-                {
-                    punistd.close(inHandle);
-                    punistd.close(outHandle);
-                    throwIO(kStrErrChmodFailed); 
-                }
+                punistd.close(inHandle);
+                punistd.close(outHandle);
+                throwIO(kStrErrChmodFailed); 
             }
         }
 
+        // Manual buffered copy.
         // Note: Linux has copy_file_range, yet on WSL was slower than a manual buffer copy
         // for a 100 mb file.
 
+        // 128 kb isn't too much in a first approximation, while allowing for a measured
+        // 10% slowdown vs a 1mb chunk size for a 100mb file.
+        enum int BLOCK_SIZE = 128 * 1024;
+        vector!byte buf;
+        buf.resize(BLOCK_SIZE);        
+
+        while (true) 
         {
-            // 128 kb isn't too much in a first approximation, while allowing for a measured
-            // 10% slowdown vs a 1mb chunk size for a 100mb file.
-            enum int BLOCK_SIZE = 128 * 1024;
-            vector!byte buf;
-            buf.resize(BLOCK_SIZE);        
+            ptrdiff_t bytesRead;
+            ptrdiff_t bytesWritten;
 
-            while (true) 
+            do 
             {
-                ptrdiff_t bytesRead;
-                ptrdiff_t bytesWritten;
+                bytesRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
+            } while (bytesRead == -1 && cerrno.errno == cerrno.EINTR);
 
-                do 
+            if (bytesRead < 0)
+                throwIO(kStrErrFileReadFailed);
+
+            if (bytesRead == 0)
+                break; // input file finished
+
+            ptrdiff_t offset = 0;
+            do 
+            {
+                bytesWritten = punistd.write(outHandle, buf.ptr + offset, bytesRead);
+                if (bytesWritten > 0)
                 {
-                    bytesRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
-                } while (bytesRead == -1 && cerrno.errno == cerrno.EINTR);
-
-                if (bytesRead < 0)
-                    throwIO(kStrErrFileReadFailed);
-
-                if (bytesRead == 0)
-                    break; // input file finished
-
-                ptrdiff_t offset = 0;
-                do 
+                    bytesRead -= bytesWritten;
+                    offset += bytesWritten;
+                }
+                else if (bytesWritten <= 0 && cerrno.errno != cerrno.EINTR)
                 {
-                    bytesWritten = punistd.write(outHandle, buf.ptr + offset, bytesRead);
-                    if (bytesWritten > 0)
-                    {
-                        bytesRead -= bytesWritten;
-                        offset += bytesWritten;
-                    }
-                    else if (bytesWritten <= 0 && cerrno.errno != cerrno.EINTR)
-                    {
-                        // Note: 0 byte progressed is an error.
-                        punistd.close(inHandle);
-                        punistd.close(outHandle);
-                        throwIO(kStrErrFileWriteFailed);
-                    }
-                } while (bytesRead);
-            }
+                    // Note: 0 byte progressed is an error.
+                    punistd.close(inHandle);
+                    punistd.close(outHandle);
+                    throwIO(kStrErrFileWriteFailed);
+                }
+            } while (bytesRead);
         }
         punistd.close(inHandle);
         punistd.close(outHandle);
@@ -1296,7 +1290,6 @@ FileStatus statusExists(Path p, out bool exists)
 
 void createSymlinkImpl(Path target, Path linkname, bool toDir)
 {
-
     bool exists;
     FileStatus fs = statusExists(target, exists);
     if (exists && fs.type == FileType.directory && !toDir)

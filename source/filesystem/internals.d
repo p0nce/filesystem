@@ -55,7 +55,7 @@ static immutable string
     kStrErrCreateDirFile   = "Can't create directory because a file with the same name exists",
     kStrErrRemoveFileDir   = "Can't remove file or directory",
     kStrErrRenameFileDir   = "Can't rename file or directory",
-    kStrErrCopyFileNonReg  = "copyFile source is not a regular files",
+    kStrErrCopyFileNonReg  = "copyFile source is not a regular file or doesn't exist",
     kStrErrCopyDestNonReg  = "copyFile destination is not a regular file",
     kStrErrCopyDestExists  = "copyFile destination already exists",
     kStrErrFileCopyFailed  = "File copy failed",
