@@ -96,11 +96,14 @@ public:
     /**
         Returns path relative to root-path, that is, a pathname 
         composed of every generic-format component of this after 
-        root-path. If this is an empty path, returns an empty path. 
-
+        root-path. If this is an empty path, returns an empty path.
     */
-    Path relativePath() pure const
+    Path relativePath(char separator = '\xff') pure const
     {
+        // slash preference could be the very end char
+        if (separator == '\xff')
+            separator = detectSeparatorOrDefault();
+
         PathParser parser;
         parser.initialize(str[]);
         const(char)[] dummy;
@@ -112,7 +115,7 @@ public:
         while (parser.parseFilename(name, sep))
         {
             r ~= name;
-            if (sep) r ~= "/"; // TODO this is wrong should be preferred char
+            if (sep) r ~= separator;
         }
         return Path(r);
     }
@@ -188,7 +191,7 @@ public:
         Based upon the content of this path, what directory separator
         should be used?
     */
-    SepPreference detectSeparator() pure
+    SepPreference detectSeparator() pure const
     {
         PathParser parser;
         parser.initialize(str[]);
@@ -204,7 +207,8 @@ public:
         return parser.sepPreference;
     }
 
-    char detectSeparatorOrDefault() pure => prefToChar(detectSeparator);  
+    char detectSeparatorOrDefault() pure const 
+        => prefToChar(detectSeparator);
 
     /**
         Returns the generic-format filename component of the path.
@@ -253,7 +257,7 @@ public:
         Returns the internal pathname in native UTF-8 pathname format.
 
         TODO: this should throw a single type of exception: InvalidPathException.
-              make it nothrow
+              it should not throw just an Exception.
     */
     nstring native() pure const
     {
@@ -340,7 +344,7 @@ public:
         version(Windows)
             return hasRootName() && hasRootDirectory();
         else
-            return hasRootDirectory();        
+            return hasRootDirectory();
     }
 
     //ditto
@@ -380,8 +384,9 @@ public:
     */
     ref Path replaceFilename(const Path replacement) /* pure */
     {
+        char sepChar = detectSeparatorOrDefault();
         removeFilename(); 
-        return this /= replacement;
+        return this.append(replacement, sepChar);
     }
     ///ditto
     ref Path replaceFilename(const(char)[] replacement) /* pure */
@@ -429,9 +434,6 @@ public:
             return Path();
 
         char prefSep = detectSeparatorOrDefault();
-
-        // TODO
-        //or any filename in relative_path() or base.relative_path() can be interpreted as a root-name, 
 
         // Note: it seems possible this has a root directory, and base 
         // doesn't and neither are absolute on Windows.
@@ -522,19 +524,23 @@ public:
 
         FUTURE rabbit-hole: try to make it nothrow.
     */
-    ref Path append(const(char)[] p) /* nothrow */ /* pure */
-    {        
-        return append(Path(p));
+    ref Path append(const(char)[] p, char prefferedSep = '\xff') /* nothrow */ /* pure */
+    {
+        return append(Path(p), prefferedSep);
     }
     //ditto
-    ref Path append(Path p) /* nothrow */ /* pure */
+    ref Path append(Path p, char prefferedSep = '\xff') /* nothrow */ /* pure */
     {
-        // First we try to find the right separator for this append.
-        // If both have an idea, prefers left path idea.
-        SepPreference leftPref = detectSeparator();
-        SepPreference rightPref = p.detectSeparator();
-        if (leftPref == SepPreference.preferUnknown) leftPref = rightPref;
-        char prefferedSep = prefToChar(leftPref);
+        if (prefferedSep == '\xff')
+        {
+            // First we try to find the right separator for this append.
+            // If both have an idea, prefers left path idea.
+            // This can also be given as parameter.
+            SepPreference leftPref = detectSeparator();
+            SepPreference rightPref = p.detectSeparator();
+            if (leftPref == SepPreference.preferUnknown) leftPref = rightPref;
+            prefferedSep = prefToChar(leftPref);
+        }
 
         if (p.empty)
         {
@@ -591,7 +597,7 @@ public:
         if (needSep)
             str ~= prefferedSep;
 
-        str ~= Path(p.native()).relativePath();
+        str ~= Path(p.native()).relativePath(prefferedSep);
 
         return this;
     }
@@ -1176,13 +1182,13 @@ private:
     {
         if (state == State.error)
             return Token(Token.Type.poison);
-        
+
         // detect optional root name
         if (state == State.beforeRootName)
         {
             state = State.beforeRootDir; // move on the state whatever happens
             char ch = peekChar();
-            char chp1 = peekAhead();            
+            char chp1 = peekAhead();
             if (supportsRootName() && (chp1 == ':') && isDriveLetter(ch))
             {
                 next();
@@ -1190,7 +1196,7 @@ private:
                 windowsPathDetected();
                 return Token(Token.Type.rootName, input[0..2]);
             }
-            // TODO: more rootname in Windows, such as //server/share and //?\
+            // FUTURE: more rootname in Windows, such as //server/share and \\?\ \\.\
         }
 
         // detect optional root dir / or \
