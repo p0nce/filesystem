@@ -94,7 +94,9 @@ Path canonical(Path p)
 
     Path result;
 
+    // Just check it exists, else error
     auto fs = status(work);
+
     bool redo;
     do 
     {
@@ -121,6 +123,9 @@ Path canonical(Path p)
                 // TODO: symlink resolve hasn't been tested yet
                 redo = true;
                 Path target = readSymlink(result / pe);
+
+                //printf("\ntarget of linke => %.*s\n", target.length, target.ptr);
+                //target = absolute(target);
                 if (target.isAbsolute()) 
                     result = target;
                 else
@@ -1519,6 +1524,13 @@ FileStatus symlinkStatusExists(Path p, out bool exists)
 
 void createSymlinkImpl(Path target, Path linkname, bool toDir)
 {
+
+    // TODO: this fix is because relative path symlinks were created
+    // relative to the CWD at the moment of symlink creation,
+    // instead of relatively to the symlink location.
+    //if (!target.isAbsolute)
+    //    target = absolute(target);
+
     bool exists;
     FileStatus fs = statusExists(target, exists);
     if (exists && fs.type == FileType.directory && !toDir)

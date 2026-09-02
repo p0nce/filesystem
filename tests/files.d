@@ -106,16 +106,66 @@ unittest
     }
 }
 
-/*
-    if (is_symlink_creation_supported()) {
-        TemporaryDirectory t(TempOpt::change_path);
-        fs::create_directory(t.path() / "dir1");
-        generateFile(t.path() / "dir1/test1");
-        fs::create_directory(t.path() / "dir2");
-        fs::create_directory_symlink(t.path() / "dir1", t.path() / "dir2/dirSym");
-        CHECK(fs::canonical(t.path() / "dir2/dirSym/test1") == t.path() / "dir1/test1");
+
+@("canonical() #3")
+unittest
+{
+ //   if (isSymlinkCreationSupported()) 
+    {
+        Path t = currentPath();
+
+        try
+        {
+            removeAll(Path(`tests/dir1`));
+        }
+        catch(FileSystemException e)
+        {
+            e.freeNoThrow();
+        }
+        try
+        {
+            removeAll(Path(`tests/dir2`));
+        }
+        catch(FileSystemException e)
+        {
+            e.freeNoThrow();
+        }
+
+        createDirectory(Path("tests/dir1"));
+        copyFile(Path("dub.sdl"), Path("tests/dir1/test1.sdl"));
+
+  /*      createDirectory(Path("tests/dir2"));
+        createDirectory(Path("tests/dir2"));
+
+        createDirectorySymlink(Path("tests/dir1"), Path("tests/dir2/dirSym"));
+
+
+        Path direct = Path("tests/dir1/test1.sdl");
+        Path vialink = Path("tests/dir2/dirSym/test1.sdl");
+        assert(canonical(direct) == canonical(vialink));
+        assert(weaklyCanonical(direct) == weaklyCanonical(vialink));*/
+
+        printf("removeAll(Path(`tests/dir1`));\n");
+
+        try
+        {
+            removeAll(Path(`tests/dir1`));
+        }
+        catch(FileSystemException e)
+        {
+            e.freeNoThrow();
+        }
+        try
+        {
+            removeAll(Path(`tests/dir2`));
+        }
+        catch(FileSystemException e)
+        {
+            e.freeNoThrow();
+        }
     }
-*/
+}
+
 
 @("copyFile()")
 unittest
@@ -270,6 +320,12 @@ unittest
         remove(Path("tests/empty-dir3/empty-again"));
         remove(Path("tests/empty-dir3"));
     }
+
+    {
+        createDirectories(Path("tests/dir-one-file"));
+        copyFile(Path("dub.sdl"), Path("tests/dir-one-file/test1.sdl"));
+        removeAll(Path(`tests/dir-one-file`));
+    }
 }
 
 @("equivalent()")
@@ -372,4 +428,3 @@ unittest
     assert(si.capacity > si.freeTheoretical);
     assert(si.freeTheoretical >= si.available);
 }
-

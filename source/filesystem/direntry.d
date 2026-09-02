@@ -365,7 +365,7 @@ private:
 
 
 /**
-    Iterate over a directory's entries, recursively by iteraring
+    Iterate over a directory's entries, recursively by iterating
     sub-directories.
 */
 class RecursiveDirectoryRange
@@ -465,7 +465,7 @@ class RecursiveDirectoryRange
                                 debug(recursive) printf(" returning the directory after its contents\n");
                                 state = State.frontIsParentPostOrder;
                                 outEntry = top.parentEntry;
-                                return true;
+                                return stack.length > 1; // if there is only one item, it's the root item
                             }
                             else
                             {
