@@ -345,10 +345,7 @@ public:
     //
     // MODIFIERS
     //
-    void clear() pure
-    {
-        str.clear();
-    }
+    void clear() pure => str.clear();
 
     /**
         Converts all directory separators in the generic-format view 
