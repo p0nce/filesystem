@@ -110,7 +110,8 @@ unittest
 @("canonical() #3")
 unittest
 {
- //   if (isSymlinkCreationSupported()) 
+    // On Windows, symlink creation is largely gatekept
+    version(Posix)
     {
         Path t = currentPath();
 
@@ -134,19 +135,17 @@ unittest
         createDirectory(Path("tests/dir1"));
         copyFile(Path("dub.sdl"), Path("tests/dir1/test1.sdl"));
 
-  /*      createDirectory(Path("tests/dir2"));
         createDirectory(Path("tests/dir2"));
 
         createDirectorySymlink(Path("tests/dir1"), Path("tests/dir2/dirSym"));
 
-
         Path direct = Path("tests/dir1/test1.sdl");
         Path vialink = Path("tests/dir2/dirSym/test1.sdl");
+        assert(exists(direct));
+        assert(exists(vialink));
+        assert(equivalent(direct, vialink));
         assert(canonical(direct) == canonical(vialink));
-        assert(weaklyCanonical(direct) == weaklyCanonical(vialink));*/
-
-        printf("removeAll(Path(`tests/dir1`));\n");
-
+        assert(weaklyCanonical(direct) == weaklyCanonical(vialink));
         try
         {
             removeAll(Path(`tests/dir1`));

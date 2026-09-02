@@ -1521,15 +1521,13 @@ FileStatus symlinkStatusExists(Path p, out bool exists)
     return st;
 }
 
-
 void createSymlinkImpl(Path target, Path linkname, bool toDir)
 {
-
-    // TODO: this fix is because relative path symlinks were created
-    // relative to the CWD at the moment of symlink creation,
-    // instead of relatively to the symlink location.
-    //if (!target.isAbsolute)
-    //    target = absolute(target);
+    // If target is a relative path, it is with current working
+    // directory as a base.
+    // Change the base to the linkname itself.
+    if (target.isRelative)
+        target = relative(target, linkname.dirName());
 
     bool exists;
     FileStatus fs = statusExists(target, exists);
