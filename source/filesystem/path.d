@@ -788,7 +788,6 @@ private:
             }
         }
 
-
         // 6. "If there is root-directory, remove all dot-dots and any 
         // directory-separators immediately following them."
         if (sroot_dir != "")
@@ -797,7 +796,6 @@ private:
                 parts.removeAt(0);
             if (parts.length > 0 && parts[0] == FINAL_DIR_SEP)
                 parts.removeAt(0);
-
         }
 
         // 7. "If the last filename is dot-dot, remove any trailing 
@@ -1380,6 +1378,5 @@ UTF-16, but this isn't strictly true.
   As long as you're using '/' and '\0' the path can contain anything.
 
 - macOS: a bit of the same as Linux.
-
 
 */
