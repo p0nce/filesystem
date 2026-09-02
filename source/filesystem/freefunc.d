@@ -120,12 +120,8 @@ Path canonical(Path p)
 
             if (isSymlink(sls)) 
             {
-                // TODO: symlink resolve hasn't been tested yet
                 redo = true;
                 Path target = readSymlink(result / pe);
-
-                //printf("\ntarget of linke => %.*s\n", target.length, target.ptr);
-                //target = absolute(target);
                 if (target.isAbsolute()) 
                     result = target;
                 else
@@ -246,7 +242,21 @@ void copy(Path from, Path to, CopyOptions options)
         }
         else if (createSymlinks)
         {
-            // TODO implement, rather tricky
+            // "Instead of creating copies of files, create symlinks 
+            //  pointing to the originals.
+            //
+            // Note: not sure if we should overwrite an existing 
+            // symlink, probably not.
+
+            // Spec also says:
+            //
+            // "the source path must be an absolute path unless 
+            // the destination path is in the current directory."
+            //
+            // Like gulrak implementation we'll just ignore this strange
+            // second sentence.
+            Path absFrom = from.isAbsolute() ? from : canonical(from);
+            createSymlink(from, to);
         }
         else if (toExists && isDirectory(stto))
         {
@@ -1525,7 +1535,7 @@ void createSymlinkImpl(Path target, Path linkname, bool toDir)
 {
     // If target is a relative path, it is with current working
     // directory as a base.
-    // Change the base to the linkname itself.
+    // Change the base to the linkname parent directory.
     if (target.isRelative)
         target = relative(target, linkname.dirName());
 
