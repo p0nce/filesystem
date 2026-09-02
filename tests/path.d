@@ -358,11 +358,8 @@ unittest
 unittest
 {
     assert(Path("/foo").detectSeparatorOrDefault() == '/');
-
     assert(Path("/foo").replaceFilename("bar") == "/bar");
     assert(Path("/").replaceFilename("bar") == "/bar");
-
-    nprintf(Path("/foo").replaceFilename("b//ar"));
     assert(Path("/foo").replaceFilename("b//ar") == "/b/ar");
 }
 

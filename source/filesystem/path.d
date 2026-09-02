@@ -240,8 +240,6 @@ public:
 
     /**
         Returns the extension of the filename component.
-
-        TODO example
     */
     Path extension() pure const
     {
@@ -255,15 +253,18 @@ public:
 
     /**
         Returns the internal pathname in native UTF-8 pathname format.
+            Is basically a validity check, but such a path would 
+            create I/O error anyway so it's not sure if we need to do
+            the checks...
 
-        TODO: this should throw a single type of exception: InvalidPathException.
-              it should not throw just an Exception.
+        Throws: `InvalidPathException` (FUTURE). This will loose the
+            nothrow attribute eventually and check for invalidity.
     */
-    nstring native() pure const
+    nstring native() pure const nothrow
     {
-        // TODO: in Windows paths, disallow to finish by a '.'
+        // FUTURE: in Windows paths, disallow to finish by a '.' or ' '
         // See Phobos for a large list of everything disallowed in a path.
-        // TODO: check for MAX_PATH, or add \\?\ and check for longer length
+        // FUTURE: check for MAX_PATH, or add \\?\ and check for longer length
         // validate if a native path, use throwInvalidPath if invalid.
 
         version(Windows)
@@ -272,16 +273,6 @@ public:
             return str;
     }
 
-    /**
-        Returns the internal pathname in generic pathname format.
-    */
-    nstring generic() pure const
-    {
-        version(Windows)
-            return replaceCharStr(str, '\\', '/');
-        else
-            return str;
-    }
 
     //
     // ITERATION
@@ -674,7 +665,7 @@ private:
     }
 
     // Return same string with one char replaced
-    static nstring replaceChar(const(char)[] s, char needle, char replacement) pure
+    static nstring replaceChar(const(char)[] s, char needle, char replacement) pure nothrow
     {
         if (s is null)
             return nstring();
@@ -694,7 +685,7 @@ private:
 
         return nstring(r);
     }
-    static nstring replaceCharStr(string s, char needle, char replacement) pure
+    static nstring replaceCharStr(string s, char needle, char replacement) pure nothrow
     {
         if (s is null)
             return nstring();
