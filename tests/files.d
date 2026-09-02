@@ -88,14 +88,9 @@ unittest
     Path answer = d2;
     assert(canonical(p1) == canonical(d2));
 
+    Path answer2 = tmp / "a/b/c1/no-such-file";
+    assert(weaklyCanonical(p2) == weaklyCanonical(answer2));
 
-    /*
-    std::cout << "Current path is "
-              << std::filesystem::current_path() << '\n'
-              << "Canonical path for " << p1 << " is "
-              << std::filesystem::canonical(p1) << '\n'
-              << "Weakly canonical path for " << p2 << " is "
-              << std::filesystem::weakly_canonical(p2) << '\n';*/
     try
     {
         Path x_x = canonical(p2);

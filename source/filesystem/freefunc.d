@@ -42,7 +42,6 @@ else version(Posix)
     import cerrno  = core.stdc.errno;
     import cstdlib = core.stdc.stdlib;
 
-    // FUTURE: do without those libc function
     import cstdio = core.stdc.stdio: remove, rename;
 }
 
@@ -73,8 +72,10 @@ Path absolute(const(char)[] p)
     generic format representation. If `p` is not an absolute path, the 
     function behaves as if it is first made absolute by `absolute(p)`. 
     The path `p` must exist.
+
+    Throws: `InvalidPathException`, `FileSystemIOException`,
+            `FileNotFoundException`.
 */
-// TODO
 Path canonical(Path p)
 {
     if (p.empty)
@@ -85,9 +86,10 @@ Path canonical(Path p)
 
     version(Windows)
     {
-        // Note: \\.\UNC\Server\Share\Test\Foo.txt is a valid Windows Path
-        // TODO manage prefixes \\.\UNC\ and \\?\UNC\ (case insensitive)
-        // see gulrak @ GitHub
+        // Note: \\.\UNC\Server\Share\Test\Foo.txt is a valid Windows 
+        // Path.
+        // FUTURE manage prefixes \\.\UNC\ and \\?\UNC\ (case 
+        // insensitive) see gulrak @ GitHub
     }
 
     Path result;
@@ -96,14 +98,11 @@ Path canonical(Path p)
     bool redo;
     do 
     {
-        printf("do: work = %.*s\n", work.length, work.ptr);
-
         size_t rootPathLen = work.rootPath().length;
         redo = false;
         result = Path.init;
         foreach (Path pe; work.iterate) 
         {
-            printf("  * pe = %.*s\n", pe.length, pe.ptr);
             if (pe.empty() || pe == ".") {
                 continue;
             }
@@ -119,6 +118,7 @@ Path canonical(Path p)
 
             if (isSymlink(sls)) 
             {
+                // TODO: symlink resolve hasn't been tested yet
                 redo = true;
                 Path target = readSymlink(result / pe);
                 if (target.isAbsolute()) 
@@ -135,20 +135,55 @@ Path canonical(Path p)
     while (redo);
     return result.lexicallyNormal();
 }
-// TODO weakly_canonical
+
 
 /**
-    Returns p made relative to base. Resolves symlinks and normalizes both p and base before other processing. 
+    Returns: A normal path of the form `canonical(x)/y`, where `x` is 
+    a path composed of the longest leading sequence of elements in `p`
+    that exist, and `y` is a path composed of the remaining trailing 
+    non-existent elements of `p`.
+
+    Throws: `InvalidPathException`, `FileSystemIOException`.
 */
-// TODO: need weakly_canonical
-/*
+Path weaklyCanonical(Path p)
+{
+    Path r;
+    bool scan = true;
+    foreach (Path pe; p.iterate())
+    {
+        if (scan) 
+        {
+            if (exists(r / pe))
+                r /= pe;
+            else 
+            {
+                scan = false;
+                if (!r.empty())
+                    r = canonical(r) / pe;
+                else
+                    r /= pe;
+            }
+        }
+        else
+            r /= pe; // append lexically
+    }
+    if (scan && ! r.empty)
+        r = canonical(r);
+    return r.lexicallyNormal();
+}
+
+
+/**
+    Returns p made relative to base. Resolves symlinks and normalizes 
+    both p and base before other processing. 
+    Neither `p` nor `base` need exist.
+*/
 Path relative(Path p, Path base = currentPath())
 {
     return weaklyCanonical(p).lexicallyRelative(weaklyCanonical(base));
 }
-*/
 
-// TODO relative
+
 // TODO proximate
 
 /**
