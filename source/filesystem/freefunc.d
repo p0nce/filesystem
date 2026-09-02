@@ -75,10 +75,66 @@ Path absolute(const(char)[] p)
     The path `p` must exist.
 */
 // TODO
-//Path canonical(Path p)
-//{
-//    /// need to implement: \\?\ pathes, \\.\ pathes, UNC pathes, read_symlink...
-//}
+Path canonical(Path p)
+{
+    if (p.empty)
+        throwException(kStrErrNoCanonical);
+
+    // make absolute
+    Path work = p.isAbsolute() ? p : absolute(p);
+
+    version(Windows)
+    {
+        // Note: \\.\UNC\Server\Share\Test\Foo.txt is a valid Windows Path
+        // TODO manage prefixes \\.\UNC\ and \\?\UNC\ (case insensitive)
+        // see gulrak @ GitHub
+    }
+
+    Path result;
+
+    auto fs = status(work);
+    bool redo;
+    do 
+    {
+        printf("do: work = %.*s\n", work.length, work.ptr);
+
+        size_t rootPathLen = work.rootPath().length;
+        redo = false;
+        result = Path.init;
+        foreach (Path pe; work.iterate) 
+        {
+            printf("  * pe = %.*s\n", pe.length, pe.ptr);
+            if (pe.empty() || pe == ".") {
+                continue;
+            }
+            else if (pe == "..") {
+                result = result.parentPath();
+                continue;
+            }
+            else if ((result / pe).length <= rootPathLen) {
+                result /= pe;
+                continue;
+            }
+            FileStatus sls = symlinkStatus(result / pe);
+
+            if (isSymlink(sls)) 
+            {
+                redo = true;
+                Path target = readSymlink(result / pe);
+                if (target.isAbsolute()) 
+                    result = target;
+                else
+                    result /= target;
+                continue;
+            }
+            else
+                result /= pe;
+        }
+        work = result;
+    } 
+    while (redo);
+    return result.lexicallyNormal();
+}
 // TODO weakly_canonical
 
 /**
@@ -97,6 +153,9 @@ Path relative(Path p, Path base = currentPath())
 
 /**
     Copies files and directories, with a variety of options.
+
+    BUG: very probably buggy, at the very least non-recursive copy
+    looks shady.
 */
 void copy(Path from, Path to, CopyOptions options)
 {
@@ -173,14 +232,11 @@ void copy(Path from, Path to, CopyOptions options)
             createDirectory(to, from);
 
         // skip directory symlinks, permission denied is an error
-
         foreach(DirectoryEntry x; dirEntries(from, DirectoryOptions.none))
         {
             // Spec asks us to add the `inRecursiveCopy`, not sure where it's used...
             copy(x.path, to / x.path.filename(), options | CopyOptions.inRecursiveCopy);
         }
-
-
     }
 }
 
@@ -488,7 +544,7 @@ void createDirectorySymlink(Path target, Path linkname)
 
 
 /**
-    Returns the absolute path of the current working directory.
+    Returns/Sets the absolute path of the current working directory.
 
     Warning: this isn't thread-safe, as any other thread
     could modify this process' current directory.
@@ -517,6 +573,23 @@ Path currentPath() /* pure */
             throwIO(kStrErrCurrentPath);
         return Path(nstring(name[0..fs_strlen(name.ptr)]));
     }
+}
+///ditto
+void setCurrentPath(Path p)
+{
+    version(Windows)
+    {
+        nwstring wp = p.native.toUTF16();
+        if (! SetCurrentDirectoryW(wp.ptr))
+            throwIO(kStrErrChdirFailed);
+    }
+    else version(Posix)
+    {
+        if (punistd.chdir(p.native.ptr) == -1)
+            throwIO(kStrErrChdirFailed);
+    }
+    else
+        static assert(0);
 }
 
 
@@ -850,6 +923,9 @@ bool remove(Path p)
     if by repeatedly applying the POSIX `remove()`. Symlinks are not 
     followed (symlink is removed, not its target).
 
+    Important: `p` must exist! Else `removeAll` will throw
+    `FileNotFoundException`.
+
     Returns: the number of files and directories that were deleted 
     (which may be zero if p did not exist to begin with).
 
@@ -860,11 +936,13 @@ bool remove(Path p)
 */
 int removeAll(Path p)
 {
-    // TODO be sure we do not follow symlinks in case you end up deleting 
-    // the whole world.
     int r = 0;
 
+    // Symlinks are not followed.
+    // Access Denied is a throwing error.
     DirectoryOptions opts = DirectoryOptions.spanDepthFirst;
+
+    // Delete recursively.
     foreach(dirEntry; dirEntriesRecursive(p, opts))
         if (remove(dirEntry.path))
             r += 1;
@@ -1016,6 +1094,7 @@ SpaceInfo space(Path p)
 
     return info;
 }
+
 
 /**
     A directory suitable for temporary files. The path is guaranteed to exist and to be a directory. 

@@ -113,10 +113,16 @@ class DirectoryRange
             
             if (searchHandle == INVALID_HANDLE_VALUE)
             {
+                DWORD err = GetLastError();
                 cleanupSearch();
                 finished = true;
-                DWORD err = GetLastError();
-                if (err == ERROR_FILE_NOT_FOUND)
+
+                if (err == ERROR_PATH_NOT_FOUND)
+                {
+                    // directory itself doesn't exist
+                    throwFileNotFound(p);
+                }
+                else if (err == ERROR_FILE_NOT_FOUND)
                 {
                     // there is no file => no error
                 }
@@ -144,7 +150,11 @@ class DirectoryRange
             if (!dir) 
             {
                 int error = cerrno.errno;
-                if ( (error == cerrno.EACCES || error == cerrno.EPERM) && skipPermDenied)
+                if (error == cerrno.ENOENT)
+                {
+                    throwFileNotFound(p);
+                }
+                else if ( (error == cerrno.EACCES || error == cerrno.EPERM) && skipPermDenied)
                 {
                     // lack of permission, ignore
                 }
@@ -199,7 +209,11 @@ private:
     {
         version(Windows)
         {
-            FindClose(searchHandle);
+            if (searchHandle != INVALID_HANDLE_VALUE)
+            {
+                FindClose(searchHandle);
+                searchHandle = INVALID_HANDLE_VALUE;
+            }
         }
         else version(Posix)
         {

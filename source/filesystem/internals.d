@@ -72,11 +72,13 @@ static immutable string
     kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty",
     kStrErrFileSearch      = "File search failed",
     kStrErrFSAvailInfo     = "Can't get disc usage",
+    kStrErrChdirFailed     = "Can't change current directory",
     kStrErrUnrealDiscSize  = "Disc reports too large a size to be true",
     kStrErrNotSymlink      = "File is not a symlink",
     kStrErrSymlinkRead     = "Can't read symlink",
     kStrErrSymlinkCreate   = "Can't create symlink",
-    kStrErrCopyOther       = "Can only copy regular files, directories, and symlinks.";
+    kStrErrCopyOther       = "Can only copy regular files, directories, and symlinks.",
+    kStrErrNoCanonical     = "Path can't be made canonical";
 
 // Future: decide if we keep this file
 

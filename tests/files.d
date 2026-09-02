@@ -17,7 +17,6 @@ unittest
 }
 
 @("canonical()")
-static if (0)
 unittest
 {
     try
@@ -32,8 +31,8 @@ unittest
 
     assert(canonical(currentPath()) == currentPath());
     assert(canonical(Path(".")) == currentPath());
-    assert(canonical(Path(".")) == currentPath().parentPath);
-    assert(canonical(Path("/")) == currentPath().rootPath);
+    assert(canonical(Path("..")) == currentPath().parentPath);
+    assert(canonical(Path("./tests/fileWithSizeTwo")) == canonical(currentPath() / "tests/fileWithSizeTwo"));
 
     try
     {
@@ -45,6 +44,91 @@ unittest
         e.free;
     }
 }
+
+@("canonical() #2")
+unittest
+{
+    Path old = currentPath();
+    Path tmp = tempDirectoryPath();
+
+    try
+    {
+        removeAll(tmp / "a");
+    }
+    catch(FileNotFoundException e)
+    {
+        e.freeNoThrow();
+    }
+
+    setCurrentPath(tmp);
+    scope(exit) setCurrentPath(old);
+
+    Path d1 = tmp / "a/b/c1/d";
+    Path d2 = tmp / "a/b/c2/e";
+
+    createDirectories(d1);
+    createDirectories(d2);
+
+    assert(exists(d1));
+    assert(exists(d2));
+
+    setCurrentPath(d1);
+
+    Path p1 = Path("../../c2/./e");
+    Path p2 = Path("../no-such-file");
+
+    printf("Current Path:\n");
+    nprintf(currentPath);
+
+    printf("Canonical path for:\n");
+    nprintf(p1);
+    printf("\nis\n");
+    nprintf(canonical(p1));
+
+    Path answer = d2;
+    assert(canonical(p1) == canonical(d2));
+
+
+    /*
+    std::cout << "Current path is "
+              << std::filesystem::current_path() << '\n'
+              << "Canonical path for " << p1 << " is "
+              << std::filesystem::canonical(p1) << '\n'
+              << "Weakly canonical path for " << p2 << " is "
+              << std::filesystem::weakly_canonical(p2) << '\n';*/
+    try
+    {
+        Path x_x = canonical(p2);
+        assert(0);
+    }
+    catch (FileSystemException e)
+    {
+        e.free();
+    }
+
+    // cleanup
+
+    try
+    {
+        setCurrentPath(tmp);
+        removeAll(tmp / "a");
+    }
+    catch(FileSystemException e)
+    {
+        e.freeNoThrow();
+    }
+}
+
+/*
+    if (is_symlink_creation_supported()) {
+        TemporaryDirectory t(TempOpt::change_path);
+        fs::create_directory(t.path() / "dir1");
+        generateFile(t.path() / "dir1/test1");
+        fs::create_directory(t.path() / "dir2");
+        fs::create_directory_symlink(t.path() / "dir1", t.path() / "dir2/dirSym");
+        CHECK(fs::canonical(t.path() / "dir2/dirSym/test1") == t.path() / "dir1/test1");
+    }
+*/
 
 @("copyFile()")
 unittest
