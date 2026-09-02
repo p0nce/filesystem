@@ -179,12 +179,11 @@ Path weaklyCanonical(Path p)
     Neither `p` nor `base` need exist.
 */
 Path relative(Path p, Path base = currentPath())
-{
-    return weaklyCanonical(p).lexicallyRelative(weaklyCanonical(base));
-}
+    => weaklyCanonical(p).lexicallyRelative(weaklyCanonical(base));
+///ditto
+Path proximate(Path p, Path base = currentPath())
+    => weaklyCanonical(p).lexicallyProximate(weaklyCanonical(base));
 
-
-// TODO proximate
 
 /**
     Copies files and directories, with a variety of options.
@@ -230,8 +229,7 @@ void copy(Path from, Path to, CopyOptions options)
             // do nothing
         }
         else if (!toExists && copySymlinks) {
-            // TODO when copySymlink is impl
-            //copySymlink(from, to);
+            copySymlink(from, to);
         }
         else
             throwException(kStrErrFileCopyFailed);
@@ -419,8 +417,23 @@ bool copyFile(Path from, Path to,
         static assert(0);
 }
 
+/**
+    Copies a symlink to another location.
 
-// TODO copy_symlink
+    Throws:
+        FileSystemIOException on I/O error.
+        InvalidPathException on invalid path.
+        FileNotFoundException if not existing.
+*/
+void copySymlink(Path existingSymlink, Path newSymlink)
+{
+    Path to = readSymlink(existingSymlink);
+
+    if (isDirectory(to))
+        createDirectorySymlink(to, newSymlink);
+    else
+        createSymlink(to, newSymlink);
+}
 
 
 /**

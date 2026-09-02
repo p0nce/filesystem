@@ -77,14 +77,6 @@ unittest
     Path p1 = Path("../../c2/./e");
     Path p2 = Path("../no-such-file");
 
-    printf("Current Path:\n");
-    nprintf(currentPath);
-
-    printf("Canonical path for:\n");
-    nprintf(p1);
-    printf("\nis\n");
-    nprintf(canonical(p1));
-
     Path answer = d2;
     assert(canonical(p1) == canonical(d2));
 

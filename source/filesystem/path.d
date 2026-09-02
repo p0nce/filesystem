@@ -258,6 +258,7 @@ public:
     nstring native() pure const
     {
         // TODO: in Windows paths, disallow to finish by a '.'
+        // See Phobos for a large list of everything disallowed in a path.
         // TODO: check for MAX_PATH, or add \\?\ and check for longer length
         // validate if a native path, use throwInvalidPath if invalid.
 
