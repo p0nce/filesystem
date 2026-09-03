@@ -259,7 +259,7 @@ nstring toUTF8OrEmpty(nwstring s) nothrow
     {
         e.freeNoThrow();
     }
-    catch(Exception e) // TODO is this catch useful?
+    catch(Exception e)
     {
     }
     return nstring.init;
