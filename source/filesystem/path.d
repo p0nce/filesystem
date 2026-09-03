@@ -41,8 +41,7 @@ import filesystem.internals;
     Important: `Path` is just a `nstring`. It implicitely converts to 
     a `nstring`, and a path is empty iff its string `str` is empty.
 */
-struct Path
-{
+struct Path {
 public:
 @nogc:
 
@@ -50,12 +49,10 @@ public:
     nstring str;
     alias this = str;
 
-    this(const(char)[] source) pure nothrow @trusted
-    {
+    this(const(char)[] source) pure nothrow @trusted {
         str = source;
     }
-    this(const(nstring) source) pure nothrow @trusted
-    {
+    this(const(nstring) source) pure nothrow @trusted {
         str = source;
     }
 
@@ -67,8 +64,7 @@ public:
         Returns: Root name of the path. If the path doesn't include 
             root name, returns an empty `Path`.
     */
-    Path rootName() pure const
-    {
+    Path rootName() pure const {
         PathParser parser;
         parser.initialize(str[]);
         const(char)[] rootName;
@@ -80,8 +76,7 @@ public:
         Returns: Root directory of the path. If the path doesn't
         include root directory, returns an empty `Path`.
     */
-    Path rootDirectory() pure const
-    {
+    Path rootDirectory() pure const {
         PathParser parser;
         parser.initialize(str[]);
         const(char)[] rootDir;
@@ -101,8 +96,7 @@ public:
         composed of every generic-format component of this after 
         root-path. If this is an empty path, returns an empty path.
     */
-    Path relativePath(char separator = '\xff') pure const
-    {
+    Path relativePath(char separator = '\xff') pure const {
         // slash preference could be the very end char
         if (separator == '\xff')
             separator = detectSeparatorOrDefault();
@@ -115,8 +109,7 @@ public:
         const(char)[] name;
         nstring r;
         bool sep;
-        while (parser.parseFilename(name, sep))
-        {
+        while (parser.parseFilename(name, sep)) {
             r ~= name;
             if (sep) r ~= separator;
         }
@@ -137,8 +130,7 @@ public:
 
         See_also: `dirName()`.
     */
-    Path parentPath() pure const
-    {
+    Path parentPath() pure const {
         if (!hasRelativePath())
             return Path(str);
         auto range = iterate();
@@ -147,8 +139,7 @@ public:
         if (range.hasRootDir) skipSlash++;
         size_t lastLen;
         nstring r;
-        foreach(item; range)
-        {
+        foreach(item; range) {
             lastLen = r.length;
             if (skipSlash > 0)
                 skipSlash--;
@@ -164,8 +155,7 @@ public:
 
         Similar to `parentPath` without the issues.
     */
-    Path dirName() /* pure */ /* const */
-    {
+    Path dirName() /* pure */ /* const */ {
  
         Path r = hasRootPath() ? rootPath() : ".";
         Path rlast = r;
@@ -175,12 +165,10 @@ public:
         if (range.hasRootName) skip++;
         if (range.hasRootDir) skip++;
 
-        foreach(item; iterate())
-        {
+        foreach(item; iterate()) {
             if (item == "")
                 continue;
-            if (skip > 0)
-            {
+            if (skip > 0) {
                 skip--;
                 continue;
             }
@@ -194,16 +182,14 @@ public:
         Based upon the content of this path, what directory separator
         should be used?
     */
-    SepPreference detectSeparator() pure const
-    {
+    SepPreference detectSeparator() pure const {
         PathParser parser;
         parser.initialize(str[]);
         const(char)[] dummy;
         parser.parseRootName(dummy);
         parser.parseRootDir(dummy);
         bool sep;
-        while (parser.parseFilename(dummy, sep))
-        {
+        while (parser.parseFilename(dummy, sep)) {
         }
         if (parser.errored)
             return SepPreference.preferUnknown;
@@ -216,13 +202,11 @@ public:
     /**
         Returns the generic-format filename component of the path.
     */
-    Path filename() pure const
-    {
+    Path filename() pure const {
         if (!hasRelativePath)
             return Path();
         const(char)[] r = "";
-        foreach(item; iterate())
-        {
+        foreach(item; iterate()) {
             r = item;
         }
         return Path(r);
@@ -232,8 +216,7 @@ public:
         Returns the filename identified by the generic-format path 
         stripped of its extension. 
     */
-    Path stem() pure const
-    {
+    Path stem() pure const {
         Path fn = filename();
         int dotpos = extensionDotPos(fn);
         if (dotpos == -1)
@@ -244,8 +227,7 @@ public:
     /**
         Returns the extension of the filename component.
     */
-    Path extension() pure const
-    {
+    Path extension() pure const {
         Path fn = filename();
         int dotpos = extensionDotPos(fn);
         if (dotpos == -1)
@@ -263,8 +245,7 @@ public:
         Throws: `InvalidPathException` (FUTURE). This will loose the
             nothrow attribute eventually and check for invalidity.
     */
-    nstring native() pure const nothrow
-    {
+    nstring native() pure const nothrow {
         // FUTURE: in Windows paths, disallow to finish by a '.' or 
         // ' '.
         // See Phobos for a large list of everything disallowed in a 
@@ -291,8 +272,7 @@ public:
 
         Returns: an `InputRange` of `const(char)[]`.
     */
-    PathRange iterate() pure const
-    {
+    PathRange iterate() pure const {
         PathRange r;
         r.initialize(str);
         return r;
@@ -306,8 +286,7 @@ public:
 
         Returns: an `InputRange` of `const(char)[]`.
     */
-    PathRange iterateWithoutRootPath()
-    {
+    PathRange iterateWithoutRootPath() {
         PathRange range = iterate();
         int skipSlash = 1;
         if (range.hasRootName) range.popFront();
@@ -335,8 +314,7 @@ public:
         path is a path that unambiguously identifies the location of 
         a file without reference to an additional starting location.
     */
-    bool isAbsolute() pure
-    {
+    bool isAbsolute() pure {
         version(Windows)
             return hasRootName() && hasRootDirectory();
         else
@@ -356,16 +334,13 @@ public:
         Converts all directory separators in the generic-format view 
         of the path to the preferred directory separator. 
     */
-    ref Path makePreferred() pure
-    {
+    ref Path makePreferred() pure {
         str = native();
         return this;
     }
 
-    ref Path removeFilename() pure
-    {
-        if (hasFilename()) 
-        {
+    ref Path removeFilename() pure {
+        if (hasFilename()) {
             size_t newLen = str.length() - filename().length();
             resize(newLen);
         }
@@ -375,8 +350,7 @@ public:
     /**
         Replaces a single filename component with replacement. 
     */
-    ref Path replaceFilename(const Path replacement) /* pure */
-    {
+    ref Path replaceFilename(const Path replacement) /* pure */ {
         char sepChar = detectSeparatorOrDefault();
         removeFilename(); 
         return this.append(replacement, sepChar);
@@ -388,8 +362,7 @@ public:
     /**
         Replaces extension (eg: ".png"). 
     */
-    ref Path replaceExtension(Path replacement) /* pure */
-    {
+    ref Path replaceExtension(Path replacement) /* pure */ {
         Path f = stem();
         if (replacement.length > 0 && replacement[0] != '.')
             f.concat(".");
@@ -417,8 +390,7 @@ public:
     /**
         Relative form of the path, given a base.
     */
-    Path lexicallyRelative(Path base) /* pure */ /* const */
-    {
+    Path lexicallyRelative(Path base) /* pure */ /* const */ {
         if (rootName != base.rootName())
             return Path();
         if (isAbsolute() != base.isAbsolute())
@@ -446,8 +418,7 @@ public:
         // Otherwise, first determines the first mismatched element of
         // this and base.
         size_t n = 0;
-        while (n < vthis.length && n < vbase.length)
-        {
+        while (n < vthis.length && n < vbase.length) {
             // On Windows, need to compare in a case-insensitive way
             if (! equalsWithOSCaseSensitivity(vthis[n], vbase[n]))
                 break;
@@ -459,8 +430,7 @@ public:
         // Otherwise, define N as the number of nonempty filename 
         // elements that are neither dot nor dot-dot in vbase[n .. $]
         int N = 0;
-        for (size_t i = n; i < vbase.length; ++i)
-        {
+        for (size_t i = n; i < vbase.length; ++i) {
             bool isDot    = vbase[i] == ".";
             bool isDotDot = vbase[i] == "..";
             if (isDotDot)    N -= 1;
@@ -496,8 +466,7 @@ public:
         Return `lexicallyRelative(base)` if not an empty path, else
         return this.
     */
-    Path lexicallyProximate(Path base) /* pure */ /* const */
-    {
+    Path lexicallyProximate(Path base) /* pure */ /* const */ {
         Path relative = lexicallyRelative(base);
         if (relative.empty) 
             return this;
@@ -519,16 +488,13 @@ public:
         needed).
     */
     ref Path append(const(char)[] p, char prefferedSep = '\xff') 
-        /* nothrow */ /* pure */
-    {
+        /* nothrow */ /* pure */ {
         return append(Path(p), prefferedSep);
     }
     //ditto
     ref Path append(Path p, char prefferedSep = '\xff') 
-        /* nothrow */ /* pure */
-    {
-        if (prefferedSep == '\xff')
-        {
+        /* nothrow */ /* pure */ {
+        if (prefferedSep == '\xff') {
             // First try to find the right separator for this append.
             // If both have an idea, prefers left path idea.
             // This can also be given as parameter.
@@ -539,10 +505,8 @@ public:
             prefferedSep = prefToChar(leftPref);
         }
 
-        if (p.empty)
-        {
-            version(Posix)
-            {
+        if (p.empty) {
+            version(Posix) {
                 if (!empty && str[$-1] != prefferedSep)
                     str ~= prefferedSep;
             }
@@ -550,16 +514,14 @@ public:
         }
 
         if (p.isAbsolute() || (p.hasRootName() 
-                               && p.rootName() != rootName()))
-        {
+                               && p.rootName() != rootName())) {
             str = p;
             return this;
         }
 
         // Appending a root directory replaces relative path.
         // but keep it's eventual rootname.
-        if (p.hasRootDirectory())
-        {
+        if (p.hasRootDirectory()) {
             str = rootName() ~ p.rootDirectory() ~ p.relativePath();
             return this;
         }
@@ -600,27 +562,23 @@ public:
         return this;
     }
     ///ditto
-    ref Path opOpAssign(string op : "/")(Path p) /* pure */
-    {
+    ref Path opOpAssign(string op : "/")(Path p) /* pure */ {
         append(p);
         return this;
     }
     ///ditto
-    ref Path opOpAssign(string op : "/")(const(char)[] p) /* pure */
-    {
+    ref Path opOpAssign(string op : "/")(const(char)[] p) /* pure */ {
         append(p);
         return this;
     }
     ///ditto
-    Path opBinary(string op : "/")(Path p) /* pure */ const
-    {
+    Path opBinary(string op : "/")(Path p) /* pure */ const {
         Path r = str;
         r.append(p);
         return r;
     }
     ///ditto
-    Path opBinary(string op : "/")(const(char)[] p) /* pure */ const
-    {
+    Path opBinary(string op : "/")(const(char)[] p) /* pure */ const {
         Path r = str;
         r.append(p);
         return r;
@@ -630,8 +588,7 @@ public:
         Path append operation, but only if the path isn't empty.
         Else, it stays empty.
     */
-    ref Path maybeAppend(const(char)[] subdir) @trusted
-    {
+    ref Path maybeAppend(const(char)[] subdir) @trusted {
         if (! empty)
             return append(subdir);
         return this;
@@ -640,8 +597,7 @@ public:
     /**
         Concatenates the current path and the argument.
     */
-    ref Path concat(Path p) /* pure */
-    {
+    ref Path concat(Path p) /* pure */ {
         str ~= p.native();
         return this;
     }
@@ -658,8 +614,7 @@ private:
     // iterating the path into parts.
     enum const(char)[] FINAL_SEP = "";
 
-    static int extensionDotPos(const(char)[] filename) pure
-    {
+    static int extensionDotPos(const(char)[] filename) pure {
         if (filename == "." || filename == "..")
             return -1;
 
@@ -672,8 +627,7 @@ private:
         return dotPos;
     }
 
-    nstring normalForm() /* const */
-    {
+    nstring normalForm() /* const */ {
         // FUTURE Making this function pure is blocked by 
         // vector!nstring not being pure.
 
@@ -697,8 +651,7 @@ private:
         {
             bool sep;
             bool lastSep;
-            while (parser.parseFilename(name, sep))
-            {
+            while (parser.parseFilename(name, sep)) {
                 parts ~= fs_replaceChar(name, '/', prefSep);
                 lastSep = sep;
             }
@@ -720,10 +673,8 @@ private:
         // This removes all single dots.
         {
             size_t i = 0;
-            for (i = 0; i < parts.length; )
-            {
-                if (parts[i] == ".")
-                {
+            for (i = 0; i < parts.length; ) {
+                if (parts[i] == ".") {
                     parts.removeAt(i);
 
                     // remove final / if path is ending in ./ 
@@ -742,15 +693,13 @@ private:
         // fixed point.
         {
             size_t i = 0;
-            for (; i + 1 < parts.length; )
-            {
+            for (; i + 1 < parts.length; ) {
                 // Tricky since "a/b/../"  => "a/"
                 //              "a/../"    => ""
                 //              "a/b/.."   => "a/"
                 //              "a/b/../c" => "a/c"
 
-                if ((parts[i] != "..") && (parts[i + 1] == ".."))
-                {
+                if ((parts[i] != "..") && (parts[i + 1] == "..")) {
                     parts.removeAt(i);
                     parts.removeAt(i);
 
@@ -775,8 +724,7 @@ private:
 
         // 6. "If there is root-directory, remove all dot-dots and any 
         // directory-separators immediately following them."
-        if (sroot_dir != "")
-        {
+        if (sroot_dir != "") {
             while (parts.length > 0 && parts[0] == "..")
                 parts.removeAt(0);
             if (parts.length > 0 && parts[0] == FINAL_SEP)
@@ -793,8 +741,7 @@ private:
         nstring result;
         result ~= sroot_name;
         result ~= sroot_dir;
-        for (size_t i = 0; i < parts.length; ++i)
-        {
+        for (size_t i = 0; i < parts.length; ++i) {
             if (i > 0)
                 result ~= prefSep;
             result ~= parts[i];
@@ -815,8 +762,7 @@ private:
 // 2. root-dir if any, 
 // 3. then a list of filename
 // 4. then FINAL_SEP if the path was terminated with a separator
-static struct PathRange
-{
+static struct PathRange {
 nothrow:
 @nogc:
 pure:
@@ -829,8 +775,7 @@ pure:
     bool hasRootName; // useful to skip a number of slash when
     bool hasRootDir;  // recreating a path
 
-    void initialize(const(char)[] str)
-    {
+    void initialize(const(char)[] str) {
         parser.initialize(str);
         parser.parseRootName(rootName);
         hasRootName = rootName !is null;
@@ -840,33 +785,27 @@ pure:
         popIntoCurrent(); // fetch first item in current
     }
 
-    const(char)[] front()
-    {
+    const(char)[] front() {
         return current;
     }
 
-    void popFront()
-    {
+    void popFront() {
         popIntoCurrent();
     }
 
-    bool empty() 
-    {
+    bool empty() {
         return current is null;
     }
 
     // progress state, fetch next item in current
-    void popIntoCurrent()
-    {
-        if (rootName !is null)
-        {
+    void popIntoCurrent() {
+        if (rootName !is null) {
             current = rootName;
             rootName = null;
             return;
         }
 
-        if (rootDir !is null)
-        {
+        if (rootDir !is null) {
             current = rootDir;
             rootDir = null;
             return;
@@ -875,13 +814,11 @@ pure:
         // save previous / presence, in case it was the last
         bool oldLastSep = lastSep;
         bool success = parser.parseFilename(current, lastSep);
-        if (success)
-        {
+        if (success) {
             return;
         }
 
-        if (!success && oldLastSep)
-        {
+        if (!success && oldLastSep) {
             current = Path.FINAL_SEP;
             return;
         }
@@ -890,23 +827,20 @@ pure:
 }
 
 // Reference: https://en.cppreference.com/cpp/filesystem/path
-struct PathParser
-{
+struct PathParser {
 nothrow:
 @nogc:
 pure:
 
     // Once initialized, call parseRootName, parseRootDir, and 
     // enumerate path parts.
-    void initialize(const(char)[] input)
-    {
+    void initialize(const(char)[] input) {
         errored = false;
         lexer.initialize(input);
     }
 
     // return null if not root name
-    void parseRootName(out const(char)[] rootName)
-    {
+    void parseRootName(out const(char)[] rootName) {
         Token tok;
         if (lexer.consume(Token.type.rootName, tok))
             rootName = tok.payload;
@@ -915,11 +849,9 @@ pure:
     }
 
     // return null if not root dir
-    void parseRootDir(out const(char)[] rootDir)
-    {
+    void parseRootDir(out const(char)[] rootDir) {
         Token tok;
-        if (lexer.consume(Token.type.rootDir, tok))
-        {
+        if (lexer.consume(Token.type.rootDir, tok)) {
             rootDir = iprefToChar(lexer.sepPreference());
         }
         else
@@ -931,12 +863,10 @@ pure:
     // Return false in case of end of sequence or error.
     // Can only be called once parseRootName and parseRootDir were
     // called.
-    bool parseFilename(out const(char)[] filename, out bool sepAfter)
-    {
+    bool parseFilename(out const(char)[] filename, out bool sepAfter){
         sepAfter = false;
         Token tok = lexer.peek();
-        final switch (tok.type)
-        {
+        final switch (tok.type) {
             case Token.type.rootName: 
             case Token.type.rootDir: 
             case Token.type.invalid:                
@@ -961,8 +891,7 @@ pure:
         // MUST consume either a separator, or EOF.
 
         tok = lexer.peek();
-        final switch (tok.type)
-        {
+        final switch (tok.type) {
             case Token.type.rootName: 
             case Token.type.rootDir: 
             case Token.type.invalid:
@@ -995,11 +924,9 @@ private:
 }
 
 
-struct Token
-{
+struct Token {
 nothrow @nogc:
-    enum Type
-    {
+    enum Type {
         rootName,  // 0. eg: "C:", (FUTURE: "//server/share")
         rootDir,   // 1. the first '/' or '\'
         separator, // 2. a separator such as in my/dir
@@ -1015,16 +942,14 @@ nothrow @nogc:
 
 
 
-struct PathLexer
-{
+struct PathLexer {
 pure:
 public:
 nothrow @nogc:
 
     // Note: lexer is, for now, only used in 
 
-    enum
-    {
+    enum {
         // First two bits is parse mode
         parsePOSIX       = 1, // only accept POSIX-style paths
         parseWindows     = 2, // only accept windows-style paths
@@ -1035,15 +960,12 @@ nothrow @nogc:
     // Safari doesn't accept a longer URL than that.
     enum int MAX_PATH_PATH = 80_000; 
 
-    void initialize(const(char)[] input)
-    {   
-        version(Windows)
-        {
+    void initialize(const(char)[] input) {   
+        version(Windows) {
             options = parseWindows;
             _sepPreference = SepPreference.preferUnknown;
         }
-        else
-        {
+        else {
             options = parsePOSIX;
             _sepPreference = SepPreference.preferSlash;
         }
@@ -1060,18 +982,15 @@ nothrow @nogc:
 
     // peek current token. When you see `Token.Type.eof` or 
     // `Token.Type.poison`, it is over.
-    Token peek()
-    {
+    Token peek() {
         if (_token.type == Token.Type.invalid)
             popFront();
         return _token;
     }
 
-    bool consume(Token.Type type, out Token tok)
-    {
+    bool consume(Token.Type type, out Token tok) {
         tok = peek();
-        if (tok.type == type)
-        {
+        if (tok.type == type) {
             popFront();
             return true;
         }
@@ -1079,21 +998,18 @@ nothrow @nogc:
             return false;
     }
 
-    void popFront()
-    {
+    void popFront() {
         _token = nextToken();
     }
 
-    SepPreference sepPreference() const
-    {
+    SepPreference sepPreference() const {
         return _sepPreference;
     }    
 
 private:
     SepPreference _sepPreference = SepPreference.preferUnknown;
 
-    static int findCharInString(char needle, const(char)[] chars)
-    {
+    static int findCharInString(char needle, const(char)[] chars) {
         for (int i = 0; i < cast(int) chars.length; ++i)
             if (chars[i] == needle)
                 return i;
@@ -1106,33 +1022,28 @@ private:
     bool charCanBeASeparator(char ch)
         => ch == '/' || (supportsBackSlash() && ch == '\\');
 
-    static bool charCanBeWindowsFilename(char ch)
-    {
+    static bool charCanBeWindowsFilename(char ch) {
         // FUTURE: ':' is allowed with "data streams"
         return ! isCharInString(ch, "<>:\"/\\|?*\0"); 
     }
 
-    static bool charCanBePOSIXFilename(char ch)
-    {
+    static bool charCanBePOSIXFilename(char ch) {
         return ch != '\0' && ch != '/';
     }
 
     // Return: number of successive identical separator chars, such as 
     // "///" => 3
     // 0 if no separator.
-    int parseSeparator()
-    {        
+    int parseSeparator() {        
         char ch = peekChar();
         if (! charCanBeASeparator(ch))
             return 0;
         next();
-        if (ch == '\\') 
-        {
+        if (ch == '\\') {
             if (_sepPreference == SepPreference.preferUnknown)
                 _sepPreference = SepPreference.preferBackslash;
         }
-        else
-        {
+        else {
             assert(ch == '/');
             if (_sepPreference == SepPreference.preferUnknown)
                 _sepPreference = SepPreference.preferSlash;
@@ -1140,29 +1051,25 @@ private:
 
         // Parse mixed separators such as "\\//\\", as one separator
         int r = 1;
-        while (charCanBeASeparator(peekChar()))
-        {
+        while (charCanBeASeparator(peekChar())) {
             r++;
             next();
         }
         return r;
     }
 
-    Token nextToken()
-    {
+    Token nextToken() {
         if (state == State.error)
             return Token(Token.Type.poison);
 
         // detect optional root name
-        if (state == State.beforeRootName)
-        {
+        if (state == State.beforeRootName) {
             // move on the state whatever happens
             state = State.beforeRootDir; 
             char ch = peekChar();
             char chp1 = peekAhead();
             if (supportsRootName() && (chp1 == ':') 
-                && isDriveLetter(ch))
-            {
+                && isDriveLetter(ch)) {
                 next();
                 next();
                 return Token(Token.Type.rootName, input[0..2]);
@@ -1172,8 +1079,7 @@ private:
         }
 
         // detect optional root dir / or \
-        if (state == State.beforeRootDir)
-        {
+        if (state == State.beforeRootDir) {
             // move on the state whatever happens
             state = State.restOfPath; 
             int b = idx;
@@ -1193,8 +1099,7 @@ private:
 
         bool isSep = charCanBeASeparator(ch);
 
-        if (isSep)
-        {
+        if (isSep) {
             int len = parseSeparator();
             assert(len > 0);
             return Token(Token.Type.separator, input[here..here+len]);
@@ -1203,8 +1108,7 @@ private:
         bool isWin   = charCanBeWindowsFilename(ch);
         bool isPosix = charCanBePOSIXFilename(ch);
 
-        if (!isWin && !isPosix)
-        {
+        if (!isWin && !isPosix) {
         fail:
             state = State.error;
             return Token(Token.Type.poison);
@@ -1215,8 +1119,7 @@ private:
         int end = here + 1;
         
 
-        while (true)
-        {
+        while (true) {
             ch = peekChar();
             isSep   = charCanBeASeparator(ch);
             isWin   = charCanBeWindowsFilename(ch);
@@ -1239,23 +1142,19 @@ private:
 
     Token _token;
 
-    char peekChar() const
-    {
+    char peekChar() const {
         if (idx >= len) return '\0';
         return input[idx];
     }
 
-    char peekAhead() const
-    {
+    char peekAhead() const {
         if (idx + 1 >= len) return '\0';
         return input[idx + 1];
     }
 
-    bool consumeChar(char ch)
-    {
+    bool consumeChar(char ch) {
         char c = peekChar();
-        if (c == ch) 
-        {
+        if (c == ch) {
             next();
             return true;
         }
@@ -1270,8 +1169,7 @@ private:
     int len;
     int options;
 
-    enum State
-    {
+    enum State {
         beforeRootName,
         beforeRootDir,
         restOfPath,    // normal parts and separator
@@ -1294,8 +1192,7 @@ private:
 
 private:
 
-enum SepPreference
-{
+enum SepPreference {
     // path earliest separator is /
     preferSlash      = 1,  
 
@@ -1312,15 +1209,12 @@ version(Windows)
 else
     enum string FS_PREFERRED_SEP = "/";
 
-char prefToChar(SepPreference pref) pure nothrow @safe
-{
+char prefToChar(SepPreference pref) pure nothrow @safe {
     return iprefToChar(pref)[0];
 }
 
-string iprefToChar(SepPreference pref) pure nothrow @safe
-{
-    switch(pref)
-    {
+string iprefToChar(SepPreference pref) pure nothrow @safe {
+    switch(pref) {
         case SepPreference.preferSlash:     return "/";
         case SepPreference.preferBackslash: return "\\";
         case SepPreference.preferUnknown:   return FS_PREFERRED_SEP;

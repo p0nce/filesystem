@@ -43,15 +43,13 @@ else version (WatchOS)
 else version (VisionOS)
     version = Darwin;
 
-version(Windows) 
-{
+version(Windows) {
     pragma(lib, "shell32");
     pragma(lib, "ole32");
     import core.sys.windows.winnt;
     import core.sys.windows.basetyps;
 } 
-else version(Darwin) 
-{
+else version(Darwin) {
     version(D_ObjectiveC){}
     else
         static assert(0, "Need a compiler with D_ObjectiveC support");
@@ -59,8 +57,7 @@ else version(Darwin)
     import objc;
     import foundation;
     import core.attribute : selector;
-} else static if (isFreedesktop)
-{
+} else static if (isFreedesktop) {
 }
 else
     static assert(0, "Unrecognized OS");
@@ -80,8 +77,7 @@ else
  
     See_Also: `writablePath`, `standardPaths`.
 */
-enum StandardPath
-{
+enum StandardPath {
     /// General location of persisted application data. Every 
     /// application should have its own subdirectory here.
     /// Note: on Windows it's the same as `config` path.
@@ -160,25 +156,20 @@ enum StandardPath
     Returns: Path to user home directory, or an empty string if could 
              not determine home directory.
 */
-Path homeDir() /* nothrow */ /* @safe */
-{
+Path homeDir() /* nothrow */ /* @safe */ {
     nstring home;
-    version(Windows)
-    {
+    version(Windows) {
         //Use GetUserProfileDirectoryW from Userenv.dll?
         home = getEnvironmentVariable(nstring("USERPROFILE"));
-        if (home.empty) 
-        {
+        if (home.empty) {
             nstring homeDrive = getEnvironmentVariable("HOMEDRIVE");
             nstring homePath  = getEnvironmentVariable("HOMEPATH");
-            if (homeDrive.length && homePath.length) 
-            {
+            if (homeDrive.length && homePath.length) {
                 home = homeDrive ~ homePath;
             }
         }
     }
-    else
-    {
+    else {
         home = getEnvironmentVariable(nstring("HOME"));
     }
     return Path(home);
@@ -204,12 +195,10 @@ Path homeDir() /* nothrow */ /* @safe */
     enum orgName = "MyCompany";
     enum appName = "MyApplication";
 
-    if (! appData.empty) 
-    {
+    if (! appData.empty) {
         createDirectories(appData / orgName / appName);
     } 
-    else 
-    {
+    else {
         // Could not detect default downloads directory.
     }
     --------------------
@@ -217,13 +206,10 @@ Path homeDir() /* nothrow */ /* @safe */
     See_Also: `StandardPath`, `standardPaths`.
 */
 Path writablePath(StandardPath type, bool createIfMissing = false) 
-    /* nothrow */ @trusted
-{
+    /* nothrow */ @trusted {
     alias create = createIfMissing;
-    version(Windows)
-    {
-        final switch(type) 
-        {
+    version(Windows) {
+        final switch(type) {
         case StandardPath.config:
         case StandardPath.data:
             return getKnownFolder(FOLDERID_LocalAppData, create);
@@ -257,11 +243,9 @@ Path writablePath(StandardPath type, bool createIfMissing = false)
             return getKnownFolder(FOLDERID_SavedGames, create);
         }
     }
-    else version(Darwin)
-    {
+    else version(Darwin) {
         auto user = NSUserDomainMask;
-        final switch(type) 
-        {
+        final switch(type) {
         case StandardPath.config:
             return domainDir(NSLibraryDirectory, user, create)
                   .maybeAppend("Preferences");
@@ -299,10 +283,8 @@ Path writablePath(StandardPath type, bool createIfMissing = false)
             return Path.init;
         }
     }
-    else static if (isFreedesktop)
-    {
-        final switch(type) 
-        {
+    else static if (isFreedesktop) {
+        final switch(type) {
         case StandardPath.config:
             return xdgConfigHome(null, create);
         case StandardPath.cache:
@@ -340,8 +322,7 @@ Path writablePath(StandardPath type, bool createIfMissing = false)
             return Path.init;
         }
     }
-    else 
-    {
+    else {
         return Path.init;
     }
 }
@@ -363,16 +344,13 @@ Path writablePath(StandardPath type, bool createIfMissing = false)
 
    See_Also: `StandardPath`, `writablePath`.
 */
-vector!Path standardPaths(StandardPath type) @safe
-{
+vector!Path standardPaths(StandardPath type) @safe {
     vector!Path paths;
     Path common;
     vector!Path commonPaths;
 
-    version(Windows)
-    {     
-        switch(type) 
-        {
+    version(Windows) {     
+        switch(type) {
             case StandardPath.config:
             case StandardPath.data:
                 common = getKnownFolder(FOLDERID_ProgramData);
@@ -411,11 +389,9 @@ vector!Path standardPaths(StandardPath type) @safe
                 break;
         }
     }
-    else version(Darwin)
-    {
+    else version(Darwin) {
         auto system = NSSystemDomainMask;
-        switch(type) 
-        {
+        switch(type) {
             case StandardPath.fonts:
                 common = domainDir(NSLibraryDirectory, system)
                         .maybeAppend("Fonts");
@@ -433,8 +409,7 @@ vector!Path standardPaths(StandardPath type) @safe
                 break;
         }
     }
-    else static if (isFreedesktop)
-    {
+    else static if (isFreedesktop) {
         switch(type) {
             case StandardPath.data:
                 commonPaths = xdgAllDataDirs();
@@ -463,8 +438,7 @@ vector!Path standardPaths(StandardPath type) @safe
         paths ~= userPath;
     if (common.length)
         paths ~= common;
-    foreach (p; commonPaths)
-    {
+    foreach (p; commonPaths) {
         if (paths.find(p) == -1)
             paths ~= p;
     }
@@ -488,10 +462,8 @@ private:
 //
 
 
-version(Windows) 
-{
-    enum 
-    {
+version(Windows) {
+    enum {
         CSIDL_DESKTOP            =  0,
         CSIDL_INTERNET,
         CSIDL_PROGRAMS,
@@ -553,8 +525,7 @@ version(Windows)
         CSIDL_FLAG_MASK        = 0xFF00
     }
 
-    enum 
-    {
+    enum {
         KF_FLAG_SIMPLE_IDLIST                = 0x00000100,
         KF_FLAG_NOT_PARENT_RELATIVE          = 0x00000200,
         KF_FLAG_DEFAULT_PATH                 = 0x00000400,
@@ -598,8 +569,7 @@ version(Windows)
     enum KNOWNFOLDERID FOLDERID_PublicPictures = {0xb6ebfb86, 0x6907, 0x413c, [0x9a,0xf7,0x4f,0xc2,0xab,0xf0,0x7c,0xc5]};
     enum KNOWNFOLDERID FOLDERID_PublicVideos = {0x2400183a, 0x6185, 0x49fb, [0xa2,0xd8,0x4a,0x39,0x2a,0x60,0x2b,0xa3]};
 
-    extern(Windows) 
-    {
+    extern(Windows) {
         HRESULT SHGetKnownFolderPath(KNOWNFOLDERID* rfid,
                                      DWORD          dwFlags,
                                      HANDLE         hToken,
@@ -610,8 +580,7 @@ version(Windows)
 
     // Get a known path, or "" if not possible.
     Path getKnownFolder(const(KNOWNFOLDERID) folder, 
-        bool createIfMissing = false) @trusted /* nothrow */
-    {
+        bool createIfMissing = false) @trusted /* nothrow */ {
         wchar* str;
 
         // Don't verify that the folder exists, nor create it
@@ -619,8 +588,7 @@ version(Windows)
         if (createIfMissing) flags |= KF_FLAG_CREATE;
 
         if (SHGetKnownFolderPath(cast(KNOWNFOLDERID*)&folder, flags, 
-            null, &str) == S_OK) 
-        {
+            null, &str) == S_OK) {
             scope(exit) CoTaskMemFree(str);
             nwstring s = str[0..fs_wstrlen(str)];
             return Path(s.toUTF8OrEmpty());
@@ -634,11 +602,9 @@ version(Windows)
 // Darwin-specific internals
 //
 
-version(Darwin) 
-{
+version(Darwin) {
     alias NSSearchPathDirectory = NSUInteger;
-    enum : NSSearchPathDirectory 
-    {
+    enum : NSSearchPathDirectory {
         NSApplicationDirectory = 1,
         NSDemoApplicationDirectory,
         NSDeveloperApplicationDirectory,
@@ -668,8 +634,7 @@ version(Darwin)
 
     alias NSSearchPathDomainMask = NSUInteger;
 
-    enum : NSSearchPathDomainMask 
-    {
+    enum : NSSearchPathDomainMask {
         NSUserDomainMask = 1,
         NSLocalDomainMask = 2,
         NSNetworkDomainMask = 4,
@@ -678,8 +643,7 @@ version(Darwin)
     };
 
     extern(Objective-C)
-    extern class NSFileManager : NSObject 
-    {
+    extern class NSFileManager : NSObject {
     @nogc nothrow:
     protected:
         static NSFileManager defaultManager() @selector("defaultManager");
@@ -688,10 +652,8 @@ version(Darwin)
 
     Path domainDir(NSSearchPathDirectory dir, 
                    NSSearchPathDomainMask domain, 
-                   bool shouldCreate = false) nothrow @trusted
-    {
-        try 
-        {
+                   bool shouldCreate = false) nothrow @trusted {
+        try {
             NSFileManager manager = NSFileManager.defaultManager();
             if (!manager)
                 return Path.init;
@@ -705,25 +667,20 @@ version(Darwin)
 
             nstring str = nstring(fromStringz(nsstr.ptr)); // calls UTF8String
             nstring fileProtocol = nstring("file://");
-            if (startsWith(str, fileProtocol)) 
-            {
+            if (startsWith(str, fileProtocol)) {
                 str = str[7..$];
-                if (str.length > 1 && str[$-1] == '/') 
-                {
+                if (str.length > 1 && str[$-1] == '/') {
                     return Path(str[0..$-1]);
                 } 
-                else 
-                {
+                else {
                     return Path(str);
                 }
             }
         }
-        catch(NuException e)
-        {
+        catch(NuException e) {
             e.freeNoThrow;
         } 
-        catch(Exception e) 
-        {
+        catch(Exception e) {
         }
         return Path.init;
     }
@@ -735,8 +692,7 @@ version(Darwin)
 // author)
 //
 
-static if (isFreedesktop)
-{
+static if (isFreedesktop) {
 
     /**
     The ordered set of non-empty base paths to search for :
@@ -747,8 +703,7 @@ static if (isFreedesktop)
     appear to be directories.
 
     */
-    vector!Path xdgDataDirs(string subfolder = null) @trusted
-    {
+    vector!Path xdgDataDirs(string subfolder = null) @trusted {
         nstring nsub = nstring(subfolder);
         vector!Path r = pathsFromEnv("XDG_DATA_DIRS", ':', nsub);
         if (r.empty)
@@ -759,8 +714,7 @@ static if (isFreedesktop)
         return r;
     }
     ///ditto
-    vector!Path xdgConfigDirs(string subfolder = null) @trusted
-    {
+    vector!Path xdgConfigDirs(string subfolder = null) @trusted {
         nstring nsub = nstring(subfolder);
         vector!Path r = pathsFromEnv("XDG_CONFIG_DIRS", ':', nsub);
         if (r.empty)
@@ -807,8 +761,7 @@ static if (isFreedesktop)
     Note: This function does not check if paths actually exist and 
     appear to be directories.
     */
-    vector!Path xdgAllDataDirs(string subfolder = null) @safe
-    {
+    vector!Path xdgAllDataDirs(string subfolder = null) @safe {
         vector!Path r;
         Path user = xdgDataHome(subfolder);
         if (! user.empty) r ~= user;
@@ -816,8 +769,7 @@ static if (isFreedesktop)
         return r;
     }
     ///ditto
-    vector!Path xdgAllConfigDirs(string subfolder = null) @safe
-    {
+    vector!Path xdgAllConfigDirs(string subfolder = null) @safe {
         vector!Path r;
         Path user = xdgConfigHome(subfolder);
         if (! user.empty) r ~= user;
@@ -838,8 +790,7 @@ static if (isFreedesktop)
     Path xdgBaseDir(string envvar, 
                     string fallback, 
                     string subfolder = null, 
-                    bool shouldCreate = false) @trusted
-    {
+                    bool shouldCreate = false) @trusted {
         // First look at hypothetical envvar
         Path dir = Path(getEnvironmentVariable(envvar));
 
@@ -853,44 +804,39 @@ static if (isFreedesktop)
 
         dir.maybeAppend(subfolder);
 
-        if (shouldCreate) 
-        {
+        if (shouldCreate) {
             if (! ensureExists(dir, privateMode)) 
                 return Path.init;
         }
         return dir;
     }
 
-    Path xdgUserDir(const(char)[] key, string fallback = null) @trusted
-    {
+    Path xdgUserDir(const(char)[] key, string fallback = null) 
+        @trusted {
+
         Path fileName = writablePath(StandardPath.config)
                         .maybeAppend("user-dirs.dirs");
         Path home = homeDir();
 
-        try 
-        {
+        try {
             nstring xdgdir = nstring("XDG_") ~ key ~ "_DIR";
             Path path = getFromUserDirs(xdgdir, home, fileName);
             if (path.length)
                 return path;
         } 
-        catch(Exception e) 
-        {
+        catch(Exception e) {
         }
 
         // Didn't find such a directory in user-dirs.dirs
 
-        if (home.length) 
-        {
-            try 
-            {
+        if (home.length) {
+            try {
                 auto path = getFromDefaultDirs(key, home, 
                     Path("/etc/xdg/user-dirs.defaults"));
                 if (path.length)
                     return path;
             } 
-            catch (FileSystemException e) 
-            {
+            catch (FileSystemException e) {
                 // typically: file doesn't exist, or no access
                 e.free();
             }
@@ -904,8 +850,7 @@ static if (isFreedesktop)
 
     Path homeFontsPath() => homeDir() / "/.fonts";
 
-    vector!Path fontPaths() @trusted
-    {    
+    vector!Path fontPaths() @trusted {    
         vector!Path r;
         Path homeFonts = homeFontsPath();
         if (!homeFonts.empty)

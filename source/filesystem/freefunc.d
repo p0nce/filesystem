@@ -25,14 +25,12 @@ import filesystem.direntry;
 
 @nogc:
 
-version(Windows)
-{
+version(Windows) {
     import core.sys.windows.stat;
     import core.sys.windows.windef;
     import core.sys.windows.winbase;
 }
-else version(Posix)
-{
+else version(Posix) {
     import punistd  = core.sys.posix.unistd;
     import pfcntl   = core.sys.posix.fcntl;
     import pstat    = core.sys.posix.sys.stat;
@@ -59,8 +57,7 @@ else version(Posix)
 
     Throws: `FileSystemException`.
 */
-Path absolute(Path p)
-{
+Path absolute(Path p) {
     if (p == "")
         throwException(kStrPathIsEmptyNoAbs);
     return currentPath() / p;
@@ -79,16 +76,14 @@ Path absolute(const(char)[] p)
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-Path canonical(Path p)
-{
+Path canonical(Path p) {
     if (p.empty)
         throwException(kStrErrNoCanonical);
 
     // make absolute
     Path work = p.isAbsolute() ? p : absolute(p);
 
-    version(Windows)
-    {
+    version(Windows) {
         // Note: \\.\UNC\Server\Share\Test\Foo.txt is a valid Windows 
         // Path.
         // FUTURE manage prefixes \\.\UNC\ and \\?\UNC\ (case 
@@ -101,13 +96,11 @@ Path canonical(Path p)
     auto fs = status(work);
 
     bool redo;
-    do 
-    {
+    do {
         size_t rootPathLen = work.rootPath().length;
         redo = false;
         result = Path.init;
-        foreach (Path pe; work.iterate) 
-        {
+        foreach (Path pe; work.iterate) {
             if (pe.empty() || pe == ".") {
                 continue;
             }
@@ -121,8 +114,7 @@ Path canonical(Path p)
             }
             FileStatus sls = symlinkStatus(result / pe);
 
-            if (isSymlink(sls)) 
-            {
+            if (isSymlink(sls)) {
                 redo = true;
                 Path target = readSymlink(result / pe);
                 if (target.isAbsolute()) 
@@ -149,18 +141,14 @@ Path canonical(Path p)
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-Path weaklyCanonical(Path p)
-{
+Path weaklyCanonical(Path p) {
     Path r;
     bool scan = true;
-    foreach (Path pe; p.iterate())
-    {
-        if (scan) 
-        {
+    foreach (Path pe; p.iterate()) {
+        if (scan) {
             if (exists(r / pe))
                 r /= pe;
-            else 
-            {
+            else {
                 scan = false;
                 if (!r.empty())
                     r = canonical(r) / pe;
@@ -199,8 +187,7 @@ Path proximate(Path p, Path base = currentPath())
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-void copy(Path from, Path to, CopyOptions opts)
-{
+void copy(Path from, Path to, CopyOptions opts) {
     bool skipSymlinks    = (opts & CopyOptions.ignoreSymlinks) != 0;
     bool copySymlinks    = (opts & CopyOptions.copySymlinks) != 0;
     bool createSymlinks  = (opts & CopyOptions.createSymlinks) != 0;
@@ -231,8 +218,7 @@ void copy(Path from, Path to, CopyOptions opts)
     if (isDirectory(stfrom) && (toExists && isRegularFile(stto)))
         throwException(kStrErrFileCopyFailed);
 
-    if (isSymlink(stfrom))
-    {
+    if (isSymlink(stfrom)) {
         if (skipSymlinks) {
             // do nothing
         }
@@ -242,13 +228,11 @@ void copy(Path from, Path to, CopyOptions opts)
         else
             throwException(kStrErrFileCopyFailed);
     }
-    else if (isRegularFile(stfrom))
-    {
+    else if (isRegularFile(stfrom)) {
         if (directoriesOnly) { 
             // do nothing
         }
-        else if (createSymlinks)
-        {
+        else if (createSymlinks) {
             // "Instead of creating copies of files, create symlinks 
             //  pointing to the originals.
             //
@@ -265,31 +249,26 @@ void copy(Path from, Path to, CopyOptions opts)
             Path absFrom = from.isAbsolute() ? from : canonical(from);
             createSymlink(from, to);
         }
-        else if (toExists && isDirectory(stto))
-        {
+        else if (toExists && isDirectory(stto)) {
             // copy a file to a directory
             copyFile(from, to / from.filename(), opts);
         }
-        else
-        {
+        else {
             // copy a file to a file
             copyFile(from, to, opts); 
         }
     }
-    else if (isDirectory(stfrom) && createSymlinks)
-    {
+    else if (isDirectory(stfrom) && createSymlinks) {
         throwException(kStrErrFileCopyFailed);
     }
     else if (isDirectory(stfrom) && (opts == CopyOptions.none 
-                            || ((opts & CopyOptions.recursive) != 0)))
-    {
+            || ((opts & CopyOptions.recursive) != 0))) {
         // Create destination with attributes from source.
         if (!toExists)
             createDirectory(to, from);
 
         // skip directory symlinks, permission denied is an error
-        foreach(x; dirEntries(from, DirectoryOptions.none))
-        {
+        foreach(x; dirEntries(from, DirectoryOptions.none)) {
             // Spec asks us to add the `inRecursiveCopy`, not sure
             //  where it's used...
             copy(x.path, to / x.path.filename(), 
@@ -306,8 +285,7 @@ void copy(Path from, Path to, CopyOptions opts)
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
 bool copyFile(Path from, Path to, 
-              CopyOptions options = CopyOptions.none)
-{
+              CopyOptions options = CopyOptions.none) {
     if (! isRegularFile(from))
         throwException(kStrErrCopyFileNonReg);
 
@@ -317,8 +295,7 @@ bool copyFile(Path from, Path to,
     FileStatus statTo   = statusExists(to, toExists);
 
     bool overwrite = false;
-    if (toExists)
-    {
+    if (toExists) {
         // destination exists
 
         // destination is source?
@@ -330,21 +307,17 @@ bool copyFile(Path from, Path to,
 
         // What to do?
         int behaviour = options & 3;
-        if (behaviour == CopyOptions.reportAnError)
-        {
+        if (behaviour == CopyOptions.reportAnError) {
             throwIO(kStrErrCopyDestExists);
             return false;
         }
-        else if (behaviour == CopyOptions.skipExisting) 
-        {
+        else if (behaviour == CopyOptions.skipExisting) {
             return false;
         }
-        else if (behaviour == CopyOptions.overwriteExisting) 
-        {
+        else if (behaviour == CopyOptions.overwriteExisting) {
             overwrite = true;
         }
-        else 
-        {
+        else {
             assert(behaviour == CopyOptions.updateExisting);
             if (lastWriteTime(from) > lastWriteTime(to))
                 overwrite = true;
@@ -353,8 +326,7 @@ bool copyFile(Path from, Path to,
         }
     }
 
-    version(Windows)
-    {
+    version(Windows) {
         nwstring wfrom = from.native.toUTF16();
         nwstring wto = to.native.toUTF16();
         BOOL bFailIfExists = ! overwrite;
@@ -362,8 +334,7 @@ bool copyFile(Path from, Path to,
             throwIO(kStrErrFileCopyFailed);
         return true;
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         int inHandle  = -1, 
             outHandle = -1;
 
@@ -380,20 +351,17 @@ bool copyFile(Path from, Path to,
             mode |= pfcntl.O_EXCL;
 
         if ((outHandle = pfcntl.open(outPath.ptr, mode, 
-            statFrom.permissions & FilePerms.all)) < 0) 
-        {
+            statFrom.permissions & FilePerms.all)) < 0) {
             punistd.close(inHandle);
             throwIO(kStrErrOpenFileFailed); 
         }
 
-        if (overwrite && statTo.permissions != statFrom.permissions)
-        {
+        if (overwrite && statTo.permissions != statFrom.permissions) {
             FilePerms inPerm = statFrom.permissions;
             FilePerms outPerm = inPerm;
             outPerm &= FilePerms.all;
             punistd.mode_t posixPerms = cast(punistd.mode_t)outPerm;
-            if (pfcntl.fchmod(outHandle, posixPerms) != 0) 
-            {
+            if (pfcntl.fchmod(outHandle, posixPerms) != 0) {
                 punistd.close(inHandle);
                 punistd.close(outHandle);
                 throwIO(kStrErrChmodFailed); 
@@ -411,13 +379,11 @@ bool copyFile(Path from, Path to,
         vector!byte buf;
         buf.resize(BLOCK_SIZE);
 
-        while (true) 
-        {
+        while (true) {
             ptrdiff_t bRead; // bytes read
             ptrdiff_t bWrite; // bytes written
 
-            do 
-            {
+            do {
                 bRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
             } while (bRead == -1 && cerrno.errno == cerrno.EINTR);
 
@@ -428,17 +394,14 @@ bool copyFile(Path from, Path to,
                 break; // input file finished
 
             ptrdiff_t offset = 0;
-            do 
-            {
+            do {
                 byte* pbuf = buf.ptr + offset;
                 bWrite = punistd.write(outHandle, pbuf, bRead);
-                if (bWrite > 0)
-                {
+                if (bWrite > 0) {
                     bRead -= bWrite;
                     offset += bWrite;
                 }
-                else if (bWrite <= 0 && cerrno.errno != cerrno.EINTR)
-                {
+                else if (bWrite <= 0 && cerrno.errno != cerrno.EINTR){
                     // Note: 0 byte progressed is an error.
                     punistd.close(inHandle);
                     punistd.close(outHandle);
@@ -459,8 +422,7 @@ bool copyFile(Path from, Path to,
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-void copySymlink(Path existingSymlink, Path newSymlink)
-{
+void copySymlink(Path existingSymlink, Path newSymlink) {
     Path to = readSymlink(existingSymlink);
 
     if (isDirectory(to))
@@ -491,27 +453,22 @@ void copySymlink(Path existingSymlink, Path newSymlink)
 */
 bool createDirectory(Path pathToDir, 
                      Path templateDir = Path.init,
-                     FilePerms perms = FilePerms.invalid)
-{
+                     FilePerms perms = FilePerms.invalid) {
     // Already exists?
-    try
-    {
+    try {
         FileStatus fs = status(pathToDir);
         if (isDirectory(fs))
             return false;
     }
-    catch(FileNotFoundException e)
-    {
+    catch(FileNotFoundException e) {
         e.freeNoThrow();
     }
 
     // Doesn't yet exist, proceed to creation
-    version(Windows)
-    {
+    version(Windows) {
         nwstring ws = pathToDir.native.toUTF16();
 
-        if (! templateDir.empty)
-        {
+        if (! templateDir.empty) {
             nwstring ts = templateDir.native.toUTF16();
             if (! CreateDirectoryExW(ts.ptr, ws.ptr, null))
                 throwIO(kStrErrCreateDirectory);
@@ -520,15 +477,12 @@ bool createDirectory(Path pathToDir,
         if (! CreateDirectoryW(ws.ptr, null))
             throwIO(kStrErrCreateDirectory);
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         FilePerms aperms = FilePerms.all;
-        if (perms != FilePerms.invalid)
-        {
+        if (perms != FilePerms.invalid) {
             aperms = perms;
         }
-        else if (! templateDir.empty())
-        {
+        else if (! templateDir.empty()) {
             aperms = status(templateDir).permissions;
         }
         punistd.mode_t attribs = cast(punistd.mode_t) aperms;
@@ -564,21 +518,18 @@ bool createDirectory(Path pathToDir,
 */
 bool createDirectories(Path p, 
                        Path templateDir = Path.init,
-                       FilePerms perms = FilePerms.invalid)
-{
+                       FilePerms perms = FilePerms.invalid) {
     Path native = p.native();
     bool created = false;
     Path current = native.rootPath();
 
-    foreach(part; native.iterateWithoutRootPath())
-    {
+    foreach(part; native.iterateWithoutRootPath()) {
         if (part == "") continue; // terminal separator
         if (part == ".") continue;
         current /= part;
 
         FileStatus fs;
-        try
-        {
+        try {
              fs = status(current);
 
             // A file exists with the same name, and is not
@@ -586,8 +537,7 @@ bool createDirectories(Path p,
             if (!isDirectory(fs))
                 throwIO(kStrErrCreateDirectory);
         }
-        catch(FileNotFoundException e)
-        {
+        catch(FileNotFoundException e) {
             e.free();
 
             // Create the directory
@@ -614,13 +564,11 @@ bool createDirectories(Path p,
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-void createSymlink(Path target, Path linkname)
-{
+void createSymlink(Path target, Path linkname) {
     return createSymlinkImpl(target, linkname, false);
 }
 ///ditto
-void createDirectorySymlink(Path target, Path linkname)
-{
+void createDirectorySymlink(Path target, Path linkname) {
     return createSymlinkImpl(target, linkname, true);
 }
 
@@ -633,10 +581,8 @@ void createDirectorySymlink(Path target, Path linkname)
 
     Throws: `FileSystemException`.
 */
-Path currentPath() /* pure */
-{
-    version(Windows)
-    {
+Path currentPath() /* pure */ {
+    version(Windows) {
         DWORD len = GetCurrentDirectoryW(0, null);
         if (len == 0) 
             throwIO(kStrErrCurrentPath);
@@ -648,8 +594,7 @@ Path currentPath() /* pure */
             throwIO(kStrErrCurrentPath);
         return Path(toUTF8(nwstring(buf[0..len])));
     }
-    else
-    {
+    else {
         char[4096] name;
         if (punistd.getcwd(name.ptr, 4096) == null) 
             throwIO(kStrErrCurrentPath);
@@ -657,16 +602,13 @@ Path currentPath() /* pure */
     }
 }
 ///ditto
-void setCurrentPath(Path p)
-{
-    version(Windows)
-    {
+void setCurrentPath(Path p) {
+    version(Windows) {
         nwstring wp = p.native.toUTF16();
         if (! SetCurrentDirectoryW(wp.ptr))
             throwIO(kStrErrChdirFailed);
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         if (punistd.chdir(p.native.ptr) == -1)
             throwIO(kStrErrChdirFailed);
     }
@@ -685,8 +627,7 @@ void setCurrentPath(Path p)
     Throws: `FileSystemException`,  `FileNotFoundException`.
 */
 unique_ptr!DirectoryRange dirEntries(Path p, 
-    DirectoryOptions opts = DirectoryOptions.none)
-{
+    DirectoryOptions opts = DirectoryOptions.none) {
     return unique_new!DirectoryRange(p, opts);
 }
 
@@ -698,8 +639,7 @@ unique_ptr!DirectoryRange dirEntries(Path p,
     Throws: `FileSystemException`,  `FileNotFoundException`.
 */
 unique_ptr!RecursiveDirectoryRange dirEntriesRecursive(Path p, 
-    DirectoryOptions opts = DirectoryOptions.none)
-{
+    DirectoryOptions opts = DirectoryOptions.none) {
     return unique_new!RecursiveDirectoryRange(p, opts);
 }
 
@@ -710,15 +650,13 @@ unique_ptr!RecursiveDirectoryRange dirEntriesRecursive(Path p,
 
     Throws: `FileSystemException`.
 */
-bool exists(Path p) // symlinks are followed here
-{
-    try
-    {
+bool exists(Path p) {
+    try {
+        // symlinks are followed here
         status(p);
         return true;
     }
-    catch(FileNotFoundException e)
-    {
+    catch(FileNotFoundException e) {
         e.free();
         return false;
     }
@@ -744,10 +682,8 @@ bool exists(Path p) // symlinks are followed here
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-bool equivalent(Path p1, Path p2)
-{
-    version(Windows)
-    {
+bool equivalent(Path p1, Path p2) {
+    version(Windows) {
         nwstring wp1 = p1.native.toUTF16();
         nwstring wp2 = p2.native.toUTF16();
 
@@ -781,8 +717,7 @@ bool equivalent(Path p1, Path p2)
             && inf1.nFileIndexLow        == inf2.nFileIndexLow 
             && inf1.dwVolumeSerialNumber == inf2.dwVolumeSerialNumber;
     }
-    else
-    {
+    else {
         pstat.stat_t buf1, buf2;
         bool followSymlinks = true;
         posix_stat(p1, &buf1, followSymlinks);
@@ -803,8 +738,7 @@ bool equivalent(Path p1, Path p2)
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-long fileSize(Path p)
-{
+long fileSize(Path p) {
     return status(p).sizeBytes;
 }
 
@@ -820,8 +754,7 @@ long fileSize(Path p)
     FUTURE: converts `NuException` from `FileStream` to 
         `FileSystemException`.
 */
-unique_ptr!FileStream fileOpen(Path path, string accessMode = "rb")
-{
+unique_ptr!FileStream fileOpen(Path path, string accessMode = "rb") {
     nstring nativePath = path.native();
     return unique_new!FileStream(nativePath, accessMode);
 }
@@ -843,8 +776,7 @@ unique_ptr!FileStream fileOpenWrite(Path path)
     contents were last modified?specifically when files were created, 
     renamed, or deleted inside that folder.
 */
-FileTime lastWriteTime(Path p)
-{
+FileTime lastWriteTime(Path p) {
     return status(p).lastWriteTime;
 }
 
@@ -858,12 +790,10 @@ FileTime lastWriteTime(Path p)
 */
 void permissions(Path p, 
                  FilePerms perms, 
-                 PermOptions opts = PermOptions.replace)
-{
+                 PermOptions opts = PermOptions.replace) {
     FileStatus fs = symlinkStatus(p);
 
-    switch (opts & 3)
-    {
+    switch (opts & 3) {
         case PermOptions.replace:
             break;
         case PermOptions.add:
@@ -876,8 +806,7 @@ void permissions(Path p,
         default:
             assert(0);
 
-        version(Windows)
-        {
+        version(Windows) {
             nwstring wpath = p.native.toUTF16();
             DWORD oldAttr = GetFileAttributesW(wpath.ptr);
             if (oldAttr == INVALID_FILE_ATTRIBUTES)
@@ -896,12 +825,10 @@ void permissions(Path p,
             if (SetFileAttributesW(wpath.ptr, newAttr) == 0)
                 throwIO(kStrErrChmodFailed);
         }
-        else version(Posix)
-        {
+        else version(Posix) {
             bool noFollow = (opts & PermOptions.nofollow) != 0;
 
-            if (! noFollow)
-            {
+            if (! noFollow) {
                 auto posixPerms = cast(pstat.mode_t)perms;
                 if (pfcntl.chmod(p.native.ptr, posixPerms) != 0) 
                     throwIO(kStrErrChmodFailed);
@@ -920,8 +847,7 @@ void permissions(Path p,
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-Path readSymlink(Path p)
-{
+Path readSymlink(Path p) {
     FileStatus fs = symlinkStatus(p);
     if (fs.type != FileType.symlink)
         throwIO(kStrErrNotSymlink);
@@ -938,14 +864,11 @@ Path readSymlink(Path p)
 
     Throws: `FileSystemException`.
 */
-bool remove(Path p)
-{
-    version(Windows)
-    {
+bool remove(Path p) {
+    version(Windows) {
         nwstring path = p.native.toUTF16();
         DWORD attr = GetFileAttributesW(path.ptr);
-        if (attr == INVALID_FILE_ATTRIBUTES)
-        {
+        if (attr == INVALID_FILE_ATTRIBUTES) {
             if (windowsErrIsFileNotFound(GetLastError()))
                 return false;
             else
@@ -956,8 +879,7 @@ bool remove(Path p)
         // we try to remove a read-only attribute if there. 
         // There is actually a deep issue lore about this:
         // https://github.com/gulrak/filesystem/issues/121/
-        if (attr & FILE_ATTRIBUTE_READONLY)
-        {
+        if (attr & FILE_ATTRIBUTE_READONLY) {
             // RACE: if another process removes the dir, it 
             // could well be "not found" instead of I/O err
             DWORD newAttr = attr & ~FILE_ATTRIBUTE_READONLY;
@@ -965,15 +887,13 @@ bool remove(Path p)
                 throwIO(kStrErrRemoveFileDir);
         }
 
-        if (attr & FILE_ATTRIBUTE_DIRECTORY) 
-        {
+        if (attr & FILE_ATTRIBUTE_DIRECTORY) {
             // RACE: if another process removes the dir, it 
             // could well be "not found" instead of I/O err
             if (!RemoveDirectoryW(path.ptr))
                 throwIO(kStrErrRemoveFileDir);
         }
-        else 
-        {
+        else {
             // RACE: if another process removes the dir, it 
             // could well be "not found" instead of I/O err
             if (!DeleteFileW(path.ptr))
@@ -981,10 +901,8 @@ bool remove(Path p)
         }
         return true;
     }
-    else version(Posix)
-    {
-        if (cstdio.remove(p.native().ptr) != 0)
-        {
+    else version(Posix) {
+        if (cstdio.remove(p.native().ptr) != 0) {
             int error = cerrno.errno;
             if (error == cerrno.ENOENT)
                 return false;
@@ -1014,8 +932,7 @@ bool remove(Path p)
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-int removeAll(Path p)
-{
+int removeAll(Path p) {
     int r = 0;
 
     // Symlinks are not followed.
@@ -1054,14 +971,12 @@ int removeAll(Path p)
 
     Throws: `FileSystemException`.
 */
-bool rename(Path oldPath, Path newPath)
-{
+bool rename(Path oldPath, Path newPath) {
     // Note: in https://github.com/gulrak/filesystem/,
     // path are compared and if identical nothing happens.
     // But I believe this is wrong if not compared normalized.
 
-    version(Windows)
-    {
+    version(Windows) {
         // BUG FUTURE: MoveFileExW is not actually atomic
         // https://github.com/untitaker/rust-atomicwrites/issues/27
         nwstring wold = oldPath.native.toUTF16();
@@ -1071,8 +986,7 @@ bool rename(Path oldPath, Path newPath)
             throwIO(kStrErrRenameFileDir);
         return true;
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         nstring pold = oldPath.native;
         nstring pnew = newPath.native;
         if (cstdio.rename(pold.ptr, pnew.ptr) != 0)
@@ -1091,11 +1005,9 @@ bool rename(Path oldPath, Path newPath)
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-void resizeFile(Path p, long newSize)
-{
+void resizeFile(Path p, long newSize) {
     assert(newSize >= 0);
-    version(Windows)
-    {
+    version(Windows) {
         LARGE_INTEGER lisize;
         lisize.QuadPart = newSize;
         nwstring wp = p.native.toUTF16();
@@ -1111,8 +1023,7 @@ void resizeFile(Path p, long newSize)
         if (SetEndOfFile(file) == 0)
             throwIO(kStrErrFileResizeFail);
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         punistd.off_t posixSize = cast(punistd.off_t) newSize;
         if (punistd.truncate(p.native.ptr, posixSize) != 0)
             throwIO(kStrErrFileResizeFail);
@@ -1134,11 +1045,9 @@ void resizeFile(Path p, long newSize)
 
     Throws: `FileSystemException`.
 */
-SpaceInfo space(Path p)
-{
+SpaceInfo space(Path p) {
     SpaceInfo info;
-    version(Windows)
-    {
+    version(Windows) {
         // For GetDiskFreeSpaceExW, path must be a directory
         // not a file.
         Path dirPath = absolute(p).rootPath();
@@ -1150,8 +1059,7 @@ SpaceInfo space(Path p)
         ULARGE_INTEGER totalFreeBytes;
 
         if (0 == GetDiskFreeSpaceExW(wpath.ptr, &availBytes, 
-            &totalBytes, &totalFreeBytes)) 
-        {
+            &totalBytes, &totalFreeBytes)) {
             throwIO(kStrErrFSAvailInfo);
         }
 
@@ -1159,8 +1067,7 @@ SpaceInfo space(Path p)
         info.freeTheoretical = totalFreeBytes.QuadPart;
         info.available       = availBytes.QuadPart;
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         pstatvfs.statvfs_t sfs;
         if (pstatvfs.statvfs(p.native.ptr, &sfs) != 0)
             throwIO(kStrErrFSAvailInfo);
@@ -1188,25 +1095,21 @@ SpaceInfo space(Path p)
 
     Throws: `FileSystemException`.
 */
-Path tempDirectoryPath()
-{
-    version(Windows)
-    {
+Path tempDirectoryPath() {
+    version(Windows) {
         wchar[512] buffer;
         DWORD rc = GetTempPathW(511, buffer.ptr);
         if (!rc || rc > 511)
             throwIO(kStrErrTempPath);
         return Path(nwstring(buffer[0..rc]).toUTF8());
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         static immutable string[4] TEMP_VARS =
         [
             "TMPDIR", "TMP", "TEMP", "TEMPDIR"
         ];
 
-        foreach (string envname; TEMP_VARS)
-        {
+        foreach (string envname; TEMP_VARS) {
             nstring r = getEnvironmentVariable(envname);
             if (! r.empty)
                 return Path(r);
@@ -1225,13 +1128,10 @@ Path tempDirectoryPath()
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-FileStatus status(Path path)
-{
-    version(Windows)
-    {
+FileStatus status(Path path) {
+    version(Windows) {
         FileStatus symStat = symlinkStatus(path);
-        if (symStat.type == FileType.symlink)
-        {
+        if (symStat.type == FileType.symlink) {
             Path target = resolveSymlink(path);
             
             // FUTURE: protects against symlink loops
@@ -1240,8 +1140,7 @@ FileStatus status(Path path)
         else
             return symStat;
     }
-    else
-    {
+    else {
         return posix_statusFromPath(path, true);
     }
 }
@@ -1254,10 +1153,8 @@ FileStatus status(Path path)
     Returns: true if no error occured. In this case, `st` is 
         meaningful.
 */
-bool statusNothrow(Path p, out FileStatus st) nothrow
-{
-    try
-    {
+bool statusNothrow(Path p, out FileStatus st) nothrow {
+    try {
         st = status(p);
         return true;
     }
@@ -1266,10 +1163,8 @@ bool statusNothrow(Path p, out FileStatus st) nothrow
     return false;
 }
 ///ditto
-bool symlinkStatusNothrow(Path p, out FileStatus st) nothrow
-{
-    try
-    {
+bool symlinkStatusNothrow(Path p, out FileStatus st) nothrow {
+    try {
         st = symlinkStatus(p);
         return true;
     }
@@ -1286,17 +1181,14 @@ bool symlinkStatusNothrow(Path p, out FileStatus st) nothrow
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-FileStatus symlinkStatus(Path path)
-{
-    version(Windows)
-    {
+FileStatus symlinkStatus(Path path) {
+    version(Windows) {
         FileStatus r;
         nwstring ws = path.native.toUTF16();
         WIN32_FILE_ATTRIBUTE_DATA info;
         int res = GetFileAttributesExW(cast(wchar*) ws.ptr, 
             GET_FILEEX_INFO_LEVELS.GetFileExInfoStandard, &info);
-        if (res == 0)
-        {
+        if (res == 0) {
             DWORD err = GetLastError();
             r.permissions = FilePerms.none;
             if (windowsErrIsFileNotFound(err))
@@ -1304,28 +1196,23 @@ FileStatus symlinkStatus(Path path)
             else
                 throwIO(kStrFileAttributes);
         }
-        else
-        {
+        else {
             DWORD attr = info.dwFileAttributes;
-            if (attr & FILE_ATTRIBUTE_REPARSE_POINT) 
-            {
+            if (attr & FILE_ATTRIBUTE_REPARSE_POINT) {
                 vector!ubyte raw = getReparseData(path);
                 auto reparse = cast(REPARSE_DATA_BUFFER*) raw.ptr;
                 if (reparse 
                 && ((reparse.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
-                 || (reparse.ReparseTag == IO_REPARSE_TAG_SYMLINK)))
-                {
+                 || (reparse.ReparseTag == IO_REPARSE_TAG_SYMLINK))) {
                     r.type = FileType.symlink;
                     r.sizeBytes = 0;
                 }
             }
-            else if (attr & FILE_ATTRIBUTE_DIRECTORY)
-            {
+            else if (attr & FILE_ATTRIBUTE_DIRECTORY) {
                 r.type = FileType.directory;
                 r.sizeBytes = 0;
             }
-            else
-            {
+            else {
                 r.type = FileType.regular;
 
                 ulong size = cast(long)(info.nFileSizeHigh) << 32;
@@ -1340,8 +1227,7 @@ FileStatus symlinkStatus(Path path)
         }
         return r;
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         return posix_statusFromPath(path, false);
     }
     else 
@@ -1358,8 +1244,8 @@ FileStatus symlinkStatus(Path path)
 bool isBlockFile(FileStatus s) pure nothrow
     => s.type == FileType.block;
 ///ditto
-bool isBlockFile(Path p) // symlinks are followed here
-{
+bool isBlockFile(Path p) {
+    // symlinks are followed here
     FileStatus st;
     if (!statusNothrow(p, st))
         return false;
@@ -1376,8 +1262,8 @@ bool isBlockFile(Path p) // symlinks are followed here
 bool isCharacterFile(FileStatus s) pure nothrow
     => s.type == FileType.character;
 ///ditto
-bool isCharacterFile(Path p) nothrow // symlinks are followed here
-{
+bool isCharacterFile(Path p) nothrow {
+    // symlinks are followed here 
     FileStatus st;
     if (!statusNothrow(p, st))
         return false;
@@ -1392,8 +1278,8 @@ bool isCharacterFile(Path p) nothrow // symlinks are followed here
 bool isDirectory(FileStatus s) pure nothrow
     => s.type == FileType.directory;
 ///ditto
-bool isDirectory(Path p) nothrow // symlinks are followed here
-{
+bool isDirectory(Path p) nothrow {
+    // symlinks are followed here 
     FileStatus st;
     if (!statusNothrow(p, st))
         return false;
@@ -1409,8 +1295,7 @@ bool isDirectory(Path p) nothrow // symlinks are followed here
 
     FUTURE: honestly doesn't seem fantastically useful.
 */
-bool isEmpty(Path p)
-{
+bool isEmpty(Path p) {
     if (isDirectory(p))
         return dirEntries(p).empty;
     else
@@ -1425,8 +1310,8 @@ bool isEmpty(Path p)
 bool isFIFO(FileStatus s) pure nothrow
     => s.type == FileType.fifo;
 ///ditto
-bool isFIFO(Path p) // symlinks are followed here
-{
+bool isFIFO(Path p) {
+    // symlinks are followed here
     FileStatus st;
     if (!statusNothrow(p, st))
         return false;
@@ -1444,8 +1329,8 @@ bool isFIFO(Path p) // symlinks are followed here
 bool isOther(FileStatus s) pure
     => !isRegularFile(s) && !isDirectory(s) && !isSymlink(s);
 ///ditto
-bool isOther(Path p) // symlinks are followed here
-{
+bool isOther(Path p) {
+    // symlinks are followed here 
     FileStatus st;
     if (!statusNothrow(p, st))
         return false;
@@ -1460,8 +1345,8 @@ bool isOther(Path p) // symlinks are followed here
 bool isRegularFile(FileStatus s) pure nothrow
     => s.type == FileType.regular;
 ///ditto
-bool isRegularFile(Path p) nothrow // symlinks are followed here
-{
+bool isRegularFile(Path p) nothrow {
+    // symlinks are followed here 
     FileStatus st;
     if (!statusNothrow(p, st))
         return false;
@@ -1476,8 +1361,8 @@ bool isRegularFile(Path p) nothrow // symlinks are followed here
 bool isSocket(FileStatus s) pure nothrow
     => s.type == FileType.socket;
 ///ditto
-bool isSocket(Path p) // symlinks are followed here
-{
+bool isSocket(Path p) {
+    // symlinks are followed here 
     FileStatus st;
     if (!statusNothrow(p, st))
         return false;
@@ -1495,8 +1380,7 @@ bool isSocket(Path p) // symlinks are followed here
 bool isSymlink(FileStatus s) pure nothrow
     => s.type == FileType.symlink;
 ///ditto
-bool isSymlink(Path p) nothrow
-{
+bool isSymlink(Path p) nothrow {
     FileStatus st;
     if (!symlinkStatusNothrow(p, st))
         return false;
@@ -1507,18 +1391,15 @@ bool isSymlink(Path p) nothrow
 /** 
     Get environment variable.
 */
-nstring getEnvironmentVariable(nstring name) nothrow @trusted
-{
-    version(Posix)
-    {
+nstring getEnvironmentVariable(nstring name) nothrow @trusted {
+    version(Posix) {
         const(char)* p = cstdlib.getenv(name.ptr);
         if (p)
             return nstring(p[0..nu_strlen(p)]);
         else
             return nstring.init;
     }
-    else version(Windows)
-    {
+    else version(Windows) {
         // if the name is invalid Unicode, programming error
         nwstring wname = toUTF16OrCrash(name);
 
@@ -1542,8 +1423,7 @@ nstring getEnvironmentVariable(nstring name) nothrow @trusted
         static assert(0);
 }
 ///ditto
-nstring getEnvironmentVariable(const(char)[] name) nothrow @trusted
-{
+nstring getEnvironmentVariable(const(char)[] name) nothrow @trusted {
     return getEnvironmentVariable(nstring(name));
 }
 
@@ -1560,10 +1440,8 @@ nstring getEnvironmentVariable(const(char)[] name) nothrow @trusted
     Returns: true if successful.
 */
 bool setEnvironmentVariable(nstring name, nstring value) 
-    nothrow @trusted
-{
-    version(Posix)
-    {
+    nothrow @trusted {
+    version(Posix) {
         int overwrite = 1;
         int r;
         if (value.empty)
@@ -1572,8 +1450,7 @@ bool setEnvironmentVariable(nstring name, nstring value)
             r = pstdlib.setenv(name.ptr, value.ptr, overwrite);
         return r == 0;
     }
-    else version(Windows)
-    {
+    else version(Windows) {
         nwstring name16 = toUTF16OrCrash(name);
         if (value.empty)
             return SetEnvironmentVariableW(name16.ptr, null) != 0;
@@ -1594,16 +1471,13 @@ private:
 
     Returns: FileStatus.init if the file doesn't exists.
 */
-FileStatus statusExists(Path p, out bool exists)
-{
+FileStatus statusExists(Path p, out bool exists) {
     FileStatus st;
-    try
-    {
+    try {
         st = status(p);
         exists = true;
     }
-    catch(FileNotFoundException e)
-    {
+    catch(FileNotFoundException e) {
         e.free();
         exists = false;
         st = FileStatus.init;
@@ -1611,16 +1485,13 @@ FileStatus statusExists(Path p, out bool exists)
     return st;
 }
 ///ditto
-FileStatus symlinkStatusExists(Path p, out bool exists)
-{
+FileStatus symlinkStatusExists(Path p, out bool exists) {
     FileStatus st;
-    try
-    {
+    try {
         st = symlinkStatus(p);
         exists = true;
     }
-    catch(FileNotFoundException e)
-    {
+    catch(FileNotFoundException e) {
         e.freeNoThrow();
         exists = false;
         st = FileStatus.init;
@@ -1629,8 +1500,7 @@ FileStatus symlinkStatusExists(Path p, out bool exists)
 }
 
 /// Throws: `FileSystemException`, `FileNotFoundException`.
-void createSymlinkImpl(Path target, Path linkname, bool toDir)
-{
+void createSymlinkImpl(Path target, Path linkname, bool toDir) {
     // If target is a relative path, it is with current working
     // directory as a base.
     // Change the base to the linkname parent directory.
@@ -1644,8 +1514,7 @@ void createSymlinkImpl(Path target, Path linkname, bool toDir)
     if (exists && fs.type == FileType.regular && toDir)
         throwException(kStrErrSymlinkCreate);
 
-    version(Windows)
-    {
+    version(Windows) {
         nwstring wtarget = target.native.toUTF16();
         nwstring wlink = linkname.native.toUTF16();
         DWORD flags = 0;
@@ -1654,8 +1523,7 @@ void createSymlinkImpl(Path target, Path linkname, bool toDir)
         DWORD r = CreateSymbolicLinkW(wtarget.ptr, wlink.ptr, flags);
         if (r == 0)
             return;
-        if (GetLastError() == ERROR_PRIVILEGE_NOT_HELD)
-        {
+        if (GetLastError() == ERROR_PRIVILEGE_NOT_HELD) {
             flags |= SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
             r = CreateSymbolicLinkW(wtarget.ptr, wlink.ptr, flags);
             if (r == 0) 
@@ -1663,8 +1531,7 @@ void createSymlinkImpl(Path target, Path linkname, bool toDir)
         }
         throwIO(kStrErrSymlinkCreate);
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         nstring ptarget = target.native;
         nstring plink = linkname.native;
         int r = punistd.symlink(ptarget.ptr, plink.ptr);
