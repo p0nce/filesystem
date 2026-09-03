@@ -130,7 +130,7 @@ class DirectoryRange {
                     throwFileNotFound(p);
                 }
                 else if ( (error == cerrno.EACCES 
-                        || error == cerrno.EPERM) && skipPermDenied) {
+                        || error == cerrno.EPERM) && skipPerm) {
                     // lack of permission, ignore
                 }
                 else
