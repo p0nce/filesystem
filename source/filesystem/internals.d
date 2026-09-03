@@ -202,6 +202,37 @@ int fs_isspace(char ch) pure nothrow @safe
     }
 }
 
+
+// Return same string with one char replaced
+nstring fs_replaceChar(const(char)[] s, char needle, char replacement) 
+    pure nothrow
+{
+    if (s is null)
+        return nstring();
+
+    if (needle == replacement)
+        return nstring(s);
+
+    char[] r;
+    r.nu_resize(s.length);
+    scope(exit) r.nu_resize(0);
+
+    foreach(i; 0..s.length)
+        if (s[i] == needle)
+            r[i] = replacement;
+        else
+            r[i] = s[i];
+
+    return nstring(r);
+}
+nstring fs_replaceCharStr(string s, char needle, char replacement) 
+    pure nothrow
+{
+    if (s is null)
+        return nstring();
+    return fs_replaceChar(s.ptr[0..s.length], needle, replacement);
+}
+
 nwstring toUTF16OrCrash(nstring s) nothrow
 {
     try

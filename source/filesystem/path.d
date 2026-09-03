@@ -64,7 +64,8 @@ public:
     //
 
     /**
-        Returns the root name of the path. If the path does not include root name, returns ""
+        Returns: Root name of the path. If the path doesn't include 
+            root name, returns an empty `Path`.
     */
     Path rootName() pure const
     {
@@ -76,7 +77,8 @@ public:
     }
 
     /**
-        Returns the root directory of the path. If the path does not include root directory, returns ""
+        Returns: Root directory of the path. If the path doesn't
+        include root directory, returns an empty `Path`.
     */
     Path rootDirectory() pure const
     {
@@ -89,7 +91,8 @@ public:
     }
 
     /**
-        Returns the root path of the path, if present.
+        Returns: Root path of the path, if present.
+                 Root Path = Root Name / Root Directory.
     */
     Path rootPath() => rootName() / rootDirectory();
 
@@ -262,13 +265,15 @@ public:
     */
     nstring native() pure const nothrow
     {
-        // FUTURE: in Windows paths, disallow to finish by a '.' or ' '
-        // See Phobos for a large list of everything disallowed in a path.
-        // FUTURE: check for MAX_PATH, or add \\?\ and check for longer length
-        // validate if a native path, use throwInvalidPath if invalid.
-
+        // FUTURE: in Windows paths, disallow to finish by a '.' or 
+        // ' '.
+        // See Phobos for a large list of everything disallowed in a 
+        // path.
+        // FUTURE: check for MAX_PATH, or add \\?\ and check for 
+        // longer length, validate if a native path, use 
+        // throwInvalidPath if invalid.
         version(Windows)
-            return replaceCharStr(str, '/', '\\');
+            return fs_replaceCharStr(str, '/', '\\');
         else
             return str;
     }
@@ -318,7 +323,7 @@ public:
     bool empty()            pure nothrow const @safe => str == "";
     bool hasRootName()      pure const => rootName()      != "";
     bool hasRootDirectory() pure const => rootDirectory() != "";
-    bool hasRootPath()      /* pure */ /* const */ => rootPath()      != "";
+    bool hasRootPath()                 => rootPath()      != "";
     bool hasRelativePath()  pure const => relativePath()  != "";
     bool hasParentPath()    pure const => parentPath()    != "";
     bool hasFilename()      pure const => filename()      != "";
@@ -392,7 +397,7 @@ public:
         return replaceFilename(f);
     }
     ///ditto
-    ref Path replaceExtension(const(char)[] replacement = "") /* pure */
+    ref Path replaceExtension(const(char)[] replacement = "") /*pure*/
         => replaceExtension(Path(replacement));
 
     // 
@@ -463,7 +468,7 @@ public:
         }
 
         if (N < 0) return Path("");
-        if (N == 0 && ((n == vthis.length) || vthis[n] == FINAL_DIR_SEP))
+        if (N == 0 && (n == vthis.length || vthis[n] == FINAL_SEP))
             return Path(".");
         
         Path result;
@@ -472,7 +477,6 @@ public:
         // add a fake rootDir to result, only to remove it afterwards.
         result.str ~= prefSep;
 
-
         for (int i = 0; i < N; ++i)
             result.append("..");
 
@@ -480,7 +484,8 @@ public:
             result.append(vthis[i]);
 
         assert(result.str[0] == '/' || result.str[0] == '\\');
-        result = Path(result.str[1..$]); // waiting for the nulib string opAssign fix
+
+        result = Path(result.str[1..$]); 
         return result;
     }
     //ditto
@@ -506,27 +511,31 @@ public:
     //
     // Concatenation and appending
     //
+    // FUTURE: appending should be nothrow and pure, rabbit-hole
+    //
 
     /**
-        Appends elements to the path with a directory separator (if needed). 
-
-        FUTURE rabbit-hole: try to make it nothrow.
+        Appends elements to the path with a directory separator (if 
+        needed).
     */
-    ref Path append(const(char)[] p, char prefferedSep = '\xff') /* nothrow */ /* pure */
+    ref Path append(const(char)[] p, char prefferedSep = '\xff') 
+        /* nothrow */ /* pure */
     {
         return append(Path(p), prefferedSep);
     }
     //ditto
-    ref Path append(Path p, char prefferedSep = '\xff') /* nothrow */ /* pure */
+    ref Path append(Path p, char prefferedSep = '\xff') 
+        /* nothrow */ /* pure */
     {
         if (prefferedSep == '\xff')
         {
-            // First we try to find the right separator for this append.
+            // First try to find the right separator for this append.
             // If both have an idea, prefers left path idea.
             // This can also be given as parameter.
             SepPreference leftPref = detectSeparator();
             SepPreference rightPref = p.detectSeparator();
-            if (leftPref == SepPreference.preferUnknown) leftPref = rightPref;
+            if (leftPref == SepPreference.preferUnknown) 
+                leftPref = rightPref;
             prefferedSep = prefToChar(leftPref);
         }
 
@@ -540,7 +549,8 @@ public:
             return this;
         }
 
-        if (p.isAbsolute() || (p.hasRootName() && p.rootName() != rootName()))
+        if (p.isAbsolute() || (p.hasRootName() 
+                               && p.rootName() != rootName()))
         {
             str = p;
             return this;
@@ -557,7 +567,7 @@ public:
         // Spec says:
         // "Appends path::preferred_separator to pathname unless:
         //  - an added separator would be redundant, or
-        //  - would change a relative path (eg: "") to an absolute path
+        //  - would change a relative path (eg: "") to absolute
         //  - p.empty()
         //  - p has a root-directory 
         assert(!p.empty && !p.hasRootDirectory() && !p.isAbsolute());
@@ -644,8 +654,9 @@ public:
 
 private:
 
-    // How the final directory separator is represented
-    enum const(char)[] FINAL_DIR_SEP = "";
+    // How the final directory separator is represented when
+    // iterating the path into parts.
+    enum const(char)[] FINAL_SEP = "";
 
     static int extensionDotPos(const(char)[] filename) pure
     {
@@ -661,44 +672,17 @@ private:
         return dotPos;
     }
 
-    // Return same string with one char replaced
-    static nstring replaceChar(const(char)[] s, char needle, char replacement) pure nothrow
-    {
-        if (s is null)
-            return nstring();
-
-        if (needle == replacement)
-            return nstring(s);
-
-        char[] r;
-        r.nu_resize(s.length);
-        scope(exit) r.nu_resize(0);
-
-        foreach(i; 0..s.length)
-            if (s[i] == needle)
-                r[i] = replacement;
-            else
-                r[i] = s[i];
-
-        return nstring(r);
-    }
-    static nstring replaceCharStr(string s, char needle, char replacement) pure nothrow
-    {
-        if (s is null)
-            return nstring();
-        return replaceChar(s.ptr[0..s.length], needle, replacement);
-    }
-
     nstring normalForm() /* const */
     {
-        // Note: making this function pure is blocked by vector!nstring 
-        // not being pure.
+        // FUTURE Making this function pure is blocked by 
+        // vector!nstring not being pure.
 
         // 1. Empty path is already normalized.
         if (str.empty) return nstring();
 
         // Because in the test suite, some path keeps their forward 
-        // slash on Windows! Not possible to follow the spec in this case.
+        // slash on Windows! Not possible to follow the spec in this 
+        // case. Spec is rather fuzzy anyway.
         char prefSep = detectSeparatorOrDefault();
 
         PathParser parser;
@@ -715,11 +699,11 @@ private:
             bool lastSep;
             while (parser.parseFilename(name, sep))
             {
-                parts ~= replaceChar(name, '/', prefSep);
+                parts ~= fs_replaceChar(name, '/', prefSep);
                 lastSep = sep;
             }
             if (lastSep)
-                parts ~= nstring(FINAL_DIR_SEP);
+                parts ~= nstring(FINAL_SEP);
         }
 
         // 2. "Replace each directory-separator (which may consist of 
@@ -728,8 +712,8 @@ private:
 
         // 3. "Replace each slash character in the root-name with 
         // preferred separator". Note: we also do it for root-dir.
-        nstring sroot_name = replaceChar(root_name, '/', prefSep);
-        nstring sroot_dir  = replaceChar(root_dir, '/', prefSep);
+        nstring sroot_name = fs_replaceChar(root_name, '/', prefSep);
+        nstring sroot_dir  = fs_replaceChar(root_dir, '/', prefSep);
 
         // 4. "Remove each dot and any immediately following 
         // directory-separator."
@@ -743,7 +727,7 @@ private:
                     parts.removeAt(i);
 
                     // remove final / if path is ending in ./ 
-                    if (i < parts.length && parts[i] == FINAL_DIR_SEP)
+                    if (i < parts.length && parts[i] == FINAL_SEP)
                         parts.removeAt(i);
                 }
                 else
@@ -771,15 +755,16 @@ private:
                     parts.removeAt(i);
 
                     bool hasFilenameBefore = i > 0;
-                    bool dotdotWasFollowedByFinalSep = i < parts.length && parts[i] == FINAL_DIR_SEP;
+                    bool dotdotThenFinalSep = i < parts.length 
+                                            && parts[i] == FINAL_SEP;
                     bool shouldHaveFinalSep = hasFilenameBefore;
-                    if (i < parts.length && parts[i] != FINAL_DIR_SEP)
+                    if (i < parts.length && parts[i] != FINAL_SEP)
                         shouldHaveFinalSep = false;
 
-                    if (dotdotWasFollowedByFinalSep && !shouldHaveFinalSep)
+                    if (dotdotThenFinalSep && !shouldHaveFinalSep)
                         parts.removeAt(i);
-                    if (!dotdotWasFollowedByFinalSep && shouldHaveFinalSep)
-                        parts ~= nstring(FINAL_DIR_SEP);
+                    if (!dotdotThenFinalSep && shouldHaveFinalSep)
+                        parts ~= nstring(FINAL_SEP);
                     
                     if (i > 0) i -= 1; // step back in case .. chain
                 }
@@ -794,13 +779,14 @@ private:
         {
             while (parts.length > 0 && parts[0] == "..")
                 parts.removeAt(0);
-            if (parts.length > 0 && parts[0] == FINAL_DIR_SEP)
+            if (parts.length > 0 && parts[0] == FINAL_SEP)
                 parts.removeAt(0);
         }
 
         // 7. "If the last filename is dot-dot, remove any trailing 
         // directory-separator."
-        if (parts.length >= 2 && parts[$-2] == ".." && parts[$-1] == FINAL_DIR_SEP)
+        if (parts.length >= 2  && parts[$-2] == ".." 
+            && parts[$-1] == FINAL_SEP)
             parts.removeAt(parts.length - 1);
 
         // Build result
@@ -828,7 +814,7 @@ private:
 // 1. root-name if any, 
 // 2. root-dir if any, 
 // 3. then a list of filename
-// 4. then an empty item "" if the path was terminated with a separator
+// 4. then FINAL_SEP if the path was terminated with a separator
 static struct PathRange
 {
 nothrow:
@@ -896,15 +882,13 @@ pure:
 
         if (!success && oldLastSep)
         {
-            current = Path.FINAL_DIR_SEP;
+            current = Path.FINAL_SEP;
             return;
         }
         current = null;
     }
 }
 
-// Grammar of path.
-// PATH := [ROOT-NAME][ROOT-DIRECTORY](FILE-NAME | DIRECTORY-SEPARATOR)
 // Reference: https://en.cppreference.com/cpp/filesystem/path
 struct PathParser
 {
@@ -912,7 +896,8 @@ nothrow:
 @nogc:
 pure:
 
-    // Once initialized, call parseRootName, parseRootDir, and enumerate path parts.
+    // Once initialized, call parseRootName, parseRootDir, and 
+    // enumerate path parts.
     void initialize(const(char)[] input)
     {
         errored = false;
@@ -946,9 +931,9 @@ pure:
     // Return false in case of end of sequence or error.
     // Can only be called once parseRootName and parseRootDir were
     // called.
-    bool parseFilename(out const(char)[] filename, out bool followedBySep)
+    bool parseFilename(out const(char)[] filename, out bool sepAfter)
     {
-        followedBySep = false;
+        sepAfter = false;
         Token tok = lexer.peek();
         final switch (tok.type)
         {
@@ -997,18 +982,16 @@ pure:
 
             case Token.type.separator: // Regular separator location
                 lexer.popFront();
-                followedBySep = true;
+                sepAfter = true;
                 return true;
         }
     }
 
-
-    bool errored;
     SepPreference sepPreference() const => lexer.sepPreference();
 
-
+private:
+    bool errored;
     PathLexer lexer;
-
 }
 
 
@@ -1017,8 +1000,8 @@ struct Token
 nothrow @nogc:
     enum Type
     {
-        rootName,  // 0. eg: "C:", "//server/share"
-        rootDir,   // 1. the first / or \. Not sure if it should be return as separate token from separator...
+        rootName,  // 0. eg: "C:", (FUTURE: "//server/share")
+        rootDir,   // 1. the first '/' or '\'
         separator, // 2. a separator such as in my/dir
         filename,  // 3. normal folder or file segment, ., or ..
         eof,       // 4. end of input, no payload
@@ -1027,7 +1010,7 @@ nothrow @nogc:
     }
 
     Type type             = Type.invalid;
-    const(char)[] payload = null; // extent of this token in input string
+    const(char)[] payload = null; // extent of this token in input
 }
 
 
@@ -1049,8 +1032,6 @@ nothrow @nogc:
                               // when it can
     }
 
-
-
     // Safari doesn't accept a longer URL than that.
     enum int MAX_PATH_PATH = 80_000; 
 
@@ -1070,14 +1051,15 @@ nothrow @nogc:
         this.idx = 0;
         _token = Token.init;
         if (input.length > MAX_PATH_PATH)
-            state = State.error; // error, too long path, this is unlikely
+            state = State.error; // too long path, unlikely
         this.len = cast(int) input.length;
         this.input = input;
         this.options = options;
         state = State.beforeRootName;
     }
 
-    // peek current token. When you see Token.Type.eof or Token.Type.poison, it is over.
+    // peek current token. When you see `Token.Type.eof` or 
+    // `Token.Type.poison`, it is over.
     Token peek()
     {
         if (_token.type == Token.Type.invalid)
@@ -1126,7 +1108,8 @@ private:
 
     static bool charCanBeWindowsFilename(char ch)
     {
-        return ! isCharInString(ch, "<>:\"/\\|?*\0"); // FUTURE: ':' is allowed with "data streams"
+        // FUTURE: ':' is allowed with "data streams"
+        return ! isCharInString(ch, "<>:\"/\\|?*\0"); 
     }
 
     static bool charCanBePOSIXFilename(char ch)
@@ -1134,7 +1117,8 @@ private:
         return ch != '\0' && ch != '/';
     }
 
-    // Return: number of successive identical separator chars, such as "///" => 3
+    // Return: number of successive identical separator chars, such as 
+    // "///" => 3
     // 0 if no separator.
     int parseSeparator()
     {        
@@ -1172,36 +1156,35 @@ private:
         // detect optional root name
         if (state == State.beforeRootName)
         {
-            state = State.beforeRootDir; // move on the state whatever happens
+            // move on the state whatever happens
+            state = State.beforeRootDir; 
             char ch = peekChar();
             char chp1 = peekAhead();
-            if (supportsRootName() && (chp1 == ':') && isDriveLetter(ch))
+            if (supportsRootName() && (chp1 == ':') 
+                && isDriveLetter(ch))
             {
                 next();
                 next();
-                windowsPathDetected();
                 return Token(Token.Type.rootName, input[0..2]);
             }
-            // FUTURE: more rootname in Windows, such as //server/share and \\?\ \\.\
+            // FUTURE: more rootname in Windows, 
+            // such as //server/share and \\?\ \\.\
         }
 
         // detect optional root dir / or \
         if (state == State.beforeRootDir)
         {
-            state = State.restOfPath; // move on the state whatever happens
-
-            // length of the separator, if any.
-            int before = idx;
+            // move on the state whatever happens
+            state = State.restOfPath; 
+            int b = idx;
             int len = parseSeparator();
             if (len > 0)
-            {
-                return Token(Token.Type.rootDir, input[before..before+len]);
-            }
+                return Token(Token.Type.rootDir, input[b..b+len]);
         }
 
         assert(state == State.restOfPath);
 
-        int start = idx;
+        int here = idx;
 
         // First deal with the separator case and '\0'
         char ch = peekChar();
@@ -1214,7 +1197,7 @@ private:
         {
             int len = parseSeparator();
             assert(len > 0);
-            return Token(Token.Type.separator, input[start..start+len]);
+            return Token(Token.Type.separator, input[here..here+len]);
         }        
 
         bool isWin   = charCanBeWindowsFilename(ch);
@@ -1229,7 +1212,7 @@ private:
 
         next();
 
-        int end = start + 1;
+        int end = here + 1;
         
 
         while (true)
@@ -1246,17 +1229,10 @@ private:
             if (isWindowsOnly() && !isWin) goto fail;
             if (isPOSIXOnly()   && !isPosix) goto fail;
 
-            // PERF: remove auto-detect mode from the lexer, it
-            // has no reason to exist anymore
-            if (isAutodetect())
-            {
-                if (!isPosix) windowsPathDetected();
-                if (!isWin) posixPathDetected();
-            }
             next;
             end++;
         }
-        return Token(Token.Type.filename, input[start..end]);    
+        return Token(Token.Type.filename, input[here..end]);    
     }
 
 private:
@@ -1309,20 +1285,10 @@ private:
     bool supportsWindows()  => (options & parseWindows) != 0;
     bool supportsPOSIX()    => (options & parsePOSIX) != 0;
     bool isWindowsOnly()    => (options == parseWindows);
-    bool isPOSIXOnly()      => (options == parsePOSIX);
-    bool isAutodetect()     => (options == parsePOSIX + parseWindows);
+    bool isPOSIXOnly()      => (options == parsePOSIX);  
 
-    void windowsPathDetected()
-    {
-        options = options & ~parsePOSIX; // change parse to WIndows-only
-    }
-
-    void posixPathDetected()
-    {
-        options = options & ~parseWindows; // change parse to POSIX-only
-    }
-
-    static bool isDriveLetter(char ch) => (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+    static bool isDriveLetter(char ch) 
+        => (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 
 }
 
@@ -1330,16 +1296,21 @@ private:
 
 enum SepPreference
 {
-    preferSlash      = 1,  // path earliest separator is /
-    preferBackslash  = 2,  // path earliest separator is \ (impossible on POSIX)
-    preferUnknown    = 3,  // path preferred separator is unknown... suggests taking Path.preferredSeparator
+    // path earliest separator is /
+    preferSlash      = 1,  
+
+    // path earliest separator is \ (impossible on POSIX)
+    preferBackslash  = 2,  
+
+    // path preferred separator is unknown
+    preferUnknown    = 3,  
 }
 
 
 version(Windows)
-    enum string OS_PREFERRED_SEPARATOR = "\\";
+    enum string FS_PREFERRED_SEP = "\\";
 else
-    enum string OS_PREFERRED_SEPARATOR = "/";
+    enum string FS_PREFERRED_SEP = "/";
 
 char prefToChar(SepPreference pref) pure nothrow @safe
 {
@@ -1352,7 +1323,7 @@ string iprefToChar(SepPreference pref) pure nothrow @safe
     {
         case SepPreference.preferSlash:     return "/";
         case SepPreference.preferBackslash: return "\\";
-        case SepPreference.preferUnknown:   return OS_PREFERRED_SEPARATOR;
+        case SepPreference.preferUnknown:   return FS_PREFERRED_SEP;
         default:
             assert(0);
     }
@@ -1365,17 +1336,17 @@ Appendix: The scary world of pathnames.
 It's a nice mental model that all path on your system are UTF-8 or 
 UTF-16, but this isn't strictly true.
 
-- Windows: when using fopen or open (POSIX), the pathnames are expected 
-  to be in the active codepage. Hence, no libc or POSIX call should be 
-  used when on Windows in this library.
-  Similarly to Linux, the UTF-16 can be invalid, have unpaired surrogates,
-  etc. Which is rather bad, because the unpaired surrogate have no UTF-8
-  equivalent. https://github.com/rust-lang/rust/issues/12056
-
-- Linux: the first Linux using UTF-8 as the default encoding was RedHat 
+- Linux: first Linux using UTF-8 as the default encoding was RedHat 
   in 2002. Nothing actually forces path to be UTF-8, they could be
   malformed UTF-8.
   As long as you're using '/' and '\0' the path can contain anything.
+
+- Windows: when using `fopen` or `open` (POSIX), the pathnames are 
+  expected to be in the active codepage. There is a MSVCRT call to
+  avoid that.
+  An UTF-16 path could be invalid, have unpaired surrogates,
+  etc. Which is rather bad, because the unpaired surrogate have no 
+  UTF-8 equivalent. https://github.com/rust-lang/rust/issues/12056
 
 - macOS: a bit of the same as Linux.
 

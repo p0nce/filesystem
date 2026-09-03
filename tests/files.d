@@ -32,7 +32,8 @@ unittest
     assert(canonical(currentPath()) == currentPath());
     assert(canonical(Path(".")) == currentPath());
     assert(canonical(Path("..")) == currentPath().parentPath);
-    assert(canonical(Path("./tests/fileWithSizeTwo")) == canonical(currentPath() / "tests/fileWithSizeTwo"));
+    assert(canonical(Path("./tests/fileWithSizeTwo")) 
+        == canonical(currentPath() / "tests/fileWithSizeTwo"));
 
     try
     {
@@ -106,7 +107,6 @@ unittest
     }
 }
 
-
 @("canonical() #3")
 unittest
 {
@@ -137,7 +137,8 @@ unittest
 
         createDirectory(Path("tests/dir2"));
 
-        createDirectorySymlink(Path("tests/dir1"), Path("tests/dir2/dirSym"));
+        createDirectorySymlink(Path("tests/dir1"), 
+            Path("tests/dir2/dirSym"));
 
         Path direct = Path("tests/dir1/test1.sdl");
         Path vialink = Path("tests/dir2/dirSym/test1.sdl");

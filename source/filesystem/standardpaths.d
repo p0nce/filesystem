@@ -15,7 +15,7 @@
         Copyright (c) 2026, Guillaume Piolat.
 
     License:
-        $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+        $(LINK2 http://www.boost.org/LICENSE_1_0.txt, BSL-1.0).
 */
 module filesystem.standardpaths;
 
@@ -820,26 +820,26 @@ static if (isFreedesktop)
                     string fallback, 
                     string subfolder = null, 
                     bool shouldCreate = false) @trusted
-                    {
-                        // First look at hypothetical envvar
-                        Path dir = Path(getEnvironmentVariable(envvar));
+    {
+        // First look at hypothetical envvar
+        Path dir = Path(getEnvironmentVariable(envvar));
 
-                        // Fallback inside ~/<fallback> if no such envvar
-                        if (dir.empty)
-                            dir = Path(getEnvironmentVariable(nstring("HOME"))).maybeAppend(fallback);
+        // Fallback inside ~/<fallback> if no such envvar
+        if (dir.empty)
+            dir = Path(getEnvironmentVariable(nstring("HOME"))).maybeAppend(fallback);
 
-                        if (dir.empty)
-                            return dir;
+        if (dir.empty)
+            return dir;
 
-                        dir.maybeAppend(subfolder);
+        dir.maybeAppend(subfolder);
 
-                        if (shouldCreate) 
-                        {
-                            if (! ensureExists(dir, privateMode)) 
-                                return Path.init;
-                        }
-                        return dir;
-                    }
+        if (shouldCreate) 
+        {
+            if (! ensureExists(dir, privateMode)) 
+                return Path.init;
+        }
+        return dir;
+    }
 
     Path xdgUserDir(const(char)[] key, string fallback = null) @trusted
     {

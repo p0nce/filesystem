@@ -199,12 +199,12 @@ Path proximate(Path p, Path base = currentPath())
 
     Throws: `FileSystemException`, `FileNotFoundException`.
 */
-void copy(Path from, Path to, CopyOptions options)
+void copy(Path from, Path to, CopyOptions opts)
 {
-    bool skipSymlinks    = (options & CopyOptions.ignoreSymlinks) != 0;
-    bool copySymlinks    = (options & CopyOptions.copySymlinks) != 0;
-    bool createSymlinks  = (options & CopyOptions.createSymlinks) != 0;
-    bool directoriesOnly = (options & CopyOptions.directoriesOnly) != 0;
+    bool skipSymlinks    = (opts & CopyOptions.ignoreSymlinks) != 0;
+    bool copySymlinks    = (opts & CopyOptions.copySymlinks) != 0;
+    bool createSymlinks  = (opts & CopyOptions.createSymlinks) != 0;
+    bool directoriesOnly = (opts & CopyOptions.directoriesOnly) != 0;
 
     // Get status of `from`
     FileStatus stfrom;
@@ -268,29 +268,32 @@ void copy(Path from, Path to, CopyOptions options)
         else if (toExists && isDirectory(stto))
         {
             // copy a file to a directory
-            copyFile(from, to / from.filename(), options);
+            copyFile(from, to / from.filename(), opts);
         }
         else
         {
             // copy a file to a file
-            copyFile(from, to, options); 
+            copyFile(from, to, opts); 
         }
     }
     else if (isDirectory(stfrom) && createSymlinks)
     {
         throwException(kStrErrFileCopyFailed);
     }
-    else if (isDirectory(stfrom) && (options == CopyOptions.none || ((options & CopyOptions.recursive) != 0)))
+    else if (isDirectory(stfrom) && (opts == CopyOptions.none 
+                            || ((opts & CopyOptions.recursive) != 0)))
     {
         // Create destination with attributes from source.
         if (!toExists)
             createDirectory(to, from);
 
         // skip directory symlinks, permission denied is an error
-        foreach(DirectoryEntry x; dirEntries(from, DirectoryOptions.none))
+        foreach(x; dirEntries(from, DirectoryOptions.none))
         {
-            // Spec asks us to add the `inRecursiveCopy`, not sure where it's used...
-            copy(x.path, to / x.path.filename(), options | CopyOptions.inRecursiveCopy);
+            // Spec asks us to add the `inRecursiveCopy`, not sure
+            //  where it's used...
+            copy(x.path, to / x.path.filename(), 
+                opts | CopyOptions.inRecursiveCopy);
         }
     }
 }
@@ -310,8 +313,8 @@ bool copyFile(Path from, Path to,
 
     bool fromExists = false;
     bool toExists = false;
-    FileStatus statusFrom = statusExists(from, fromExists);
-    FileStatus statusTo   = statusExists(to, toExists);
+    FileStatus statFrom = statusExists(from, fromExists);
+    FileStatus statTo   = statusExists(to, toExists);
 
     bool overwrite = false;
     if (toExists)
@@ -322,7 +325,7 @@ bool copyFile(Path from, Path to,
         if (equivalent(to, from))
             throwException(kStrErrCopySameFile);
 
-        if (! isRegularFile(statusTo))
+        if (! isRegularFile(statTo))
             throwException(kStrErrCopyDestNonReg);
 
         // What to do?
@@ -364,24 +367,31 @@ bool copyFile(Path from, Path to,
         int inHandle  = -1, 
             outHandle = -1;
 
-        if ((inHandle = pfcntl.open(from.native.ptr, pfcntl.O_RDONLY)) < 0) 
+        nstring inPath = from.native;
+        nstring outPath = to.native;
+
+        if ((inHandle = pfcntl.open(inPath.ptr, pfcntl.O_RDONLY)) < 0) 
             throwIO(kStrErrOpenFileFailed); 
 
-        assert(fromExists); // since it was opened, hence statusFrom is valid
+        assert(fromExists); 
 
         int mode = pfcntl.O_CREAT | pfcntl.O_WRONLY | pfcntl.O_TRUNC;
         if (!overwrite)
             mode |= pfcntl.O_EXCL;
 
-        if ((outHandle = pfcntl.open(to.native.ptr, mode, statusFrom.permissions & FilePerms.all)) < 0) 
+        if ((outHandle = pfcntl.open(outPath.ptr, mode, 
+            statFrom.permissions & FilePerms.all)) < 0) 
         {
             punistd.close(inHandle);
             throwIO(kStrErrOpenFileFailed); 
         }
 
-        if (overwrite && statusTo.permissions != statusFrom.permissions)
+        if (overwrite && statTo.permissions != statFrom.permissions)
         {
-            if (pfcntl.fchmod(outHandle, cast(pfcntl.mode_t)(statusFrom.permissions & FilePerms.all)) != 0) 
+            FilePerms inPerm = statFrom.permissions;
+            FilePerms outPerm = inPerm;
+            outPerm &= FilePerms.all;
+            if (pfcntl.fchmod(outHandle, outPerm) != 0) 
             {
                 punistd.close(inHandle);
                 punistd.close(outHandle);
@@ -390,48 +400,50 @@ bool copyFile(Path from, Path to,
         }
 
         // Manual buffered copy.
-        // Note: Linux has copy_file_range, yet on WSL was slower than a manual buffer copy
-        // for a 100 mb file.
+        // Note: Linux has copy_file_range, yet on WSL was slower than 
+        // a manual buffer copy for a 100 mb file.
 
-        // 128 kb isn't too much in a first approximation, while allowing for a measured
-        // 10% slowdown vs a 1mb chunk size for a 100mb file.
+        // 128 kb isn't too much in a first approximation, while 
+        // allowing for a measured 10% slowdown vs a 1mb chunk size 
+        // for a 100mb file.
         enum int BLOCK_SIZE = 128 * 1024;
         vector!byte buf;
-        buf.resize(BLOCK_SIZE);        
+        buf.resize(BLOCK_SIZE);
 
         while (true) 
         {
-            ptrdiff_t bytesRead;
-            ptrdiff_t bytesWritten;
+            ptrdiff_t bRead; // bytes read
+            ptrdiff_t bWrite; // bytes written
 
             do 
             {
-                bytesRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
-            } while (bytesRead == -1 && cerrno.errno == cerrno.EINTR);
+                bRead = punistd.read(inHandle, buf.ptr, BLOCK_SIZE);
+            } while (bRead == -1 && cerrno.errno == cerrno.EINTR);
 
-            if (bytesRead < 0)
+            if (bRead < 0)
                 throwIO(kStrErrFileReadFailed);
 
-            if (bytesRead == 0)
+            if (bRead == 0)
                 break; // input file finished
 
             ptrdiff_t offset = 0;
             do 
             {
-                bytesWritten = punistd.write(outHandle, buf.ptr + offset, bytesRead);
-                if (bytesWritten > 0)
+                byte* pbuf = buf.ptr + offset;
+                bWrite = punistd.write(outHandle, pbuf, bRead);
+                if (bWrite > 0)
                 {
-                    bytesRead -= bytesWritten;
-                    offset += bytesWritten;
+                    bRead -= bWrite;
+                    offset += bWrite;
                 }
-                else if (bytesWritten <= 0 && cerrno.errno != cerrno.EINTR)
+                else if (bWrite <= 0 && cerrno.errno != cerrno.EINTR)
                 {
                     // Note: 0 byte progressed is an error.
                     punistd.close(inHandle);
                     punistd.close(outHandle);
                     throwIO(kStrErrFileWriteFailed);
                 }
-            } while (bytesRead);
+            } while (bRead);
         }
         punistd.close(inHandle);
         punistd.close(outHandle);
@@ -533,7 +545,8 @@ bool createDirectory(Path pathToDir,
         p           = Path to the chain of directories to create.
         templateDir = Existing directory to get attributes/permissions 
                       from. This is ignored if `perms` is valid.
-        perms       = (POSIX-only) Permissions to create the directory with.
+        perms       = (POSIX-only) Permissions to create the directory
+                      with.
 
     Returns: `true` if created, `false` if already existing. If 
         nothing is thrown, path `p` is guaranteed to exist at the
@@ -773,7 +786,8 @@ bool equivalent(Path p1, Path p2)
         bool followSymlinks = true;
         posix_stat(p1, &buf1, followSymlinks);
         posix_stat(p2, &buf2, followSymlinks);
-        return buf1.st_dev == buf2.st_dev && buf1.st_ino == buf2.st_ino;
+        return buf1.st_dev == buf2.st_dev
+            && buf1.st_ino == buf2.st_ino;
     }
 }
 
@@ -838,10 +852,11 @@ FileTime lastWriteTime(Path p)
     Changes access permissions of the file to which p resolves, as if 
     by POSIX `fchmodat`. 
 
-    Symlinks are followed unless `PermOptions.nofollow` is set in opts.
+    Symlinks are followed unless `PermOptions.nofollow` is set in 
+    `opts`.
 */
 void permissions(Path p, 
-                 FilePerms prms, 
+                 FilePerms perms, 
                  PermOptions opts = PermOptions.replace)
 {
     FileStatus fs = symlinkStatus(p);
@@ -851,10 +866,10 @@ void permissions(Path p,
         case PermOptions.replace:
             break;
         case PermOptions.add:
-            prms = fs.permissions | prms;
+            perms = fs.permissions | perms;
             break;
         case PermOptions.remove:
-            prms = fs.permissions & ~prms;
+            perms = fs.permissions & ~perms;
             break;
         case 3:
         default:
@@ -867,12 +882,12 @@ void permissions(Path p,
             if (oldAttr == INVALID_FILE_ATTRIBUTES)
                 throwIO(kStrFileAttributes);
 
-            DWORD newAttr;
-            bool readOnly = (prms & FilePerms.ownerWrite) == 0;
+            bool readOnly = (perms & FilePerms.ownerWrite) == 0;
+            DWORD newAttr = oldAttr;            
             if (readOnly)
-                newAttr = oldAttr & ~cast(DWORD)FILE_ATTRIBUTE_READONLY;
+                newAttr &= ~cast(DWORD)FILE_ATTRIBUTE_READONLY;
             else
-                newAttr = oldAttr | cast(DWORD)FILE_ATTRIBUTE_READONLY;
+                newAttr |= cast(DWORD)FILE_ATTRIBUTE_READONLY;
 
             if (oldAttr == newAttr)
                 return;
@@ -886,7 +901,8 @@ void permissions(Path p,
 
             if (! noFollow)
             {
-                if (pfcntl.chmod(p.native.ptr, cast(pstat.mode_t)prms) != 0) 
+                auto posixPerms = cast(pstat.mode_t)perms;
+                if (pfcntl.chmod(p.native.ptr, posixPerms) != 0) 
                     throwIO(kStrErrChmodFailed);
             }
         }
@@ -913,7 +929,7 @@ Path readSymlink(Path p)
 
 
 /**
-    The file or **empty** directory identified by the path p is deleted as
+    The file or empty directory identified by the path p is deleted as
     if by the POSIX `remove`. Symlinks are not followed (symlink is 
     removed, not its target).
 
@@ -1056,7 +1072,9 @@ bool rename(Path oldPath, Path newPath)
     }
     else version(Posix)
     {
-        if (cstdio.rename(oldPath.native.ptr, newPath.native.ptr) != 0)
+        nstring pold = oldPath.native;
+        nstring pnew = newPath.native;
+        if (cstdio.rename(pold.ptr, pnew.ptr) != 0)
             throwIO(kStrErrRenameFileDir);
         return true;
     }
@@ -1080,7 +1098,8 @@ void resizeFile(Path p, long newSize)
         LARGE_INTEGER lisize;
         lisize.QuadPart = newSize;
         nwstring wp = p.native.toUTF16();
-        HANDLE file = CreateFileW(wp.ptr,  GENERIC_WRITE, 0, null, OPEN_EXISTING, 0, null);
+        HANDLE file = CreateFileW(wp.ptr,  GENERIC_WRITE, 0, null, 
+            OPEN_EXISTING, 0, null);
         if (file == INVALID_HANDLE_VALUE)
             throwIO(kStrErrOpenFileFailed);
         scope(exit) CloseHandle(file);
@@ -1093,7 +1112,8 @@ void resizeFile(Path p, long newSize)
     }
     else version(Posix)
     {
-        if (punistd.truncate(p.native.ptr, cast(punistd.off_t) newSize) != 0)
+        punistd.off_t posixSize = cast(punistd.off_t) newSize;
+        if (punistd.truncate(p.native.ptr, posixSize) != 0)
             throwIO(kStrErrFileResizeFail);
     }
     else
@@ -1128,8 +1148,11 @@ SpaceInfo space(Path p)
         ULARGE_INTEGER totalBytes;
         ULARGE_INTEGER totalFreeBytes;
 
-        if (0 == GetDiskFreeSpaceExW(wpath.ptr, &availBytes, &totalBytes, &totalFreeBytes)) 
+        if (0 == GetDiskFreeSpaceExW(wpath.ptr, &availBytes, 
+            &totalBytes, &totalFreeBytes)) 
+        {
             throwIO(kStrErrFSAvailInfo);
+        }
 
         info.capacity        = totalBytes.QuadPart;
         info.freeTheoretical = totalFreeBytes.QuadPart;
@@ -1150,7 +1173,8 @@ SpaceInfo space(Path p)
         static assert(0);
 
     // Deal with overflow.
-    if (info.capacity < 0 || info.freeTheoretical < 0 || info.available < 0)
+    if (info.capacity < 0 || info.freeTheoretical < 0 
+        || info.available < 0)
         throwIO(kStrErrUnrealDiscSize);
 
     return info;
@@ -1268,7 +1292,8 @@ FileStatus symlinkStatus(Path path)
         FileStatus r;
         nwstring ws = path.native.toUTF16();
         WIN32_FILE_ATTRIBUTE_DATA info;
-        int res = GetFileAttributesExW(cast(wchar*) ws.ptr, GET_FILEEX_INFO_LEVELS.GetFileExInfoStandard, &info);
+        int res = GetFileAttributesExW(cast(wchar*) ws.ptr, 
+            GET_FILEEX_INFO_LEVELS.GetFileExInfoStandard, &info);
         if (res == 0)
         {
             DWORD err = GetLastError();
@@ -1280,19 +1305,20 @@ FileStatus symlinkStatus(Path path)
         }
         else
         {
-            if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) 
+            DWORD attr = info.dwFileAttributes;
+            if (attr & FILE_ATTRIBUTE_REPARSE_POINT) 
             {
-                vector!ubyte rawReparseData = getReparseData(path);
-                REPARSE_DATA_BUFFER* reparseData = cast(REPARSE_DATA_BUFFER*) rawReparseData.ptr;
-                if (reparseData 
-                    && ((reparseData.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
-                     || (reparseData.ReparseTag == IO_REPARSE_TAG_SYMLINK)))
+                vector!ubyte raw = getReparseData(path);
+                auto reparse = cast(REPARSE_DATA_BUFFER*) raw.ptr;
+                if (reparse 
+                && ((reparse.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
+                 || (reparse.ReparseTag == IO_REPARSE_TAG_SYMLINK)))
                 {
                     r.type = FileType.symlink;
                     r.sizeBytes = 0;
                 }
             }
-            else if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            else if (attr & FILE_ATTRIBUTE_DIRECTORY)
             {
                 r.type = FileType.directory;
                 r.sizeBytes = 0;
@@ -1492,38 +1518,24 @@ nstring getEnvironmentVariable(nstring name) nothrow @trusted
     }
     else version(Windows)
     {
-        nwstring name16;
-        try
-        {
-            name16 = toUTF16(name);
-        }
-        catch(NuException e)
-        {
-            e.freeNoThrow();
-            // if the name is invalid Unicode,
-            // this is a programming error
-            assert(0);
-        }
-        catch(Exception e)
-        {
-            assert(0);
-        }
+        // if the name is invalid Unicode, programming error
+        nwstring wname = toUTF16OrCrash(name);
+
         enum int BUFSIZE = 16;
         wchar[BUFSIZE] buf;
         wchar[] outbuf;
-        DWORD res = GetEnvironmentVariableW(name16.ptr, buf.ptr, BUFSIZE);
+        DWORD res;
+        res = GetEnvironmentVariableW(wname.ptr, buf.ptr, BUFSIZE);
         if (res == 0)
             return nstring.init;
-        else if (res <= BUFSIZE)
+        if (res <= BUFSIZE)
             return toUTF8OrEmpty(nwstring(buf[0..res]));
-        else
-        {
-            wchar[] buf2;
-            buf2.nu_resize(res + 1);
-            scope(exit) buf2.nu_resize(0);
-            res = GetEnvironmentVariableW(name16.ptr, buf2.ptr, res + 1);
-            return toUTF8OrEmpty(nwstring(buf2[0..res]));            
-        }
+        
+        wchar[] buf2;
+        buf2.nu_resize(res + 1);
+        scope(exit) buf2.nu_resize(0);
+        res = GetEnvironmentVariableW(wname.ptr, buf2.ptr, res + 1);
+        return toUTF8OrEmpty(nwstring(buf2[0..res]));        
     }
     else
         static assert(0);
@@ -1634,17 +1646,17 @@ void createSymlinkImpl(Path target, Path linkname, bool toDir)
     version(Windows)
     {
         nwstring wtarget = target.native.toUTF16();
-        nwstring wlinkname = linkname.native.toUTF16();
+        nwstring wlink = linkname.native.toUTF16();
         DWORD flags = 0;
         if (toDir)
             flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
-        DWORD r = CreateSymbolicLinkW(wtarget.ptr, wlinkname.ptr, flags);
+        DWORD r = CreateSymbolicLinkW(wtarget.ptr, wlink.ptr, flags);
         if (r == 0)
             return;
         if (GetLastError() == ERROR_PRIVILEGE_NOT_HELD)
         {
             flags |= SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
-            r = CreateSymbolicLinkW(wtarget.ptr, wlinkname.ptr, flags);
+            r = CreateSymbolicLinkW(wtarget.ptr, wlink.ptr, flags);
             if (r == 0) 
                 return;
         }
@@ -1652,7 +1664,9 @@ void createSymlinkImpl(Path target, Path linkname, bool toDir)
     }
     else version(Posix)
     {
-        int r = punistd.symlink(target.native.ptr, linkname.native.ptr);
+        nstring ptarget = target.native;
+        nstring plink = linkname.native;
+        int r = punistd.symlink(ptarget.ptr, plink.ptr);
         if (r != 0)
             throwIO(kStrErrSymlinkCreate);
     }
