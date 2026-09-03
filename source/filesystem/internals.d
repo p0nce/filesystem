@@ -18,16 +18,14 @@ import filesystem.path;
 import filesystem.freefunc;
 
 
-version(Windows)
-{
+version(Windows) {
     import core.sys.windows.windef;
     import core.sys.windows.winbase;
     import core.sys.windows.winuser;
     import core.sys.windows.winioctl;
     pragma(lib, "user32");
 }
-else version(Posix)
-{
+else version(Posix) {
     import punistd  = core.sys.posix.unistd;
     import pstat   = core.sys.posix.sys.stat;
     import cerrno  = core.stdc.errno;
@@ -104,29 +102,24 @@ static immutable string
     kStrErrCopyOther       = "Cannot copy this type of file.",
     kStrErrNoCanonical     = "Path can't be made canonical";
 
-noreturn throwException(const(char)[] msg)
-{
+noreturn throwException(const(char)[] msg) {
     throw nogc_new!FileSystemException(msg);
 }
 
-noreturn throwFileNotFound(const(char)[] path)
-{
+noreturn throwFileNotFound(const(char)[] path) {
     throw nogc_new!FileNotFoundException(path);
 }
 
-noreturn throwInvalidPath(const(char)[] path)
-{
+noreturn throwInvalidPath(const(char)[] path) {
     throw nogc_new!InvalidPathException(path);
 }
 
-noreturn throwIO(const(char)[] msg)
-{
+noreturn throwIO(const(char)[] msg) {
     // simply throw the same exception
     throw nogc_new!FileSystemException(msg);
 }
 
-size_t fs_strlen(const(char)* str) pure
-{
+size_t fs_strlen(const(char)* str) pure {
     assert(str !is null);
     size_t len = 0;
     while (str[len] != '\0')
@@ -135,8 +128,7 @@ size_t fs_strlen(const(char)* str) pure
     return len;
 }
 
-size_t fs_wstrlen(const(wchar)* str) pure
-{
+size_t fs_wstrlen(const(wchar)* str) pure {
     assert(str !is null);
     size_t len = 0;
     while (str[len] != '\0')
@@ -145,10 +137,8 @@ size_t fs_wstrlen(const(wchar)* str) pure
     return len;
 }
 
-int fs_strcmp( const(char)* lhs, const(char)* rhs ) pure @system
-{
-    while(true)
-    {
+int fs_strcmp( const(char)* lhs, const(char)* rhs ) pure @system {
+    while(true) {
         char left = *lhs++;
         char right = *rhs++;
         if (left < right)
@@ -161,10 +151,8 @@ int fs_strcmp( const(char)* lhs, const(char)* rhs ) pure @system
     return 0;
 }
 
-int fs_wcscmp( const(wchar)* lhs, const(wchar)* rhs ) pure @system
-{
-    while(true)
-    {
+int fs_wcscmp( const(wchar)* lhs, const(wchar)* rhs ) pure @system {
+    while(true) {
         wchar left = *lhs++;
         wchar right = *rhs++;
         if (left < right)
@@ -177,18 +165,15 @@ int fs_wcscmp( const(wchar)* lhs, const(wchar)* rhs ) pure @system
     return 0;
 }
 
-const(char)[] fs_strip(return const(char)[] s) pure nothrow @safe 
-{
+const(char)[] fs_strip(return const(char)[] s) pure nothrow @safe {
     const(char)[] r = s;
     while (r.length > 0 && fs_isspace(r[0])) r = r[1..$];
     while (r.length > 0 && fs_isspace(r[$-1])) r = r[0..$-1];
     return r;
 }
 
-int fs_isspace(char ch) pure nothrow @safe 
-{
-    switch (ch)
-    {
+int fs_isspace(char ch) pure nothrow @safe {
+    switch (ch) {
     case ' ':
     case '\t':
     case '\n':
@@ -205,8 +190,7 @@ int fs_isspace(char ch) pure nothrow @safe
 
 // Return same string with one char replaced
 nstring fs_replaceChar(const(char)[] s, char needle, char replacement) 
-    pure nothrow
-{
+    pure nothrow {
     if (s is null)
         return nstring();
 
@@ -226,51 +210,40 @@ nstring fs_replaceChar(const(char)[] s, char needle, char replacement)
     return nstring(r);
 }
 nstring fs_replaceCharStr(string s, char needle, char replacement) 
-    pure nothrow
-{
+    pure nothrow {
     if (s is null)
         return nstring();
     return fs_replaceChar(s.ptr[0..s.length], needle, replacement);
 }
 
-nwstring toUTF16OrCrash(nstring s) nothrow
-{
-    try
-    {
+nwstring toUTF16OrCrash(nstring s) nothrow {
+    try {
         return toUTF16(s);
     }
-    catch(NuException e)
-    {
+    catch(NuException e) {
         e.freeNoThrow();
     }
-    catch(Exception e)
-    {   
+    catch(Exception e) {   
     }
     assert(0);
 }
 
-nstring toUTF8OrEmpty(nwstring s) nothrow
-{
-    try
-    {
+nstring toUTF8OrEmpty(nwstring s) nothrow {
+    try {
         return toUTF8(s);
     }
-    catch(NuException e)
-    {
+    catch(NuException e) {
         e.freeNoThrow();
     }
-    catch(Exception e)
-    {
+    catch(Exception e) {
     }
     return nstring.init;
 }
 
 // Returns: true if path a == path b.
 // On Windows, compare with case-insensitive casing.
-bool equalsWithOSCaseSensitivity(nstring a, nstring b)
-{
-    version(Windows)
-    {
+bool equalsWithOSCaseSensitivity(nstring a, nstring b) {
+    version(Windows) {
         // PERF: that's 4 allocations...
 
         nwstring wa = a.toUTF16();
@@ -307,17 +280,14 @@ bool equalsWithOSCaseSensitivity(nstring a, nstring b)
 
         return equal;
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         return a == b;
     }
 }
  
 
-version(Windows)
-{
-    bool windowsErrIsFileNotFound(DWORD err) pure nothrow
-    {
+version(Windows) {
+    bool windowsErrIsFileNotFound(DWORD err) pure nothrow {
         return (err == ERROR_FILE_NOT_FOUND
                 || err == ERROR_PATH_NOT_FOUND
                 || err == ERROR_INVALID_DRIVE);
@@ -326,15 +296,12 @@ version(Windows)
     void setFileSizeAndType(ref FileStatus r,
                             DWORD dwFileAttributes,
                             DWORD nFileSizeHigh,
-                            DWORD nFileSizeLow)
-    {
-        if (dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
+                            DWORD nFileSizeLow) {
+        if (dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             r.type = FileType.directory;
             r.sizeBytes = 0;
         }
-        else
-        {
+        else {
             r.type = FileType.regular;
 
             ulong size = cast(long)(nFileSizeHigh) << 32;
@@ -348,8 +315,7 @@ version(Windows)
         }
     }
 
-    void setTimeFromFILETIME(ref FileStatus r, FILETIME time)
-    {
+    void setTimeFromFILETIME(ref FileStatus r, FILETIME time) {
         // Extract time of last write.
         ulong timeWin = cast(long)(time.dwHighDateTime) << 32;
         timeWin |= time.dwLowDateTime;
@@ -369,8 +335,7 @@ version(Windows)
     // timestamp) is the number of seconds since January 1, 1970,
     // 00:00:00 UTC, not counting leap seconds (ISO 8601:
     // 1970-01-01T00:00:00Z). Again, no issue with 64-bit overflow.
-    long windowsTickToUnixSeconds(long winTicks) pure
-    {
+    long windowsTickToUnixSeconds(long winTicks) pure {
         // 1e7, because there 1e9 nanoseconds in second
         enum long WINDOWS_TICK      = 10000000;
         enum long SEC_TO_UNIX_EPOCH = 11644473600L;
@@ -378,11 +343,9 @@ version(Windows)
     }
 }
 
-version(Posix)
-{
+version(Posix) {
     //  Throws: `FileSystemException`, `FileNotFoundException`
-    void posix_stat(Path p, pstat.stat_t* buf, bool followIfSymlink)
-    {
+    void posix_stat(Path p, pstat.stat_t* buf, bool followIfSymlink) {
         FileStatus r;
         nstring s = p.native();
 
@@ -392,8 +355,7 @@ version(Posix)
         else
             res = pstat.lstat(s.ptr, buf);
 
-        if (res != 0)
-        {
+        if (res != 0) {
             r.permissions = FilePerms.none;
             if (cerrno.errno == cerrno.ENOENT)
                 throwFileNotFound(p);
@@ -403,20 +365,17 @@ version(Posix)
     }
 
     //  Throws: `FileSystemException`, `FileNotFoundException`.
-    FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
-    {
+    FileStatus posix_statusFromPath(Path p, bool followIfSymlink) {
         pstat.stat_t buf;
         posix_stat(p, &buf, followIfSymlink);
         return statusFromPosixStat(buf);
     }
 
     // Throws: `FileSystemException`.
-    FileStatus statusFromPosixStat(ref pstat.stat_t buf)
-    {
+    FileStatus statusFromPosixStat(ref pstat.stat_t buf) {
         FileStatus r;
         r.permissions = cast(FilePerms)(buf.st_mode & FilePerms.mask);
-        switch(buf.st_mode & pstat.S_IFMT)
-        {
+        switch(buf.st_mode & pstat.S_IFMT) {
             case pstat.S_IFREG:  r.type = FileType.regular; break;
             case pstat.S_IFDIR:  r.type = FileType.directory; break;
             case pstat.S_IFLNK:  r.type = FileType.symlink; break;
@@ -432,8 +391,7 @@ version(Posix)
             throwIO(kStrInvalidFileSize);
 
         r.sizeBytes = buf.st_size;
-        static long getMtime(ref pstat.stat_t buf)
-        {
+        static long getMtime(ref pstat.stat_t buf) {
             return buf.st_mtime;
         }
         long mtime = assumeNoGC(&getMtime, buf);
@@ -446,10 +404,8 @@ version(Posix)
 // Path.init in case of error.
 // This is used for user XDG paths such as "./local/share", so
 // the rights need to be restricted.
-Path createIfNeeded(Path path, bool shouldCreate) nothrow @trusted
-{
-    if (! path.empty() && shouldCreate)
-    {
+Path createIfNeeded(Path path, bool shouldCreate) nothrow @trusted {
+    if (! path.empty() && shouldCreate) {
         // On POSIX, this will create the directory with 0700 perms
         // Note: if creating .local, will create as 0700 not 0755
         //       which can be a tiny bit unlike what distros do, but
@@ -465,21 +421,17 @@ Path createIfNeeded(Path path, bool shouldCreate) nothrow @trusted
 
 // Returns true if path `dir` exists after this function, false if an
 // error occured.
-bool ensureExists(Path dir, FilePerms perms) nothrow
-{
+bool ensureExists(Path dir, FilePerms perms) nothrow {
     bool ok;
-    try 
-    {
+    try {
         createDirectories(dir, Path.init, perms);
         return true;
     } 
-    catch(NuException e)
-    {
+    catch(NuException e) {
         e.freeNoThrow();
         return false;
     }
-    catch(Exception e)
-    {
+    catch(Exception e) {
         return false;
     }
     return ok;
@@ -488,12 +440,10 @@ bool ensureExists(Path dir, FilePerms perms) nothrow
 // Input range that pulls from a file stream to give lines.
 // This one deletes the line endings.
 // It doesn't follow an input range interface!
-struct LineSplitter
-{
+struct LineSplitter {
 @nogc:
 private:
-    enum State
-    {
+    enum State {
         regular,
         seenCR  // last char was \r
     }
@@ -509,8 +459,7 @@ public:
     @disable this(ref LineSplitter);
 
     // take ownership of the stream, use move
-    this(weak_ptr!FileStream stream)
-    {
+    this(weak_ptr!FileStream stream) {
         this.stream = stream;
         assert(stream.canRead());
         state = State.regular;
@@ -520,77 +469,64 @@ public:
     // Give next lines and `null` if terminated/error.
     // returned buffer is owned by the LineSplitter.
     // Note: line endings can be: "\n", "\r\n" or "\r"
-    bool nextLine(out const(char)[] outLine)
-    {
-        if (seenEOF)
-        {
+    bool nextLine(out const(char)[] outLine) {
+        if (seenEOF) {
             outLine = null;
             return false;
         }
 
         buf.resize(0);
         int lineLen = 0;
-        while (true)
-        {
+        while (true) {
             char ch;
-            if (next(ch))
-            {
+            if (next(ch)) {
                 bool isLF = ch == '\n';
                 bool isCR = ch == '\r';
 
                 if (isLF)
                     break; // Seen \n or \r\n, line is complete
-                else if (isCR)
-                {
+                else if (isCR) {
                     if (state == State.regular)
                         state = State.seenCR;
                     else if (state == State.seenCR)
                         break; // Seen "\r\r", line is complete
                 }
-                else
-                {
-                    if (state == State.seenCR)
-                    {
+                else {
+                    if (state == State.seenCR) {
                         // Seen a stray \r, remove one char of 
                         // lookahead, line is complete
                         undo();
                         state = State.regular;
                         break;
                     }
-                    else
-                    {
+                    else {
                         lineLen++;
                         buf ~= ch;
                     }
                 }
             }
-            else
-            {
+            else {
                 seenEOF = true; // next time, return null
                 break; // EOF
             }
         }
-        if (buf.length)
-        {
+        if (buf.length) {
             outLine = buf[0..lineLen];
             return true;
         }
-        else
-        {
+        else {
             outLine = null;
             // Note: unclear whether to return this final "" here
             return true; 
         }
     }
 
-    void undo()
-    {
+    void undo() {
         stream.seek(-1, SeekOrigin.relative);
     }
 
     // true if got a char, false on error or eof
-    bool next(out char ch)
-    {
+    bool next(out char ch) {
         ubyte[1] buf;
         ptrdiff_t r = stream.read(buf);
         if (r <= 0)
@@ -600,26 +536,22 @@ public:
     }
 }
 
-Path getFromUserDirs(const(char)[] xdgdir, Path home, Path confpath)
-{
+Path getFromUserDirs(const(char)[] xdgdir, Path home, Path confpath) {
     unique_ptr!FileStream file = fileOpenRead(confpath);
     LineSplitter splitter = LineSplitter(file.borrow());
     const(char)[] line;
-    while (splitter.nextLine(line))
-    {
+    while (splitter.nextLine(line)) {
         line = fs_strip(line);
         auto index = xdgdir.length;
         if ( line.length > index
              && (line[0..index] == xdgdir) 
-             && line[index] == '=') 
-        {
+             && line[index] == '=') {
             line = line[index+1..$];
-            if (line.length > 2 && line[0] == '"' && line[$-1] == '"')
-            {
+            enum char QU = '"';
+            if (line.length > 2 && line[0] == QU && line[$-1] == QU) {
                 line = line[1..$-1];
 
-                if (line.startsWith("$HOME/"))
-                {
+                if (line.startsWith("$HOME/")) {
                     return home.maybeAppend(line[6..$]);
                 }
 
@@ -633,20 +565,17 @@ Path getFromUserDirs(const(char)[] xdgdir, Path home, Path confpath)
     return Path.init;
 }
 
-Path getFromDefaultDirs(const(char)[] key, Path home, Path confpath) 
-{
+Path getFromDefaultDirs(const(char)[] key, Path home, Path confpath) {
     import core.stdc.stdio;
     unique_ptr!FileStream file = fileOpenRead(confpath);
     LineSplitter splitter = LineSplitter(file.borrow());
     const(char)[] line;
-    while (splitter.nextLine(line))
-    {
+    while (splitter.nextLine(line)) {
         line = fs_strip(line);
         auto index = key.length;
         if ( line.length > index
             && (line[0..index] == key) 
-            && line[index] == '=')
-        {
+            && line[index] == '=') {
             line = line[index+1..$];
             return home / line;
         }
@@ -656,8 +585,7 @@ Path getFromDefaultDirs(const(char)[] key, Path home, Path confpath)
 
 vector!Path pathsFromEnvValue(const(nstring) envValue, 
                               char separator = ':',
-                              nstring subfolder = nstring.init) 
-{
+                              nstring subfolder = nstring.init) {
     // Note: relative path are filtered out, as per XDG spec:
     // 
     // "All paths set in these environment variables must be absolute. 
@@ -666,20 +594,16 @@ vector!Path pathsFromEnvValue(const(nstring) envValue,
 
     vector!Path result;
     int lastSep = -1;
-    for (int n = 0; n <= cast(int)envValue.length; ++n)
-    {
+    for (int n = 0; n <= cast(int)envValue.length; ++n) {
         char ch = (n == envValue.length) ? separator : envValue[n];
         bool issep = (ch == separator);
-        if (issep)
-        {
+        if (issep) {
             int start = lastSep + 1;
             int stop  = n;
-            if (stop > start)
-            {
+            if (stop > start) {
                 Path path = Path(envValue[start..stop]);
                 path = (path / subfolder).lexicallyNormal;
-                if (result.find(path) == -1)
-                {
+                if (result.find(path) == -1) {
                     // only append to results if absolute
                     if (path.isAbsolute())
                         result ~= path;
@@ -691,17 +615,13 @@ vector!Path pathsFromEnvValue(const(nstring) envValue,
     return result;
 }
 
-version(Windows)
-{
-    align(1) struct FS_REPARSE_DATA_BUFFER 
-    {
+version(Windows) {
+    align(1) struct FS_REPARSE_DATA_BUFFER {
         ULONG  ReparseTag;
         USHORT ReparseDataLength;
         USHORT Reserved;
-        union 
-        {
-            align(1) static struct SymbolicLinkReparseBuffer_t
-            {
+        union {
+            align(1) static struct SymbolicLinkReparseBuffer_t {
                 USHORT SubstituteNameOffset;
                 USHORT SubstituteNameLength;
                 USHORT PrintNameOffset;
@@ -710,8 +630,7 @@ version(Windows)
                 WCHAR[1]  PathBuffer;
             } 
 
-            align(1) static struct MountPointReparseBuffer_t
-            {
+            align(1) static struct MountPointReparseBuffer_t {
                 USHORT SubstituteNameOffset;
                 USHORT SubstituteNameLength;
                 USHORT PrintNameOffset;
@@ -725,10 +644,8 @@ version(Windows)
     }
 }
 
-Path resolveSymlink(Path p)
-{
-    version(Windows)
-    {
+Path resolveSymlink(Path p) {
+    version(Windows) {
         vector!ubyte vReparse = getReparseData(p);
         auto reparse = cast(FS_REPARSE_DATA_BUFFER*) vReparse.ptr;
 
@@ -740,8 +657,7 @@ Path resolveSymlink(Path p)
         wchar* parseBuf, printPtr, substPtr;
         size_t printOfs, printLen, substOfs, substLen;
 
-        if (reparse.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
-        {
+        if (reparse.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT) {
             parseBuf = reparse.MountPoint.PathBuffer.ptr;
             printOfs = reparse.MountPoint.PrintNameOffset / 2;
             printLen = reparse.MountPoint.PrintNameLength / 2;
@@ -752,8 +668,7 @@ Path resolveSymlink(Path p)
             substPtr = &parseBuf[substOfs];
             substName = nwstring(substPtr[0..substLen]);
         }
-        else if (reparse.ReparseTag == IO_REPARSE_TAG_SYMLINK)
-        {
+        else if (reparse.ReparseTag == IO_REPARSE_TAG_SYMLINK) {
             parseBuf = reparse.SymbolicLink.PathBuffer.ptr;
             printOfs = reparse.SymbolicLink.PrintNameOffset / 2;
             printLen = reparse.SymbolicLink.PrintNameLength / 2;
@@ -768,8 +683,7 @@ Path resolveSymlink(Path p)
             assert(0);
         Path result;
         // Strip the weird \??\ prefix.
-        if (startsWith(substName, nwstring(`\??\`w)))
-        {
+        if (startsWith(substName, nwstring(`\??\`w))) {
             substName = substName[4..$];
         }
         result = Path(substName.toUTF8());
@@ -779,19 +693,16 @@ Path resolveSymlink(Path p)
 
         return result;
     }
-    else version(Posix)
-    {
+    else version(Posix) {
         size_t bSz = 256;
         ptrdiff_t bytes;
-        while (bSz <= 1024 * 1024) 
-        {
+        while (bSz <= 1024 * 1024) {
             vector!char linkbuf;
             linkbuf.resize(bSz);            
             bytes = punistd.readlink(p.native.ptr, linkbuf.ptr, bSz);
             if (bytes < 0)
                 throwIO(kStrErrSymlinkRead);
-            else if (bytes < bSz)
-            {
+            else if (bytes < bSz) {
                 return Path(linkbuf[0..bytes]);
             }
             else
@@ -803,14 +714,12 @@ Path resolveSymlink(Path p)
         static assert(0);
 }
 
-version(Windows)
-{
+version(Windows) {
     // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number 
     // of additional bytes.
     // We return a ubyte buffer to be read as a `REPARSE_DATA_BUFFER`.
     // Throws: `FileSystemException`.
-    vector!ubyte getReparseData(Path p)
-    {
+    vector!ubyte getReparseData(Path p) {
         DWORD shareFlags = FILE_SHARE_READ 
                          | FILE_SHARE_WRITE 
                          | FILE_SHARE_DELETE;
@@ -829,13 +738,11 @@ version(Windows)
         ULONG bufferUsed;
         if (DeviceIoControl(file, FSCTL_GET_REPARSE_POINT, null, 0, 
             r.ptr, MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &bufferUsed, 
-            null)) 
-        {
+            null)) {
             r.resize(bufferUsed);
             return r;
         }
-        else
-        {
+        else {
             r.resize(0);
             throwIO(kStrErrSymlinkRead);
         }

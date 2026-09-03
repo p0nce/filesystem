@@ -30,13 +30,11 @@ import numem.lifetime;
 /**
     The one type of exception thrown by this package.
 */
-class FileSystemException : NuException 
-{
+class FileSystemException : NuException {
 @nogc:
 
     this(const(char)[] msg, Throwable nextInChain = null, 
-        string file = __FILE__, size_t line = __LINE__) 
-    {
+        string file = __FILE__, size_t line = __LINE__) {
         super(msg, nextInChain, file, line);
     }
 }
@@ -44,12 +42,10 @@ class FileSystemException : NuException
 /**
     Specific exception type when a file isn't found.
 */
-class FileNotFoundException : FileSystemException 
-{
+class FileNotFoundException : FileSystemException {
 @nogc:
     this(const(char)[] path, Throwable nextInChain = null, 
-        string file = __FILE__, size_t line = __LINE__)
-    {
+        string file = __FILE__, size_t line = __LINE__) {
         size_t P = path.length;
         size_t L = kStrFileNotFound.length;
         char[] msg;
@@ -70,13 +66,11 @@ class FileNotFoundException : FileSystemException
     can always be treated as `FileSystemException`. It's more to have
     the right error message.
 */
-class InvalidPathException : FileSystemException 
-{
+class InvalidPathException : FileSystemException {
 @nogc:
 
     this(const(char)[] path, Throwable nextInChain = null, 
-        string file = __FILE__, size_t line = __LINE__) 
-    {
+        string file = __FILE__, size_t line = __LINE__) {
         size_t P = path.length;
         size_t L = kStrInvalidPath.length;
         char[] msg;
@@ -103,8 +97,7 @@ alias FileTime = long;
 
     eg: A directory is a file of type `FileType.directory`.
 */
-enum FileType
-{
+enum FileType {
     regular,   /// A regular file.
     directory, /// A directory.
     symlink,   /// A symbolic link.
@@ -124,8 +117,7 @@ enum FileType
 
     See_also: `status`, `symlinkStatus`.
 */
-struct FileStatus
-{
+struct FileStatus {
     /// Type of the file.
     FileType type;          
 
@@ -145,8 +137,8 @@ struct FileStatus
     file permissions (as reported by `FileStatus`) are a 
     combination of some of the following bits: 
 */
-enum FilePerms : int
-{
+enum FilePerms : int {
+
     /// No permission bits are set.
     none       = 0,
 
@@ -194,8 +186,8 @@ enum FilePerms : int
 }
 
 
-enum PermOptions : int
-{
+enum PermOptions : int {
+
     // Bit 0-1 = mode
     /// Replace by the argument to `permissions()` (default behavior).
     replace   = 0,
@@ -216,8 +208,8 @@ enum PermOptions : int
 
     See_also: `copyFile`, `copy`.
 */
-enum CopyOptions : int 
-{
+enum CopyOptions : int {
+
     none = 0,                /// Default behaviour
 
     // Bits 0-1
@@ -276,8 +268,8 @@ enum CopyOptions : int
 
     See_also: `dirEntries`, `dirEntriesRecursive`.
 */ 
-enum DirectoryOptions
-{
+enum DirectoryOptions {
+
     /// (default) Skip directory symlinks, "permission denied" is an 
     /// error.
     none = 0,
@@ -301,8 +293,8 @@ enum DirectoryOptions
 
     See_also: `space()`.
 */
-struct SpaceInfo
-{
+struct SpaceInfo {
+
     /// Total size of the filesystem, in bytes.
     long capacity;
 
