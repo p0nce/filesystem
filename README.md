@@ -27,6 +27,7 @@ MIT + BSL-1.0.
 - File copy, rename, and removal.
 - Recursive directory creation, listing and deletion.
 - Disc usage information.
+- Get and set environment variables.
 - Getting standard paths, such as app data, XDG config (fork of 
   `standardpaths` and `xdgpaths` and `isfreedesktop`).
 
@@ -36,7 +37,6 @@ See the `std::filesystem` documentation here: https://en.cppreference.com/cpp/fi
 
 ## Bugs and limitations
 
-- This is **WIP**.
 - Windows UNC path, `\\?\` and `\\.\` root pathes aren't yet supported.
   Windows path can't exceed `MAX_PATH` yet.
 
