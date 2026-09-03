@@ -686,7 +686,9 @@ version(Darwin)
         NSURL URLForDirectory(NSSearchPathDirectory dir, NSSearchPathDomainMask domain, NSURL url, int shouldCreate, NSError* error) @selector("URLForDirectory:inDomain:appropriateForURL:create:error:");
     }
 
-    Path domainDir(NSSearchPathDirectory dir, NSSearchPathDomainMask domain, bool shouldCreate) nothrow @trusted
+    Path domainDir(NSSearchPathDirectory dir, 
+                   NSSearchPathDomainMask domain, 
+                   bool shouldCreate = false) nothrow @trusted
     {
         try 
         {
