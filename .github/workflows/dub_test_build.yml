@@ -95,12 +95,12 @@ jobs:
     - name: 'Attempting ${{ env.DUB_BUILD_CFG_NAME }} build...'
       working-directory: '${{ inputs.repo }}'
       run: |
-        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=debug
-        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=release
+        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=debug -- -t 1
+        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=release -- -t 1
       
     - name: 'Attempting to run tests...'
       working-directory: '${{ inputs.repo }}'
       if: ${{ inputs.run_tests }}
       run: |
-        dub test ${{ env.DUB_BUILD_CFG_FLAG }} --build=debug
-        dub test ${{ env.DUB_BUILD_CFG_FLAG }} --build=release
+        dub test ${{ env.DUB_BUILD_CFG_FLAG }} --build=debug -- -t 1
+        dub test ${{ env.DUB_BUILD_CFG_FLAG }} --build=release -- -t 1

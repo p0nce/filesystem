@@ -64,8 +64,8 @@ jobs:
       run: |
         for i in `seq 1 10`
         do
-          dub test --config=unittest
-          dub test --config=unittest --build=release
+          dub test --config=unittest -- -t 1
+          dub test --config=unittest --build=release -- -t 1
         done
   
   test_build:
