@@ -437,19 +437,19 @@ vector!Path standardPaths(StandardPath type) @safe
     {
         switch(type) {
             case StandardPath.data:
-                common = xdgAllDataDirs();
+                commonPaths = xdgAllDataDirs();
                 break;
             case StandardPath.config:
-                common = xdgAllConfigDirs();
+                commonPaths = xdgAllConfigDirs();
                 break;
             case StandardPath.applications:
-                common = xdgAllDataDirs("applications");
+                commonPaths = xdgAllDataDirs("applications");
                 break;
             case StandardPath.startup:
-                common = xdgAllConfigDirs("autostart");
+                commonPaths = xdgAllConfigDirs("autostart");
                 break;
             case StandardPath.fonts:
-                common = fontPaths();
+                commonPaths = fontPaths();
                 break;
             default:
                 break;
