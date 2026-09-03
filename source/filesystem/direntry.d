@@ -88,9 +88,7 @@ class DirectoryRange
             p = Path to a directory.
             options = Options modifier for traversal.
 
-        Throws: `FileSystemIOException`, 
-                `FileNotFoundException`,
-                `InvalidPathException`.
+        Throws: `FileSystemException`,  `FileNotFoundException`.
     */
     this(Path p, DirectoryOptions options = DirectoryOptions.none)
     {       

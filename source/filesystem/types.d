@@ -1,5 +1,5 @@
 /**
-    All the non-structured types that are part of the API.
+    Types that are part of the`API.
 
     Copyright: Guillaume Piolat 2026.
     License: MIT (https://mit-license.org/)
@@ -11,29 +11,82 @@ import filesystem.internals;
 public import numem.core.exception;
 import numem.lifetime;
 
+/*
+    Here are the exceptions that the `filesystem` package can throw:
 
-version(OSX) {
-    enum isFreedesktop = false;
-} else version(Android) {
-    enum isFreedesktop = false;
-} else version(linux) {
-    enum isFreedesktop = true;
-} else version(FreeBSD) {
-    enum isFreedesktop = true;
-} else version(OpenBSD) {
-    enum isFreedesktop = true;
-} else version(NetBSD) {
-    enum isFreedesktop = true;
-} else version(DragonFlyBSD) {
-    enum isFreedesktop = true;
-} else version(BSD) {
-    enum isFreedesktop = true;
-} else version(Hurd) {
-    enum isFreedesktop = true;
-} else version(Solaris) {
-    enum isFreedesktop = true;
-} else {
-    enum isFreedesktop = false;
+    FileSystemException (any I/O and API usage error)
+          |
+          |
+          |----- InvalidPathException  (a path is deemed invalid)
+          |
+           ----- FileNotFoundException (a file is not found)
+
+    The only exception that need some special user treatment is 
+    `FileNotFoundException`, otherwise there is little reason to 
+    catch `InvalidPathException` since it's indistinguishable from an
+    I/O error.
+*/
+
+/**
+    The one type of exception thrown by this package.
+*/
+class FileSystemException : NuException 
+{
+@nogc:
+
+    this(const(char)[] msg, Throwable nextInChain = null, 
+        string file = __FILE__, size_t line = __LINE__) 
+    {
+        super(msg, nextInChain, file, line);
+    }
+}
+
+/**
+    Specific exception type when a file isn't found.
+*/
+class FileNotFoundException : FileSystemException 
+{
+@nogc:
+    this(const(char)[] path, Throwable nextInChain = null, 
+        string file = __FILE__, size_t line = __LINE__)
+    {
+        size_t P = path.length;
+        size_t L = kStrFileNotFound.length;
+        char[] msg;
+        msg.nu_resize(L+P+1);
+        msg[0..L] = kStrFileNotFound[];
+        msg[L..L+P] = path[];
+        msg[L+P] = '`';
+        scope(exit) msg.nu_resize(0);
+        super(msg, nextInChain, file, line);
+    }
+}
+
+/**
+    Specific exception type in case of invalid path.
+
+    Because there is little reason to ever catch this, it isn't 
+    specifically mentionned in function that throws these, as they
+    can always be treated as `FileSystemException`. It's more to have
+    the right error message.
+*/
+class InvalidPathException : FileSystemException 
+{
+@nogc:
+
+    this(const(char)[] path, Throwable nextInChain = null, 
+        string file = __FILE__, size_t line = __LINE__) 
+    {
+        size_t P = path.length;
+        size_t L = kStrInvalidPath.length;
+        char[] msg;
+        msg.nu_resize(L+P+1);
+        msg[0..L] = kStrInvalidPath[];
+        msg[L..L+P] = path[];
+        msg[L+P] = '`';
+        scope(exit) msg.nu_resize(0);
+        super(msg, nextInChain, file, line);
+    }
 }
 
 
@@ -59,7 +112,7 @@ enum FileType
     character, /// A character special file.
     fifo,      /// A FIFO (also knwon as pipe) file.
     socket,    /// A socket file.
-    unknown,   /// The file exists, but its type could not be determined.
+    unknown,   /// File exists, but its type could not be determined.
 }
 
 
@@ -73,10 +126,17 @@ enum FileType
 */
 struct FileStatus
 {
-    FileType type;          /// Type of the file.
-    long sizeBytes;         /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
-    FilePerms permissions;  /// Permissions of the file.    
-    FileTime lastWriteTime; /// In UNIX epoch.
+    /// Type of the file.
+    FileType type;          
+
+    /// File size, must be >= 0 && <= MAXIMUM_FILE_SIZE.
+    long sizeBytes;         
+
+    /// Permissions of the file.    
+    FilePerms permissions;
+
+    /// Last write time, in UNIX epoch.
+    FileTime lastWriteTime; 
 }
 
 
@@ -87,32 +147,50 @@ struct FileStatus
 */
 enum FilePerms : int
 {
-    none       = 0,     /// No permission bits are set.
+    /// No permission bits are set.
+    none       = 0,
 
-    ownerRead  = 0x100,  /// File owner has read permission.
-    ownerWrite = 0x080,  /// File owner has write permission.
-    ownerExec  = 0x040,  /// File owner has execute/search permission.
-    ownerAll   = 0x1C0,  /// File owner has read, write, and execute/search permissions.
+    /// File owner has read permission.
+    ownerRead  = 0x100,
+    /// File owner has write permission.
+    ownerWrite = 0x080,
+    /// File owner has execute/search permission.
+    ownerExec  = 0x040,
+    /// File owner has read, write, and execute/search permissions.
+    ownerAll   = 0x1C0,
 
-    groupRead  = 0x20,   /// The file's user group has read permission.
-    groupWead  = 0x10,   /// The file's user group has write permission.
-    groupExec  = 0x08,   /// The file's user group has execute/search permission.
-    groupAll   = 0x38,   /// The file's user group has read, write, and execute/search permissions.
+    /// User group has read permission.
+    groupRead  = 0x20,
+    /// User group has write permission.
+    groupWead  = 0x10,
+    /// User group has execute/search permission.
+    groupExec  = 0x08,
+    /// User group has read, write, and execute/search permissions.
+    groupAll   = 0x38,
 
-    othersRead = 0x04,   /// Other users have read permission.
-    othersWead = 0x02,   /// Other users have write permission.
-    othersExec = 0x01,   /// Other users have execute/search permission.
-    othersAll  = 0x07,   /// Other users have read, write, and execute/search permissions.
+    /// Other users have read permission.
+    othersRead = 0x04,
+    /// Other users have write permission.
+    othersWead = 0x02,
+    /// Other users have execute/search permission.
+    othersExec = 0x01,
+    /// Other users have read, write, and execute/search permissions.
+    othersAll  = 0x07,
 
-    all        = 0x1FF,  /// All users have read, write, and execute/search permissions.
+    /// All users have read, write, and execute/search permissions.
+    all        = 0x1FF,
 
-    setUid     = 0x800, /// Set user ID to file owner user ID on execution.
-    setGid     = 0x400, /// Set group ID to file's user group ID on execution.
-    stickyBit  = 0x200, /// Implementation-defined meaning.
+    /// Set user ID to file owner user ID on execution.
+    setUid     = 0x800,
+    /// Set group ID to file's user group ID on execution.
+    setGid     = 0x400,
+    /// Implementation-defined meaning.
+    stickyBit  = 0x200,
 
-    mask       = 0xFFF, /// All valid permission bits. 
-
-    invalid    = 0x1000 /// An invalid sentinel value. 
+    /// All valid permission bits. 
+    mask       = 0xFFF,
+    /// An invalid sentinel value, used internally.
+    invalid    = 0x1000 
 }
 
 
@@ -133,76 +211,93 @@ enum PermOptions : int
 }
 
 
-/// All the options the copying functions support.
+/**
+    All the options the copying functions support.
+
+    See_also: `copyFile`, `copy`.
+*/
 enum CopyOptions : int 
 {
     none = 0,                /// Default behaviour
 
-    // Options controlling `copy_file()` when the 
-    // file already exists 
     // Bits 0-1
-    reportAnError     = 0,   /// Default behaviour.
-    skipExisting      = 1,   /// Keep the existing file, without reporting an error. 
-    overwriteExisting = 2,   /// Replace the existing file. 
-    updateExisting    = 3,   /// Replace the existing file only if it is older than the file being copied.
+    // Options controlling `copy_file()` when the file already exists.
 
-    // Options controlling the effects of `copy()`
-    // on subdirectories
+    /// Report an error (default)
+    reportAnError      = 0,
+    /// Keep the existing file, without reporting an error.
+    skipExisting       = 1,
+    /// Replace the existing file.
+    overwriteExisting  = 2,
+    /// Replace the existing file only if it is older than the file 
+    /// being copied.
+    updateExisting     = 3,
+
     // Bit 2
-    skipSubDirectories = 0,  /// Skip sub-directories (default behaviour).
-    recursive          = 4,  /// Recursively copy subdirectories and their content. 
+    // Options controlling the effects of `copy()` on subdirectories.
 
+    /// Skip sub-directories (default).
+    skipSubDirectories = 0,
+    /// Recursively copy subdirectories and their content.
+    recursive          = 4,
+
+    // Bits 3-4
     // Options controlling the effects of `copy()` on symbolic links.
-    // Bit 3-4
-    followSymlinks     = 0,  /// Follow symlinks (default behaviour)
-    copySymlinks       = 8,  /// Copy symlinks as symlinks, not as the files they point to. 
-    ignoreSymlinks     = 16, /// Ignore symlinks.
 
-    // Options controlling the kind of copying copy() does .
-    copyFileContent    = 0,  /// Copy file content (default behavior). 
-    directoriesOnly    = 32, /// Copy the directory structure, but do not copy any non-directory files. 
-    createSymlinks     = 64, /// Instead of creating copies of files, create symlinks pointing to the originals. Note: the source path must be an absolute path unless the destination path is in the current directory. 
-    
+    /// Follow symlinks (default)
+    followSymlinks     = 0,
+    /// Copy symlinks as symlinks, not as the files they point to.
+    copySymlinks       = 8,
+    /// Ignore symlinks.
+    ignoreSymlinks     = 16,
 
-    // Left unsupported. I don't see why anyone would want that.
-    //createHardLinks    = 96  /// Instead of creating copies of files, create hardlinks that resolve to the same files as the originals.
+    // Bits 5-6
+    // Options controlling the kind of copying copy() does.
 
+    /// Copy file content (default).
+    copyFileContent    = 0,
+    /// Copy the directory structure, but do not copy any
+    /// non-directory files.
+    directoriesOnly    = 32,
+    /// Instead of creating copies of files, create symlinks pointing
+    /// to the originals. Note: the source path must be an absolute
+    /// path unless the destination path is in the current directory.
+    createSymlinks     = 64, 
 
-    inRecursiveCopy     = 128
+    // internal use
+    inRecursiveCopy    = 256
 }
 
 
 /**
-    This type represents available options that control the behavior 
-    of the `DirectoryRange` and `RecursiveDirectoryRange`.
-
+    This type represents available options that control the behavior
+    of the `dirEntries` and `dirEntriesRecursive` calls.
     These options can combine as a bitmask.
+
+    See_also: `dirEntries`, `dirEntriesRecursive`.
 */ 
 enum DirectoryOptions
 {
     /// (default) Skip directory symlinks, "permission denied" is an 
     /// error.
-    none = 0, 
+    none = 0,
 
     /// Follow rather than skip directory symlinks.
     followDirectorySymlink = 1,
 
-    /// Skip directories that would otherwise result in "permission 
+    /// Skip directories that would otherwise result in "permission
     /// denied" errors.
     skipPermissionDenied   = 2,
 
-    /// Spans the directory in depth-first post-order, i.e. the content 
-    /// of any subdirectory is spanned before that subdirectory itself. 
+    /// Spans directory in depth-first post-order, i.e. the content 
+    /// of any subdirectory is spanned before subdirectory itself. 
     /// Useful e.g. when recursively deleting files.
-    ///
-    /// When not present, the order is instead breadth first pre-order:
-    /// visit the current node, then their children.
     spanDepthFirst         = 4
 }
 
 
 /**
-    Represents the filesystem information as determined by `space()`. 
+    Represents the filesystem information as determined by `space()`.
 
     See_also: `space()`.
 */
@@ -213,84 +308,13 @@ struct SpaceInfo
 
     /// Free space on the filesystem, in bytes.
     ///
-    /// Warning: As it's not the space available to the caller, there 
+    /// Warning: As it's not the space available to the caller, there
     /// is little reason to use that normally.
     long freeTheoretical;
 
-    /// Free space available to a non-privileged process (may be equal 
-    /// or less than free).
+    /// Free space available to a non-privileged process, in bytes
+    /// (may be equal or less than free).
     long available;
 }
 
 
-/**
-    The one type of exception thrown by `filesystem` package.
-*/
-class FileSystemException : NuException 
-{
-@nogc:
-
-    this(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) 
-    {
-        super(msg, nextInChain, file, line);
-    }
-}
-
-
-/**
-    Specific exception type when a file isn't found.
-    Needed because fileNotFound is not representable 
-    in `FileType` in our version.
-
-    Catching this is often a way to get out of racey
-    situations, since by the times you've listed a 
-    directory contents, any of its file could have
-    disappeared. And using `exists()` is not a race-free
-    fix.
-*/
-class FileNotFoundException : FileSystemException 
-{
-@nogc:
-    this(const(char)[] path, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__)
-    {
-        size_t P = path.length;
-        size_t L = kStrFileNotFound.length;
-        char[] msg;
-        msg.nu_resize(L+P+1);
-        msg[0..L] = kStrFileNotFound[];
-        msg[L..L+P] = path[];
-        msg[L+P] = '`';
-        scope(exit) msg.nu_resize(0);
-        super(msg, nextInChain, file, line);
-    }
-}
-
-
-/**
-    Specific exception type when a, I/O error is encountered.
-*/
-class FileSystemIOException : FileSystemException 
-{
-@nogc:
-
-    this(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) 
-    {
-        super(msg, nextInChain, file, line);
-    }
-}
-
-/**
-    Specific exception type in case of invalid path.
-    FUTURE: may merge with FileSystemIOException? It has
-    roughly the same effect, and it always lead to the
-    same treatment until now.
-*/
-class InvalidPathException : FileSystemException 
-{
-@nogc:
-
-    this(const(char)[] msg, Throwable nextInChain = null, string file = __FILE__, size_t line = __LINE__) 
-    {
-        super(msg, nextInChain, file, line);
-    }
-}

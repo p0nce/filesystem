@@ -1,24 +1,23 @@
 /**
-    Free functions like in `std::filesystem`.
+    Free functions like in `std::filesystem` + envvars.
 
     Non-member functions go here. There is quite a bit of 
     free functions in std::filesystem, see the reference:
     https://en.cppreference.com/cpp/filesystem
 
-    Copyright: Copyright (c) 2026, Guillaume Piolat <contact@auburnsounds.com>
-    Copyright: Copyright (c) 2018, Steffen Schümann <s.schuemann@pobox.com>
+    Copyright: Copyright (c) 2026 Guillaume Piolat
+    Copyright: Copyright (c) 2018 Steffen Schümann
 
     License: MIT (https://mit-license.org/)
 */
 module filesystem.freefunc;
 
-import nulib;
-import nulib.text.unicode;
-import nulib.memory;
-import nulib.collections.vector;
-import nulib.io.stream.file;
 import numem;
-
+import nulib;
+import nulib.memory;
+import nulib.text.unicode;
+import nulib.io.stream.file;
+import nulib.collections.vector;
 import filesystem.types;
 import filesystem.path;
 import filesystem.internals;
@@ -34,16 +33,21 @@ version(Windows)
 }
 else version(Posix)
 {
-    import punistd  = core.sys.posix.unistd;    // open, close...
-    import pfcntl   = core.sys.posix.fcntl;     // read, write...
-    import pstat    = core.sys.posix.sys.stat;  // stat...
+    import punistd  = core.sys.posix.unistd;
+    import pfcntl   = core.sys.posix.fcntl;
+    import pstat    = core.sys.posix.sys.stat;
     import pstatvfs = core.sys.posix.sys.statvfs;
-
-    import cerrno  = core.stdc.errno;
-    import cstdlib = core.stdc.stdlib;
-
-    import cstdio = core.stdc.stdio: remove, rename;
+    import pstdlib  = core.sys.posix.stdlib;
+    import cerrno   = core.stdc.errno;
+    import cstdlib  = core.stdc.stdlib;
+    import cstdio   = core.stdc.stdio: remove, rename;
 }
+
+
+// Note: Left unimplemented: `create_hard_link` and `hard_link_count`
+// from `std::filesystem`.
+// The reason is that hardlink are very special-case, typically
+// allowed only to the super-user, cannot be used in FAT, etc.
 
 
 /**
@@ -53,7 +57,7 @@ else version(Posix)
     Warning: this isn't thread-safe, as any other thread
     could modify this process' current directory.
 
-    May throw `FilesystemException` if an error occurs.
+    Throws: `FileSystemException`.
 */
 Path absolute(Path p)
 {
@@ -73,8 +77,7 @@ Path absolute(const(char)[] p)
     function behaves as if it is first made absolute by `absolute(p)`. 
     The path `p` must exist.
 
-    Throws: `InvalidPathException`, `FileSystemIOException`,
-            `FileNotFoundException`.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 Path canonical(Path p)
 {
@@ -144,7 +147,7 @@ Path canonical(Path p)
     that exist, and `y` is a path composed of the remaining trailing 
     non-existent elements of `p`.
 
-    Throws: `InvalidPathException`, `FileSystemIOException`.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 Path weaklyCanonical(Path p)
 {
@@ -178,6 +181,8 @@ Path weaklyCanonical(Path p)
     Returns p made relative to base. Resolves symlinks and normalizes 
     both p and base before other processing. 
     Neither `p` nor `base` need exist.
+
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 Path relative(Path p, Path base = currentPath())
     => weaklyCanonical(p).lexicallyRelative(weaklyCanonical(base));
@@ -190,7 +195,9 @@ Path proximate(Path p, Path base = currentPath())
     Copies files and directories, with a variety of options.
 
     BUG: very probably buggy, at the very least non-recursive copy
-    looks shady.
+    looks shady. Insufficient testing.
+
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 void copy(Path from, Path to, CopyOptions options)
 {
@@ -253,8 +260,8 @@ void copy(Path from, Path to, CopyOptions options)
             // "the source path must be an absolute path unless 
             // the destination path is in the current directory."
             //
-            // Like gulrak implementation we'll just ignore this strange
-            // second sentence.
+            // Like Steffen's implementation, we'll just ignore this 
+            // strange second sentence.
             Path absFrom = from.isAbsolute() ? from : canonical(from);
             createSymlink(from, to);
         }
@@ -292,6 +299,8 @@ void copy(Path from, Path to, CopyOptions options)
 /**
     Copies a single file from from to to, using the copy options 
     indicated by options.
+
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 bool copyFile(Path from, Path to, 
               CopyOptions options = CopyOptions.none)
@@ -435,10 +444,7 @@ bool copyFile(Path from, Path to,
 /**
     Copies a symlink to another location.
 
-    Throws:
-        FileSystemIOException on I/O error.
-        InvalidPathException on invalid path.
-        FileNotFoundException if not existing.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 void copySymlink(Path existingSymlink, Path newSymlink)
 {
@@ -461,15 +467,14 @@ void copySymlink(Path existingSymlink, Path newSymlink)
     Params:
         pathToDir   = Path to the directory to create.
         templateDir = Existing directory to get attributes/permissions 
-                      from. This is ignored if `perms` is valid.
+                      from. Must exists or be empty.
+                      This is ignored if `perms` is valid.
         perms       = Permissions to create the directory with.
                       (POSIX-only) 
 
     Returns: `true` if created, `false` if already existing.
     
-    Throws: `FileSystemIOException`, 
-            `FileNotFoundException`, 
-            `InvalidPathException`.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 bool createDirectory(Path pathToDir, 
                      Path templateDir = Path.init,
@@ -484,7 +489,7 @@ bool createDirectory(Path pathToDir,
     }
     catch(FileNotFoundException e)
     {
-        e.free();
+        e.freeNoThrow();
     }
 
     // Doesn't yet exist, proceed to creation
@@ -534,9 +539,7 @@ bool createDirectory(Path pathToDir,
         nothing is thrown, path `p` is guaranteed to exist at the
         end of this function.
 
-    Throws: `FileSystemIOException`, 
-            `InvalidPathException`,
-            `FileNotFoundException`.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 
     Note: `std::filesystem` spec is remarkably bizarre about
     copying attributes from another directory here. That just
@@ -567,7 +570,7 @@ bool createDirectories(Path p,
             // A file exists with the same name, and is not
             // a directory? Error.
             if (!isDirectory(fs))
-                throwIO(kStrErrCreateDirFile);
+                throwIO(kStrErrCreateDirectory);
         }
         catch(FileNotFoundException e)
         {
@@ -594,6 +597,8 @@ bool createDirectories(Path p,
     `createDirectorySymlink to create directory symlinks rather than 
     `createSymlink`, even though there is no distinction on POSIX 
     systems. 
+
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 void createSymlink(Path target, Path linkname)
 {
@@ -612,7 +617,7 @@ void createDirectorySymlink(Path target, Path linkname)
     Warning: this isn't thread-safe, as any other thread
     could modify this process' current directory.
 
-    Throws: `FileSystemIOException` if an error occurs.
+    Throws: `FileSystemException`.
 */
 Path currentPath() /* pure */
 {
@@ -662,6 +667,8 @@ void setCurrentPath(Path p)
 
     Warning: this DirectoryRange should be free after iteration with
     `dirEntriesFree()`.
+
+    Throws: `FileSystemException`,  `FileNotFoundException`.
 */
 unique_ptr!DirectoryRange dirEntries(Path p, 
     DirectoryOptions opts = DirectoryOptions.none)
@@ -673,6 +680,8 @@ unique_ptr!DirectoryRange dirEntries(Path p,
 /**
     Returns: A recursive directory range to iterate over the files in
     this directory, and its sub-directories.
+
+    Throws: `FileSystemException`,  `FileNotFoundException`.
 */
 unique_ptr!RecursiveDirectoryRange dirEntriesRecursive(Path p, 
     DirectoryOptions opts = DirectoryOptions.none)
@@ -685,7 +694,7 @@ unique_ptr!RecursiveDirectoryRange dirEntriesRecursive(Path p,
     Checks if the given file status or path corresponds to an existing 
     file or directory. 
 
-    May throw: `InvalidPathException` and `FileSystemIOException`.
+    Throws: `FileSystemException`.
 */
 bool exists(Path p) // symlinks are followed here
 {
@@ -719,9 +728,7 @@ bool exists(Path p) // symlinks are followed here
 
     Returns: `true` if both path exists and are the same thing.
 
-    Throws: InvalidPathException, 
-            FileNotFoundException, 
-            FileSystemIOException.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 bool equivalent(Path p1, Path p2)
 {
@@ -779,7 +786,7 @@ bool equivalent(Path p1, Path p2)
     The result of attempting to determine the size of a directory is 
     implementation-defined.
 
-    Throws: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 long fileSize(Path p)
 {
@@ -792,6 +799,11 @@ long fileSize(Path p)
 
     `fileOpen` lets you choose the libc access mode (eg: "wb+"),
     while `fileOpenRead` and `fileOpenWrite` are for the common cases.
+
+    Throws: `NuException`, `FileSystemException`.
+
+    FUTURE: converts `NuException` from `FileStream` to 
+        `FileSystemException`.
 */
 unique_ptr!FileStream fileOpen(Path path, string accessMode = "rb")
 {
@@ -799,15 +811,12 @@ unique_ptr!FileStream fileOpen(Path path, string accessMode = "rb")
     return unique_new!FileStream(nativePath, accessMode);
 }
 ///ditto
-unique_ptr!FileStream fileOpenRead(Path path) => fileOpen(path, "rb");
+unique_ptr!FileStream fileOpenRead(Path path) 
+    => fileOpen(path, "rb");
 ///ditto
-unique_ptr!FileStream fileOpenWrite(Path path) => fileOpen(path, "wb");
+unique_ptr!FileStream fileOpenWrite(Path path) 
+    => fileOpen(path, "wb");
 
-
-// Note: Left unimplemented: create_hard_link and hard_link_count
-// from std::filesystem.
-// The reason is that hardlink are very special-case, typically
-// allowed only to the super-user, cannot be used in FAT, etc.
 
 
 /**
@@ -892,10 +901,7 @@ void permissions(Path p,
     object which refers to the target of that symbolic link.
     It is an error if p does not refer to a symbolic link.
 
-    Throws:
-        FileSystemIOException on I/O error.
-        InvalidPathException on invalid path.
-        FileNotFoundException if not existing.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 Path readSymlink(Path p)
 {
@@ -913,9 +919,7 @@ Path readSymlink(Path p)
 
     Returns: true if remove, false if doesn't exist.
 
-    Throws:
-        FileSystemIOException on I/O error.
-        InvalidPathException on invalid path.
+    Throws: `FileSystemException`.
 */
 bool remove(Path p)
 {
@@ -962,7 +966,6 @@ bool remove(Path p)
     }
     else version(Posix)
     {
-        // Warning: using libc here
         if (cstdio.remove(p.native().ptr) != 0)
         {
             int error = cerrno.errno;
@@ -992,10 +995,7 @@ bool remove(Path p)
     Returns: the number of files and directories that were deleted 
     (which may be zero if p did not exist to begin with).
 
-    Throws:
-        `FileSystemIOException`,
-        `InvalidPathException`,
-        `FileNotFoundException`
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 int removeAll(Path p)
 {
@@ -1035,9 +1035,7 @@ int removeAll(Path p)
 
     Returns: true on success.
 
-    Throws:
-        FileSystemIOException on I/O error or if `oldPath` doesn't exist.
-        InvalidPathException on invalid path.    
+    Throws: `FileSystemException`.
 */
 bool rename(Path oldPath, Path newPath)
 {
@@ -1070,9 +1068,9 @@ bool rename(Path oldPath, Path newPath)
     `truncate`: if the file size was previously larger than `newSize`, 
     the remainder of the file is discarded. If the file was previously 
     smaller than `newSize`, the file size is increased and the new 
-    area appears as if zero-filled. 
+    area appears as if zero-filled.
 
-    Throws: `FileSystemIOException`, `InvalidPathException`, `FileNotFoundException`.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 void resizeFile(Path p, long newSize)
 {
@@ -1113,7 +1111,7 @@ void resizeFile(Path p, long newSize)
     - `SpaceInfo.free` is set to `f_bfree * f_frsize`.
     - `SpaceInfo.available` is set to `f_bavail * f_frsize`.
 
-    Throws: `FileSystemIOException`, `InvalidPathException`.
+    Throws: `FileSystemException`.
 */
 SpaceInfo space(Path p)
 {
@@ -1160,7 +1158,10 @@ SpaceInfo space(Path p)
 
 
 /**
-    A directory suitable for temporary files. The path is guaranteed to exist and to be a directory. 
+    A directory suitable for temporary files. The path is guaranteed 
+    to exist and to be a directory.
+
+    Throws: `FileSystemException`.
 */
 Path tempDirectoryPath()
 {
@@ -1170,12 +1171,11 @@ Path tempDirectoryPath()
         DWORD rc = GetTempPathW(511, buffer.ptr);
         if (!rc || rc > 511)
             throwIO(kStrErrTempPath);
-    
         return Path(nwstring(buffer[0..rc]).toUTF8());
     }
     else version(Posix)
     {
-        static immutable string[4] TEMP_VARS = 
+        static immutable string[4] TEMP_VARS =
         [
             "TMPDIR", "TMP", "TEMP", "TEMPDIR"
         ];
@@ -1198,16 +1198,7 @@ Path tempDirectoryPath()
     identified by `path` as if by POSIX `lstat` (symlinks are 
     NOT followed to their targets).
 
-    Can throw:
-    - `FileNotFoundException`  => equivalent to C++'s file_type::not_found
-    - `InvalidPathException`   => equivalent to C++'s file_type::none
-    - `FileSystemIOException`  => equivalent to C++'s file_type::none
-
-    Note: unlike in C++, our version throw if there is no status
-        for the file. Typically:
-       - `InvalidPathException` is probably an issue in user code.
-       - `FileNotFoundException` might need special treatment.
-       - `FileSystemIOException` is a recoverable runtime error.
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 FileStatus status(Path path)
 {
@@ -1217,7 +1208,8 @@ FileStatus status(Path path)
         if (symStat.type == FileType.symlink)
         {
             Path target = resolveSymlink(path);
-            // FUTURE: protects against loops
+            
+            // FUTURE: protects against symlink loops
             return status(target); // recurse
         }
         else
@@ -1231,11 +1223,11 @@ FileStatus status(Path path)
 
 
 /*
-    Line `status`/`symlinkStatus` but return even if the file doesn't exist,
-    path is invalid, or I/O failed.
+    Line `status`/`symlinkStatus` but return even if the file doesn't 
+    exist, its path is invalid, or I/O failed.
 
-    Returns: true if no error occured. In this case, `st`
-        is meaningful.
+    Returns: true if no error occured. In this case, `st` is 
+        meaningful.
 */
 bool statusNothrow(Path p, out FileStatus st) nothrow
 {
@@ -1244,7 +1236,7 @@ bool statusNothrow(Path p, out FileStatus st) nothrow
         st = status(p);
         return true;
     }
-    catch(FileSystemException e) { e.freeNoThrow(); }
+    catch(NuException e) { e.freeNoThrow(); }
     catch(Exception e) { assert(0); }
     return false;
 }
@@ -1256,7 +1248,7 @@ bool symlinkStatusNothrow(Path p, out FileStatus st) nothrow
         st = symlinkStatus(p);
         return true;
     }
-    catch(FileSystemException e) { e.freeNoThrow(); }
+    catch(NuException e) { e.freeNoThrow(); }
     catch(Exception e) { assert(0); }
     return false;
 }
@@ -1267,10 +1259,7 @@ bool symlinkStatusNothrow(Path p, out FileStatus st) nothrow
     identified by `path` as if by POSIX `lstat` (symlinks are 
     NOT followed to their targets).
 
-    Can throw:
-    - `FileNotFoundException`  => equivalent to C++'s file_type::not_found
-    - `InvalidPathException`   => equivalent to C++'s file_type::none
-    - `FileSystemIOException`  => equivalent to C++'s file_type::none
+    Throws: `FileSystemException`, `FileNotFoundException`.
 */
 FileStatus symlinkStatus(Path path)
 {
@@ -1356,8 +1345,6 @@ bool isBlockFile(Path p) // symlinks are followed here
     special file, as if determined by POSIX `S_ISCHR`. Examples of 
     character special files are character devices such as `/dev/null`, 
     `/dev/tty`, `/dev/audio`, or `/dev/nvram` on Linux.
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isCharacterFile(FileStatus s) pure nothrow
     => s.type == FileType.character;
@@ -1390,6 +1377,10 @@ bool isDirectory(Path p) nothrow // symlinks are followed here
 /**
     Checks whether the given path refers to an empty file or 
     empty directory.
+
+    Throws: `FileSystemException`,  `FileNotFoundException`.
+
+    FUTURE: honestly doesn't seem fantastically useful.
 */
 bool isEmpty(Path p)
 {
@@ -1473,18 +1464,111 @@ bool isSocket(Path p) // symlinks are followed here
 
     This function is the only of its kind that doesn't follow 
     symlinks, for obvious reasons.
-
-    May throw: `FileNotFoundException`, `FileSystemIOException`, `InvalidPathException`.
 */
 bool isSymlink(FileStatus s) pure nothrow
     => s.type == FileType.symlink;
 ///ditto
-bool isSymlink(Path p)
+bool isSymlink(Path p) nothrow
 {
     FileStatus st;
     if (!symlinkStatusNothrow(p, st))
         return false;
     return isSymlink(st);
+}
+
+
+/** 
+    Get environment variable.
+*/
+nstring getEnvironmentVariable(nstring name) nothrow @trusted
+{
+    version(Posix)
+    {
+        const(char)* p = cstdlib.getenv(name.ptr);
+        if (p)
+            return nstring(p[0..nu_strlen(p)]);
+        else
+            return nstring.init;
+    }
+    else version(Windows)
+    {
+        nwstring name16;
+        try
+        {
+            name16 = toUTF16(name);
+        }
+        catch(NuException e)
+        {
+            e.freeNoThrow();
+            // if the name is invalid Unicode,
+            // this is a programming error
+            assert(0);
+        }
+        catch(Exception e)
+        {
+            assert(0);
+        }
+        enum int BUFSIZE = 16;
+        wchar[BUFSIZE] buf;
+        wchar[] outbuf;
+        DWORD res = GetEnvironmentVariableW(name16.ptr, buf.ptr, BUFSIZE);
+        if (res == 0)
+            return nstring.init;
+        else if (res <= BUFSIZE)
+            return toUTF8OrEmpty(nwstring(buf[0..res]));
+        else
+        {
+            wchar[] buf2;
+            buf2.nu_resize(res + 1);
+            scope(exit) buf2.nu_resize(0);
+            res = GetEnvironmentVariableW(name16.ptr, buf2.ptr, res + 1);
+            return toUTF8OrEmpty(nwstring(buf2[0..res]));            
+        }
+    }
+    else
+        static assert(0);
+}
+///ditto
+nstring getEnvironmentVariable(const(char)[] name) nothrow @trusted
+{
+    return getEnvironmentVariable(nstring(name));
+}
+
+
+/**
+    Set environment variable.
+    
+    Params:
+        name = Name of envvar, MUST be valid Unicode.
+        value = Value of envvar, MUST be valid Unicode.
+                If value is the empty string, delete the variable 
+                instead.
+    
+    Returns: true if successful.
+*/
+bool setEnvironmentVariable(nstring name, nstring value) 
+    nothrow @trusted
+{
+    version(Posix)
+    {
+        int overwrite = 1;
+        int r;
+        if (value.empty)
+            r = pstdlib.unsetenv(name.ptr);
+        else   
+            r = pstdlib.setenv(name.ptr, value.ptr, overwrite);
+        return r == 0;
+    }
+    else version(Windows)
+    {
+        nwstring name16 = toUTF16OrCrash(name);
+        if (value.empty)
+            return SetEnvironmentVariableW(name16.ptr, null) != 0;
+        nwstring value16 = toUTF16OrCrash(value);
+        return SetEnvironmentVariableW(name16.ptr, value16.ptr) != 0;
+    }
+    else
+        static assert(0);
 }
 
 
@@ -1524,13 +1608,14 @@ FileStatus symlinkStatusExists(Path p, out bool exists)
     }
     catch(FileNotFoundException e)
     {
-        e.free();
+        e.freeNoThrow();
         exists = false;
         st = FileStatus.init;
     }
     return st;
 }
 
+/// Throws: `FileSystemException`, `FileNotFoundException`.
 void createSymlinkImpl(Path target, Path linkname, bool toDir)
 {
     // If target is a relative path, it is with current working

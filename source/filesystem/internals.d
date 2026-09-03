@@ -29,13 +29,38 @@ version(Windows)
 else version(Posix)
 {
     import punistd  = core.sys.posix.unistd;
-    import pstdlib = core.sys.posix.stdlib;
     import pstat   = core.sys.posix.sys.stat;
     import cerrno  = core.stdc.errno;
     import cstdlib = core.stdc.stdlib;
 }
 
+
 @nogc:
+
+// the `isFreeDesktop` constant
+version(OSX) {
+    enum isFreedesktop = false;
+} else version(Android) {
+    enum isFreedesktop = false;
+} else version(linux) {
+    enum isFreedesktop = true;
+} else version(FreeBSD) {
+    enum isFreedesktop = true;
+} else version(OpenBSD) {
+    enum isFreedesktop = true;
+} else version(NetBSD) {
+    enum isFreedesktop = true;
+} else version(DragonFlyBSD) {
+    enum isFreedesktop = true;
+} else version(BSD) {
+    enum isFreedesktop = true;
+} else version(Hurd) {
+    enum isFreedesktop = true;
+} else version(Solaris) {
+    enum isFreedesktop = true;
+} else {
+    enum isFreedesktop = false;
+}
 
 /**
     Above that size, we consider the file can't possibly
@@ -46,18 +71,17 @@ enum ulong MAXIMUM_FILE_SIZE = long.max;
 // Pool of error messages, to save a bit of codegen.
 static immutable string 
     kStrFileNotFound       = "File not found: `",
-    kStrInvalidPath        = "Invalid path",
+    kStrInvalidPath        = "Invalid path: `",
     kStrFileAttributes     = "Can't get file attributes",
     kStrFileFullPath       = "Can't get file full path",
     kStrInvalidFileSize    = "Invalid file size",
     kStrDeepFuture         = "You've reached the deep future",
     kStrErrCreateDirectory = "Can't create directory",    
-    kStrErrCreateDirFile   = "Can't create directory because a file with the same name exists",
     kStrErrRemoveFileDir   = "Can't remove file or directory",
     kStrErrRenameFileDir   = "Can't rename file or directory",
-    kStrErrCopyFileNonReg  = "copyFile source is not a regular file or doesn't exist",
-    kStrErrCopyDestNonReg  = "copyFile destination is not a regular file",
-    kStrErrCopyDestExists  = "copyFile destination already exists",
+    kStrErrCopyFileNonReg  = "File copy source is not a regular file",
+    kStrErrCopyDestNonReg  = "File copy target is not a regular file",
+    kStrErrCopyDestExists  = "File copy target already exists",
     kStrErrFileCopyFailed  = "File copy failed",
     kStrErrOpenFileFailed  = "Can't open file",
     kStrErrFileReadFailed  = "File read failed",
@@ -67,20 +91,18 @@ static immutable string
     kStrErrInvalidArg      = "Invalid argument",
     kStrErrCurrentPath     = "Can't get current path",
     kStrErrTempPath        = "Can't get temp path",
-    kStrErrCopySameFile    = "Source and destination are the same",
+    kStrErrCopySameFile    = "Source and target are the same",
     kStrErrMetadataAccess  = "Can't access file metadata",
     kStrPathIsEmptyNoAbs   = "Cannot make absolute path from empty",
     kStrErrFileSearch      = "File search failed",
     kStrErrFSAvailInfo     = "Can't get disc usage",
     kStrErrChdirFailed     = "Can't change current directory",
-    kStrErrUnrealDiscSize  = "Disc reports too large a size to be true",
+    kStrErrUnrealDiscSize  = "Disc reports too large a size",
     kStrErrNotSymlink      = "File is not a symlink",
     kStrErrSymlinkRead     = "Can't read symlink",
     kStrErrSymlinkCreate   = "Can't create symlink",
-    kStrErrCopyOther       = "Can only copy regular files, directories, and symlinks.",
+    kStrErrCopyOther       = "Cannot copy this type of file.",
     kStrErrNoCanonical     = "Path can't be made canonical";
-
-// Future: decide if we keep this file
 
 noreturn throwException(const(char)[] msg)
 {
@@ -94,103 +116,13 @@ noreturn throwFileNotFound(const(char)[] path)
 
 noreturn throwInvalidPath(const(char)[] path)
 {
-    // FUTURE: build proper exc message
-    throw nogc_new!InvalidPathException(kStrInvalidPath);
+    throw nogc_new!InvalidPathException(path);
 }
 
 noreturn throwIO(const(char)[] msg)
 {
-    throw nogc_new!FileSystemIOException(msg);
-}
-
-// Note: technically getenv and setenv do not belong
-// to the filesystem library, but well.
-
-/// Get environment variable.
-nstring getEnvironmentVariable(nstring name) nothrow @trusted
-{
-    version(Posix)
-    {
-        const(char)* p = cstdlib.getenv(name.ptr);
-        if (p)
-            return nstring(p[0..nu_strlen(p)]);
-        else
-            return nstring.init;
-    }
-    else version(Windows)
-    {
-        nwstring name16;
-        try
-        {
-            name16 = toUTF16(name);
-        }
-        catch(NuException e)
-        {
-            e.freeNoThrow();
-            // if the name is invalid Unicode,
-            // this is a programming error
-            assert(0);
-        }
-        catch(Exception e)
-        {
-            assert(0);
-        }
-        enum int BUFSIZE = 16;
-        wchar[BUFSIZE] buf;
-        wchar[] outbuf;
-        DWORD res = GetEnvironmentVariableW(name16.ptr, buf.ptr, BUFSIZE);
-        if (res == 0)
-            return nstring.init;
-        else if (res <= BUFSIZE)
-            return toUTF8OrEmpty(nwstring(buf[0..res]));
-        else
-        {
-            wchar[] buf2;
-            buf2.nu_resize(res + 1);
-            scope(exit) buf2.nu_resize(0);
-            res = GetEnvironmentVariableW(name16.ptr, buf2.ptr, res + 1);
-            return toUTF8OrEmpty(nwstring(buf2[0..res]));            
-        }
-    }
-    else
-        static assert(0);
-}
-///ditto
-nstring getEnvironmentVariable(const(char)[] name) nothrow @trusted
-{
-    return getEnvironmentVariable(nstring(name));
-}
-
-/// Set environment variable.
-///
-/// Params:
-///     name = Name of envvar, MUST be valid Unicode or this will crash.
-///     value = Value of envvar, MUST be valid Unicode or this will crash.
-///             If value is the empty string, delete the variable instead.
-///
-/// Returns: true if successful.
-bool setEnvironmentVariable(nstring name, nstring value) nothrow @trusted
-{
-    version(Posix)
-    {
-        int overwrite = 1;
-        int r;
-        if (value.empty)
-            r = pstdlib.unsetenv(name.ptr);
-        else   
-            r = pstdlib.setenv(name.ptr, value.ptr, overwrite);
-        return r == 0;
-    }
-    else version(Windows)
-    {
-        nwstring name16 = toUTF16OrCrash(name);
-        if (value.empty)
-            return SetEnvironmentVariableW(name16.ptr, null) != 0;
-        nwstring value16 = toUTF16OrCrash(value);
-        return SetEnvironmentVariableW(name16.ptr, value16.ptr) != 0;
-    }
-    else
-        static assert(0);
+    // simply throw the same exception
+    throw nogc_new!FileSystemException(msg);
 }
 
 size_t fs_strlen(const(char)* str) pure
@@ -296,16 +228,14 @@ nstring toUTF8OrEmpty(nwstring s) nothrow
     {
         e.freeNoThrow();
     }
-    catch(Exception e)
+    catch(Exception e) // TODO is this catch useful?
     {
-        
     }
     return nstring.init;
 }
 
 // Returns: true if path a == path b.
 // On Windows, compare with case-insensitive casing.
-// Reference: https://web.archive.org/web/20130528052217/http://blogs.msdn.com:80/b/michkap/archive/2005/10/17/481600.aspx
 bool equalsWithOSCaseSensitivity(nstring a, nstring b)
 {
     version(Windows)
@@ -337,7 +267,7 @@ bool equalsWithOSCaseSensitivity(nstring a, nstring b)
         assert(resA == la);
 
         DWORD resB = CharUpperBuffW(bufB.ptr, lb);
-        assert(resB == lb);        
+        assert(resB == lb);
 
         bool equal = bufA[] == bufB[];
 
@@ -362,16 +292,15 @@ version(Windows)
                 || err == ERROR_INVALID_DRIVE);
     }
 
-    void setFileSizeAndType(ref FileStatus r, 
+    void setFileSizeAndType(ref FileStatus r,
                             DWORD dwFileAttributes,
                             DWORD nFileSizeHigh,
                             DWORD nFileSizeLow)
     {
-
         if (dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
             r.type = FileType.directory;
-            r.sizeBytes = 0;                
+            r.sizeBytes = 0;
         }
         else
         {
@@ -405,16 +334,14 @@ version(Windows)
     // Note: it's safe to represent as signed, long lead us to 30848 
     // A.D for an issue with 64-bit overflow.
     //
-    // The Unix epoch (also called Unix time, POSIX time, or a Unix 
-    // timestamp) is the number of seconds since January 1, 1970, 
-    // 00:00:00 UTC, not counting leap seconds (ISO 8601: 
+    // The Unix epoch (also called Unix time, POSIX time, or a Unix
+    // timestamp) is the number of seconds since January 1, 1970,
+    // 00:00:00 UTC, not counting leap seconds (ISO 8601:
     // 1970-01-01T00:00:00Z). Again, no issue with 64-bit overflow.
-    //
-    // Reference: https://stackoverflow.com/questions/6161776/convert-windows-filetime-to-second-in-unix-linux
     long windowsTickToUnixSeconds(long winTicks) pure
     {
         // 1e7, because there 1e9 nanoseconds in second
-        enum long WINDOWS_TICK      = 10000000; 
+        enum long WINDOWS_TICK      = 10000000;
         enum long SEC_TO_UNIX_EPOCH = 11644473600L;
         return winTicks / WINDOWS_TICK - SEC_TO_UNIX_EPOCH;
     }
@@ -422,7 +349,7 @@ version(Windows)
 
 version(Posix)
 {
-    //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException
+    //  Throws: `FileSystemException`, `FileNotFoundException`
     void posix_stat(Path p, pstat.stat_t* buf, bool followIfSymlink)
     {
         FileStatus r;
@@ -444,7 +371,7 @@ version(Posix)
         }
     }
 
-    //  Throws: InvalidPathException, FileNotFoundException, FileSystemIOException.
+    //  Throws: `FileSystemException`, `FileNotFoundException`.
     FileStatus posix_statusFromPath(Path p, bool followIfSymlink)
     {
         pstat.stat_t buf;
@@ -452,11 +379,11 @@ version(Posix)
         return statusFromPosixStat(buf);
     }
 
-    // Throws: FileSystemIOException.
+    // Throws: `FileSystemException`.
     FileStatus statusFromPosixStat(ref pstat.stat_t buf)
     {
         FileStatus r;
-        r.permissions = cast(FilePerms) (buf.st_mode & FilePerms.mask);
+        r.permissions = cast(FilePerms)(buf.st_mode & FilePerms.mask);
         switch(buf.st_mode & pstat.S_IFMT)
         {
             case pstat.S_IFREG:  r.type = FileType.regular; break;
@@ -515,12 +442,12 @@ bool ensureExists(Path dir, FilePerms perms) nothrow
         createDirectories(dir, Path.init, perms);
         return true;
     } 
-    catch(NuException e) 
+    catch(NuException e)
     {
         e.freeNoThrow();
         return false;
     }
-    catch(Exception e) 
+    catch(Exception e)
     {
         return false;
     }
@@ -570,10 +497,8 @@ public:
             return false;
         }
 
-        buf.resize(0); // clear content
-
+        buf.resize(0);
         int lineLen = 0;
-
         while (true)
         {
             char ch;
@@ -595,7 +520,9 @@ public:
                 {
                     if (state == State.seenCR)
                     {
-                        undo(); // Seen a stray \r, remove one of lookahead and line is complete
+                        // Seen a stray \r, remove one char of 
+                        // lookahead, line is complete
+                        undo();
                         state = State.regular;
                         break;
                     }
@@ -620,7 +547,8 @@ public:
         else
         {
             outLine = null;
-            return true; // note: unclear whether to return this final "" here
+            // Note: unclear whether to return this final "" here
+            return true; 
         }
     }
 
@@ -696,17 +624,14 @@ Path getFromDefaultDirs(const(char)[] key, Path home, Path confpath)
 }
 
 vector!Path pathsFromEnvValue(const(nstring) envValue, 
-                                  char separator = ':',
-                                  nstring subfolder = nstring.init) /* nothrow */
+                              char separator = ':',
+                              nstring subfolder = nstring.init) 
 {
     // Note: relative path are filtered out, as per XDG spec:
     // 
     // "All paths set in these environment variables must be absolute. 
-    //  If an implementation encounters a relative path in any of these 
+    // If an implementation encounters a relative path in any of these 
     // variables it should consider the path invalid and ignore it."
-
-    // Note: before using this for Windows PATH, make sure it works 
-    // there, because it's been done for XDG first.
 
     vector!Path result;
     int lastSep = -1;
@@ -763,8 +688,8 @@ version(Windows)
                 WCHAR[1]  PathBuffer;
             }
 
-            SymbolicLinkReparseBuffer_t SymbolicLinkReparseBuffer;
-            MountPointReparseBuffer_t MountPointReparseBuffer;
+            SymbolicLinkReparseBuffer_t SymbolicLink;
+            MountPointReparseBuffer_t MountPoint;
         }
     }
 }
@@ -773,35 +698,39 @@ Path resolveSymlink(Path p)
 {
     version(Windows)
     {
-        vector!ubyte rawReparseData = getReparseData(p);
-        FS_REPARSE_DATA_BUFFER* reparseData = cast(FS_REPARSE_DATA_BUFFER*) rawReparseData.ptr;
+        vector!ubyte vReparse = getReparseData(p);
+        auto reparse = cast(FS_REPARSE_DATA_BUFFER*) vReparse.ptr;
 
-        if (reparseData is null)
+        if (reparse is null)
             throwIO(kStrErrSymlinkRead);
 
         nwstring printName, substName;
-        if (reparseData.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
+
+        wchar* parseBuf, printPtr, substPtr;
+        size_t printOfs, printLen, substOfs, substLen;
+
+        if (reparse.ReparseTag == IO_REPARSE_TAG_MOUNT_POINT)
         {
-            wchar* parseBuf = reparseData.MountPointReparseBuffer.PathBuffer.ptr;
-            size_t printOfs = reparseData.MountPointReparseBuffer.PrintNameOffset / wchar.sizeof;
-            size_t printLen = reparseData.MountPointReparseBuffer.PrintNameLength / wchar.sizeof;
-            wchar* printPtr = &parseBuf[printOfs];
+            parseBuf = reparse.MountPoint.PathBuffer.ptr;
+            printOfs = reparse.MountPoint.PrintNameOffset / 2;
+            printLen = reparse.MountPoint.PrintNameLength / 2;
+            printPtr = &parseBuf[printOfs];
             printName = nwstring(printPtr[0..printLen]);
-            size_t substOfs = reparseData.MountPointReparseBuffer.SubstituteNameOffset / wchar.sizeof;
-            size_t substLen = reparseData.MountPointReparseBuffer.SubstituteNameLength / wchar.sizeof;
-            wchar* substPtr = &parseBuf[substOfs];
+            substOfs = reparse.MountPoint.SubstituteNameOffset / 2;
+            substLen = reparse.MountPoint.SubstituteNameLength / 2;
+            substPtr = &parseBuf[substOfs];
             substName = nwstring(substPtr[0..substLen]);
         }
-        else if (reparseData.ReparseTag == IO_REPARSE_TAG_SYMLINK)
+        else if (reparse.ReparseTag == IO_REPARSE_TAG_SYMLINK)
         {
-            wchar* parseBuf = reparseData.SymbolicLinkReparseBuffer.PathBuffer.ptr;
-            size_t printOfs = reparseData.SymbolicLinkReparseBuffer.PrintNameOffset / wchar.sizeof;
-            size_t printLen = reparseData.SymbolicLinkReparseBuffer.PrintNameLength / wchar.sizeof;
-            wchar* printPtr = &parseBuf[printOfs];
+            parseBuf = reparse.SymbolicLink.PathBuffer.ptr;
+            printOfs = reparse.SymbolicLink.PrintNameOffset / 2;
+            printLen = reparse.SymbolicLink.PrintNameLength / 2;
+            printPtr = &parseBuf[printOfs];
             printName = nwstring(printPtr[0..printLen]);
-            size_t substOfs = reparseData.SymbolicLinkReparseBuffer.SubstituteNameOffset / wchar.sizeof;
-            size_t substLen = reparseData.SymbolicLinkReparseBuffer.SubstituteNameLength / wchar.sizeof;
-            wchar* substPtr = &parseBuf[substOfs];
+            substOfs = reparse.SymbolicLink.SubstituteNameOffset / 2;
+            substLen = reparse.SymbolicLink.SubstituteNameLength / 2;
+            substPtr = &parseBuf[substOfs];
             substName = nwstring(substPtr[0..substLen]);
         }
         else
@@ -814,27 +743,28 @@ Path resolveSymlink(Path p)
         }
         result = Path(substName.toUTF8());
 
-        if (reparseData.SymbolicLinkReparseBuffer.Flags & 0x1 /*SYMLINK_FLAG_RELATIVE*/) 
+        if (reparse.SymbolicLink.Flags & 0x1) // SYMLINK_FLAG_RELATIVE
             result = p.parentPath() / result;
 
         return result;
     }
     else version(Posix)
     {
-        size_t bufSize = 256;
-        while (bufSize <= 1024 * 1024) 
+        size_t bSz = 256;
+        ptrdiff_t bytes;
+        while (bSz <= 1024 * 1024) 
         {
             vector!char linkbuf;
-            linkbuf.resize(bufSize);
-            ptrdiff_t bytes = punistd.readlink(p.native.ptr, linkbuf.ptr, bufSize);
+            linkbuf.resize(bSz);            
+            bytes = punistd.readlink(p.native.ptr, linkbuf.ptr, bSz);
             if (bytes < 0)
                 throwIO(kStrErrSymlinkRead);
-            else if (bytes < bufSize)
+            else if (bytes < bSz)
             {
                 return Path(linkbuf[0..bytes]);
             }
             else
-                bufSize *= 2;
+                bSz *= 2;
         }
         return Path.init;
     }
@@ -844,14 +774,19 @@ Path resolveSymlink(Path p)
 
 version(Windows)
 {
-    // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number of
-    // additional bytes.
-    // We return a ubyte buffer that should be read as a REPARSE_DATA_BUFFER
+    // Note: REPARSE_DATA_BUFFER is a C struct terminated by a number 
+    // of additional bytes.
+    // We return a ubyte buffer to be read as a `REPARSE_DATA_BUFFER`.
+    // Throws: `FileSystemException`.
     vector!ubyte getReparseData(Path p)
     {
-        DWORD shareFlags = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-        DWORD fileFlags = FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS;
-        HANDLE file = CreateFileW(p.native.toUTF16().ptr, 0, shareFlags, null, OPEN_EXISTING, fileFlags, null);
+        DWORD shareFlags = FILE_SHARE_READ 
+                         | FILE_SHARE_WRITE 
+                         | FILE_SHARE_DELETE;
+        DWORD fileFlags  = FILE_FLAG_OPEN_REPARSE_POINT 
+                         | FILE_FLAG_BACKUP_SEMANTICS;
+        HANDLE file = CreateFileW(p.native.toUTF16().ptr, 0, 
+            shareFlags, null, OPEN_EXISTING, fileFlags, null);
 
         if (!file)
             throwIO(kStrErrSymlinkRead);
@@ -861,7 +796,9 @@ version(Windows)
         vector!ubyte r;
         r.resize(MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
         ULONG bufferUsed;
-        if (DeviceIoControl(file, FSCTL_GET_REPARSE_POINT, null, 0, r.ptr, MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &bufferUsed, null)) 
+        if (DeviceIoControl(file, FSCTL_GET_REPARSE_POINT, null, 0, 
+            r.ptr, MAXIMUM_REPARSE_DATA_BUFFER_SIZE, &bufferUsed, 
+            null)) 
         {
             r.resize(bufferUsed);
             return r;
