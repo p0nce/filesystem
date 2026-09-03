@@ -1,8 +1,8 @@
 name "filesystem"
-description "Implementation of roughly std::filesystem, for D."
+description "@nogc implementation of std::filesystem, for D. Standard paths, envvars."
 copyright "Copyright 2026, Guillaume Piolat"
 copyright "Copyright 2018, Steffen Schümann"
-license "MIT"
+license "MIT+BSL-1.0"
 targetPath "out/"
 
 dependency "nulib" version="~>0.0"
