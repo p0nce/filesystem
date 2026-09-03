@@ -461,8 +461,8 @@ vector!Path standardPaths(StandardPath type) @safe
     Path userPath = writablePath(type);
     if (userPath.length)
         paths ~= userPath;
-    if (commonPath.length)
-        paths ~= commonPath;
+    if (common.length)
+        paths ~= common;
     foreach (p; commonPaths)
     {
         if (paths.find(p) == -1)
