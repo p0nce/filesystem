@@ -95,8 +95,8 @@ jobs:
     - name: 'Attempting ${{ env.DUB_BUILD_CFG_NAME }} build...'
       working-directory: '${{ inputs.repo }}'
       run: |
-        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=debug -- -t 1
-        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=release -- -t 1
+        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=debug
+        dub build ${{ env.DUB_BUILD_CFG_FLAG }} --build=release
       
     - name: 'Attempting to run tests...'
       working-directory: '${{ inputs.repo }}'
