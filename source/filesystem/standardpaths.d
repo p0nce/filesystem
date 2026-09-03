@@ -216,119 +216,128 @@ Path homeDir() /* nothrow */ /* @safe */
 
     See_Also: `StandardPath`, `standardPaths`.
 */
-Path writablePath(StandardPath type, bool createIfMissing = false) /* nothrow */ @trusted
+Path writablePath(StandardPath type, bool createIfMissing = false) 
+    /* nothrow */ @trusted
 {
+    alias create = createIfMissing;
     version(Windows)
     {
         final switch(type) 
         {
-            case StandardPath.config:
-            case StandardPath.data:
-                return getKnownFolder(FOLDERID_LocalAppData, createIfMissing);
-            case StandardPath.cache:
-                return Path.init;
-            case StandardPath.desktop:
-                return getKnownFolder(FOLDERID_Desktop, createIfMissing);
-            case StandardPath.documents:
-                return getKnownFolder(FOLDERID_Documents, createIfMissing);
-            case StandardPath.pictures:
-                return getKnownFolder(FOLDERID_Pictures, createIfMissing);
-            case StandardPath.music:
-                return getKnownFolder(FOLDERID_Music, createIfMissing);
-            case StandardPath.videos:
-                return getKnownFolder(FOLDERID_Videos, createIfMissing);
-            case StandardPath.downloads:
-                return getKnownFolder(FOLDERID_Downloads, createIfMissing);
-            case StandardPath.templates:
-                return getKnownFolder(FOLDERID_Templates, createIfMissing);
-            case StandardPath.publicShare:
-                return Path.init;
-            case StandardPath.fonts:
-                return Path.init;
-            case StandardPath.applications:
-                return getKnownFolder(FOLDERID_Programs, createIfMissing);
-            case StandardPath.startup:
-                return getKnownFolder(FOLDERID_Startup, createIfMissing);
-            case StandardPath.roaming:
-                return getKnownFolder(FOLDERID_RoamingAppData, createIfMissing);
-            case StandardPath.savedGames:
-                return getKnownFolder(FOLDERID_SavedGames, createIfMissing);
+        case StandardPath.config:
+        case StandardPath.data:
+            return getKnownFolder(FOLDERID_LocalAppData, create);
+        case StandardPath.cache:
+            return Path.init;
+        case StandardPath.desktop:
+            return getKnownFolder(FOLDERID_Desktop, create);
+        case StandardPath.documents:
+            return getKnownFolder(FOLDERID_Documents, create);
+        case StandardPath.pictures:
+            return getKnownFolder(FOLDERID_Pictures, create);
+        case StandardPath.music:
+            return getKnownFolder(FOLDERID_Music, create);
+        case StandardPath.videos:
+            return getKnownFolder(FOLDERID_Videos, create);
+        case StandardPath.downloads:
+            return getKnownFolder(FOLDERID_Downloads, create);
+        case StandardPath.templates:
+            return getKnownFolder(FOLDERID_Templates, create);
+        case StandardPath.publicShare:
+            return Path.init;
+        case StandardPath.fonts:
+            return Path.init;
+        case StandardPath.applications:
+            return getKnownFolder(FOLDERID_Programs, create);
+        case StandardPath.startup:
+            return getKnownFolder(FOLDERID_Startup, create);
+        case StandardPath.roaming:
+            return getKnownFolder(FOLDERID_RoamingAppData, create);
+        case StandardPath.savedGames:
+            return getKnownFolder(FOLDERID_SavedGames, create);
         }
     }
     else version(Darwin)
     {
+        auto user = NSUserDomainMask;
         final switch(type) 
         {
-            case StandardPath.config:
-                return domainDir(NSLibraryDirectory, NSUserDomainMask, createIfMissing).maybeAppend("Preferences");
-            case StandardPath.cache:
-                return domainDir(NSCachesDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.data:
-                return domainDir(NSApplicationSupportDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.desktop:
-                return domainDir(NSDesktopDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.documents:
-                return domainDir(NSDocumentDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.pictures:
-                return domainDir(NSPicturesDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.music:
-                return domainDir(NSMusicDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.videos:
-                return domainDir(NSMoviesDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.downloads:
-                return domainDir(NSDownloadsDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.templates:
-                return Path.init;
-            case StandardPath.publicShare:
-                return domainDir(NSSharedPublicDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.fonts:
-                return domainDir(NSLibraryDirectory, NSUserDomainMask, createIfMissing).maybeAppend("Fonts");
-            case StandardPath.applications:
-                return domainDir(NSApplicationDirectory, NSUserDomainMask, createIfMissing);
-            case StandardPath.startup:
-                return Path.init;
-            case StandardPath.roaming:
-                return Path.init;
-            case StandardPath.savedGames:
-                return Path.init;
+        case StandardPath.config:
+            return domainDir(NSLibraryDirectory, user, create)
+                  .maybeAppend("Preferences");
+        case StandardPath.cache:
+            return domainDir(NSCachesDirectory, user, create);
+        case StandardPath.data:
+            return domainDir(NSApplicationSupportDirectory, user, 
+                             create);
+        case StandardPath.desktop:
+            return domainDir(NSDesktopDirectory, user, create);
+        case StandardPath.documents:
+            return domainDir(NSDocumentDirectory, user, create);
+        case StandardPath.pictures:
+            return domainDir(NSPicturesDirectory, user, create);
+        case StandardPath.music:
+            return domainDir(NSMusicDirectory, user, create);
+        case StandardPath.videos:
+            return domainDir(NSMoviesDirectory, user, create);
+        case StandardPath.downloads:
+            return domainDir(NSDownloadsDirectory, user, create);
+        case StandardPath.templates:
+            return Path.init;
+        case StandardPath.publicShare:
+            return domainDir(NSSharedPublicDirectory, user, create);
+        case StandardPath.fonts:
+            return domainDir(NSLibraryDirectory, user, create)
+                  .maybeAppend("Fonts");
+        case StandardPath.applications:
+            return domainDir(NSApplicationDirectory, user, create);
+        case StandardPath.startup:
+            return Path.init;
+        case StandardPath.roaming:
+            return Path.init;
+        case StandardPath.savedGames:
+            return Path.init;
         }
     }
     else static if (isFreedesktop)
     {
         final switch(type) 
         {
-            case StandardPath.config:
-                return xdgConfigHome(null, createIfMissing);
-            case StandardPath.cache:
-                return xdgCacheHome(null, createIfMissing);
-            case StandardPath.data:
-                return xdgDataHome(null, createIfMissing);
-            case StandardPath.desktop:
-                return createIfNeeded(xdgUserDir("DESKTOP", "/Desktop"), createIfMissing);
-            case StandardPath.documents:
-                return createIfNeeded(xdgUserDir("DOCUMENTS"), createIfMissing);
-            case StandardPath.pictures:
-                return createIfNeeded(xdgUserDir("PICTURES"), createIfMissing);
-            case StandardPath.music:
-                return createIfNeeded(xdgUserDir("MUSIC"), createIfMissing);
-            case StandardPath.videos:
-                return createIfNeeded(xdgUserDir("VIDEOS"), createIfMissing);
-            case StandardPath.downloads:
-                return createIfNeeded(xdgUserDir("DOWNLOAD"), createIfMissing);
-            case StandardPath.templates:
-                return createIfNeeded(xdgUserDir("TEMPLATES", "/Templates"), createIfMissing);
-            case StandardPath.publicShare:
-                return createIfNeeded(xdgUserDir("PUBLICSHARE", "/Public"), createIfMissing);
-            case StandardPath.fonts:
-                return createIfNeeded(homeFontsPath(), createIfMissing);
-            case StandardPath.applications:
-                return xdgDataHome("applications", createIfMissing);
-            case StandardPath.startup:
-                return xdgConfigHome("autostart", createIfMissing);
-            case StandardPath.roaming:
-                return Path.init;
-            case StandardPath.savedGames:
-                return Path.init;
+        case StandardPath.config:
+            return xdgConfigHome(null, create);
+        case StandardPath.cache:
+            return xdgCacheHome(null, create);
+        case StandardPath.data:
+            return xdgDataHome(null, create);
+        case StandardPath.desktop:
+            Path desktopDir = xdgUserDir("DESKTOP", "/Desktop");
+            return createIfNeeded(desktopDir, create);
+        case StandardPath.documents:
+            return createIfNeeded(xdgUserDir("DOCUMENTS"), create);
+        case StandardPath.pictures:
+            return createIfNeeded(xdgUserDir("PICTURES"), create);
+        case StandardPath.music:
+            return createIfNeeded(xdgUserDir("MUSIC"), create);
+        case StandardPath.videos:
+            return createIfNeeded(xdgUserDir("VIDEOS"), create);
+        case StandardPath.downloads:
+            return createIfNeeded(xdgUserDir("DOWNLOAD"), create);
+        case StandardPath.templates:
+            Path templatesDir = xdgUserDir("TEMPLATES", "/Templates");
+            return createIfNeeded(templatesDir, create);
+        case StandardPath.publicShare:
+            Path publicShare = xdgUserDir("PUBLICSHARE", "/Public");
+            return createIfNeeded(publicShare, create);
+        case StandardPath.fonts:
+            return createIfNeeded(homeFontsPath(), create);
+        case StandardPath.applications:
+            return xdgDataHome("applications", create);
+        case StandardPath.startup:
+            return xdgConfigHome("autostart", create);
+        case StandardPath.roaming:
+            return Path.init;
+        case StandardPath.savedGames:
+            return Path.init;
         }
     }
     else 
@@ -357,7 +366,7 @@ Path writablePath(StandardPath type, bool createIfMissing = false) /* nothrow */
 vector!Path standardPaths(StandardPath type) @safe
 {
     vector!Path paths;
-    Path commonPath;
+    Path common;
     vector!Path commonPaths;
 
     version(Windows)
@@ -366,37 +375,37 @@ vector!Path standardPaths(StandardPath type) @safe
         {
             case StandardPath.config:
             case StandardPath.data:
-                commonPath = getKnownFolder(FOLDERID_ProgramData);
+                common = getKnownFolder(FOLDERID_ProgramData);
                 break;
             case StandardPath.desktop:
-                commonPath = getKnownFolder(FOLDERID_PublicDesktop);
+                common = getKnownFolder(FOLDERID_PublicDesktop);
                 break;
             case StandardPath.documents:
-                commonPath = getKnownFolder(FOLDERID_PublicDocuments);
+                common = getKnownFolder(FOLDERID_PublicDocuments);
                 break;
             case StandardPath.pictures:
-                commonPath = getKnownFolder(FOLDERID_PublicPictures);
+                common = getKnownFolder(FOLDERID_PublicPictures);
                 break;
             case StandardPath.music:
-                commonPath = getKnownFolder(FOLDERID_PublicMusic);
+                common = getKnownFolder(FOLDERID_PublicMusic);
                 break;
             case StandardPath.videos:
-                commonPath = getKnownFolder(FOLDERID_PublicVideos);
+                common = getKnownFolder(FOLDERID_PublicVideos);
                 break;
             case StandardPath.downloads:
-                commonPath = getKnownFolder(FOLDERID_PublicDownloads);
+                common = getKnownFolder(FOLDERID_PublicDownloads);
                 break;
             case StandardPath.templates:
-                commonPath = getKnownFolder(FOLDERID_CommonTemplates);
+                common = getKnownFolder(FOLDERID_CommonTemplates);
                 break;
             case StandardPath.fonts:
-                commonPath = getKnownFolder(FOLDERID_Fonts);
+                common = getKnownFolder(FOLDERID_Fonts);
                 break;
             case StandardPath.applications:
-                commonPath = getKnownFolder(FOLDERID_CommonPrograms);
+                common = getKnownFolder(FOLDERID_CommonPrograms);
                 break;
             case StandardPath.startup:
-                commonPath = getKnownFolder(FOLDERID_CommonStartup);
+                common = getKnownFolder(FOLDERID_CommonStartup);
                 break;
             default:
                 break;
@@ -404,19 +413,21 @@ vector!Path standardPaths(StandardPath type) @safe
     }
     else version(Darwin)
     {
+        auto system = NSSystemDomainMask;
         switch(type) 
         {
             case StandardPath.fonts:
-                commonPath = domainDir(NSLibraryDirectory, NSSystemDomainMask).maybeAppend("Fonts");
+                common = domainDir(NSLibraryDirectory, system)
+                        .maybeAppend("Fonts");
                 break;
             case StandardPath.applications:
-                commonPath = domainDir(NSApplicationDirectory, NSSystemDomainMask);
+                common = domainDir(NSApplicationDirectory, system);
                 break;
             case StandardPath.data:
-                commonPath = domainDir(NSApplicationSupportDirectory, NSSystemDomainMask);
+                common = domainDir(NSApplicationSupportDirectory, system);
                 break;
             case StandardPath.cache:
-                commonPath = domainDir(NSCachesDirectory, NSSystemDomainMask);
+                common = domainDir(NSCachesDirectory, system);
                 break;
             default:
                 break;
@@ -426,19 +437,19 @@ vector!Path standardPaths(StandardPath type) @safe
     {
         switch(type) {
             case StandardPath.data:
-                commonPaths = xdgAllDataDirs();
+                common = xdgAllDataDirs();
                 break;
             case StandardPath.config:
-                commonPaths = xdgAllConfigDirs();
+                common = xdgAllConfigDirs();
                 break;
             case StandardPath.applications:
-                commonPaths = xdgAllDataDirs("applications");
+                common = xdgAllDataDirs("applications");
                 break;
             case StandardPath.startup:
-                commonPaths = xdgAllConfigDirs("autostart");
+                common = xdgAllConfigDirs("autostart");
                 break;
             case StandardPath.fonts:
-                commonPaths = fontPaths();
+                common = fontPaths();
                 break;
             default:
                 break;
@@ -598,15 +609,17 @@ version(Windows)
     }
 
     // Get a known path, or "" if not possible.
-    Path getKnownFolder(const(KNOWNFOLDERID) folder, bool createIfMissing = false) @trusted /* nothrow */
+    Path getKnownFolder(const(KNOWNFOLDERID) folder, 
+        bool createIfMissing = false) @trusted /* nothrow */
     {
         wchar* str;
 
-        // Don't verify taht the folder exists, don't create it either.
+        // Don't verify that the folder exists, nor create it
         DWORD flags = KF_FLAG_DONT_VERIFY;
         if (createIfMissing) flags |= KF_FLAG_CREATE;
 
-        if (SHGetKnownFolderPath(cast(KNOWNFOLDERID*)&folder, flags, null, &str) == S_OK) 
+        if (SHGetKnownFolderPath(cast(KNOWNFOLDERID*)&folder, flags, 
+            null, &str) == S_OK) 
         {
             scope(exit) CoTaskMemFree(str);
             nwstring s = str[0..fs_wstrlen(str)];
@@ -716,7 +729,8 @@ version(Darwin)
 
 
 //
-// Free desktop specifics (partial port of xdgpaths package by same author)
+// Free desktop specifics (partial port of xdgpaths package by same 
+// author)
 //
 
 static if (isFreedesktop)
@@ -733,7 +747,8 @@ static if (isFreedesktop)
     */
     vector!Path xdgDataDirs(string subfolder = null) @trusted
     {
-        vector!Path r = pathsFromEnv("XDG_DATA_DIRS", ':', nstring(subfolder));
+        nstring nsub = nstring(subfolder);
+        vector!Path r = pathsFromEnv("XDG_DATA_DIRS", ':', nsub);
         if (r.empty)
         {
             r ~= Path("/usr/local/share") / subfolder;
@@ -744,7 +759,8 @@ static if (isFreedesktop)
     ///ditto
     vector!Path xdgConfigDirs(string subfolder = null) @trusted
     {
-        vector!Path r = pathsFromEnv("XDG_CONFIG_DIRS", ':', nstring(subfolder));
+        nstring nsub = nstring(subfolder);
+        vector!Path r = pathsFromEnv("XDG_CONFIG_DIRS", ':', nsub);
         if (r.empty)
             r ~= Path("/etc/xdg") / subfolder;
         return r;
@@ -813,7 +829,8 @@ static if (isFreedesktop)
     vector!Path pathsFromEnv(const(char)[] envName, 
                              char separator = ':',
                              nstring subfolder = nstring.init) 
-        => pathsFromEnvValue(getEnvironmentVariable(envName), separator, subfolder);
+        => pathsFromEnvValue(getEnvironmentVariable(envName), 
+                             separator, subfolder);
 
 
     Path xdgBaseDir(string envvar, 
@@ -826,7 +843,8 @@ static if (isFreedesktop)
 
         // Fallback inside ~/<fallback> if no such envvar
         if (dir.empty)
-            dir = Path(getEnvironmentVariable(nstring("HOME"))).maybeAppend(fallback);
+            dir = Path(getEnvironmentVariable(nstring("HOME")))
+                  .maybeAppend(fallback);
 
         if (dir.empty)
             return dir;
@@ -843,7 +861,8 @@ static if (isFreedesktop)
 
     Path xdgUserDir(const(char)[] key, string fallback = null) @trusted
     {
-        Path fileName = writablePath(StandardPath.config).maybeAppend("user-dirs.dirs");
+        Path fileName = writablePath(StandardPath.config)
+                        .maybeAppend("user-dirs.dirs");
         Path home = homeDir();
 
         try 
@@ -863,13 +882,14 @@ static if (isFreedesktop)
         {
             try 
             {
-                auto path = getFromDefaultDirs(key, home, Path("/etc/xdg/user-dirs.defaults"));
+                auto path = getFromDefaultDirs(key, home, 
+                    Path("/etc/xdg/user-dirs.defaults"));
                 if (path.length)
                     return path;
             } 
             catch (FileSystemException e) 
             {
-                // typically: file doesn't exist, or couldn't be accessed
+                // typically: file doesn't exist, or no access
                 e.free();
             }
         }
@@ -893,6 +913,6 @@ static if (isFreedesktop)
         return r;
     }
 
-    // Note: xdgRuntimeDir() left out in 2026, but it is in the original
-    // standardpaths package.
+    // Note: xdgRuntimeDir() left out in 2026, but it is in the 
+    // original `standardpaths` package.
 }
