@@ -391,7 +391,8 @@ bool copyFile(Path from, Path to,
             FilePerms inPerm = statFrom.permissions;
             FilePerms outPerm = inPerm;
             outPerm &= FilePerms.all;
-            if (pfcntl.fchmod(outHandle, outPerm) != 0) 
+            punistd.mode_t posixPerms = cast(punistd.mode_t)outPerm;
+            if (pfcntl.fchmod(outHandle, posixPerms) != 0) 
             {
                 punistd.close(inHandle);
                 punistd.close(outHandle);
