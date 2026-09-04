@@ -1,3 +1,2 @@
-## TODO before release
-
-- [ ] One "True" Brace Style
+- test `copy` with various flags
+- most function would probably benefit from const(char)[] overloads
