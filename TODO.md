@@ -1,2 +1,3 @@
 - test `copy` with various flags
 - most function would probably benefit from const(char)[] overloads
+- there is a function that throw NuException, wrap into FileSystemException
